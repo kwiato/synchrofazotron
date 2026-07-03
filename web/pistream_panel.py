@@ -277,6 +277,90 @@ def _wifi_remove(slot):
 
 
 # ---------------------------------------------------------------------------
+# Wizualizer (cava na HDMI) — presety wyglądu + start/stop.
+# Panel przepisuje /opt/pistream-visualizer/cava.conf i restartuje usługę.
+# Uwaga: update wizualizera (visualizer/install.sh) nadpisuje plik configu,
+# więc preset wraca wtedy do domyślnego.
+# ---------------------------------------------------------------------------
+VIZ_CONF = "/opt/pistream-visualizer/cava.conf"
+VIZ_SERVICE = "pistream-visualizer"
+
+_VIZ_TEMPLATE = """# preset: {name} (zarządzane przez panel PiStream — zakładka /settings)
+[general]
+framerate = 30
+autosens = 1
+bars = 0
+bar_width = {bar_width}
+bar_spacing = {bar_spacing}
+
+[input]
+method = alsa
+source = plughw:Loopback,1,0
+
+[output]
+; noncurses (nie ncurses!) — debianowa paczka cava jest zbudowana bez ncurses
+method = noncurses
+channels = stereo
+
+[color]
+background = black
+foreground = {color}
+
+[smoothing]
+{smoothing}
+"""
+
+VIZ_PRESETS = {
+    "klasyk": {"label": "Klasyk", "bar_width": 2, "bar_spacing": 1,
+               "color": "cyan", "smoothing": "noise_reduction = 77"},
+    "gesty": {"label": "Gęsty", "bar_width": 1, "bar_spacing": 0,
+              "color": "green",
+              "smoothing": "monstercat = 1\nnoise_reduction = 70"},
+    "fale": {"label": "Fale", "bar_width": 3, "bar_spacing": 1,
+             "color": "blue", "smoothing": "waves = 1\nnoise_reduction = 80"},
+    "masyw": {"label": "Masyw", "bar_width": 10, "bar_spacing": 2,
+              "color": "magenta", "smoothing": "noise_reduction = 85"},
+}
+
+
+def _viz_state():
+    installed = os.path.isfile(VIZ_CONF)
+    preset = ""
+    if installed:
+        try:
+            first = open(VIZ_CONF, encoding="utf-8").readline()
+            m = re.search(r"# preset: (\w+)", first)
+            preset = m.group(1) if m else "custom"
+        except OSError:
+            pass
+    return {"installed": installed, "active": _service_active(VIZ_SERVICE),
+            "preset": preset,
+            "presets": [{"id": k, "label": v["label"]}
+                        for k, v in VIZ_PRESETS.items()]}
+
+
+def _viz_set_preset(name):
+    p = VIZ_PRESETS.get(name)
+    if not p:
+        return False, "Nieznany preset."
+    if not os.path.isfile(VIZ_CONF):
+        return False, "Wizualizer nie jest zainstalowany."
+    with open(VIZ_CONF, "w", encoding="utf-8") as fh:
+        fh.write(_VIZ_TEMPLATE.format(name=name, **{
+            k: p[k] for k in ("bar_width", "bar_spacing", "color", "smoothing")}))
+    _run(["systemctl", "try-restart", VIZ_SERVICE])
+    return True, f"Preset „{p['label']}” ustawiony."
+
+
+def _viz_toggle():
+    if _service_active(VIZ_SERVICE):
+        _run(["systemctl", "stop", VIZ_SERVICE])
+        return True, "Wizualizer zatrzymany (do reboota / ręcznego startu)."
+    _run(["systemctl", "start", VIZ_SERVICE])
+    return True, "Wizualizer wystartowany."
+
+
+# ---------------------------------------------------------------------------
 # Wykrywanie "kto teraz gra"
 #
 # Uwaga architektoniczna: nie ma centralnego menedżera audio (jak PulseAudio /
@@ -802,6 +886,15 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
     <p id="msg" class="muted"></p>
   </div>
 
+  <div class="card" id="vizCard" style="display:none;">
+    <h2>📊 Wizualizer (HDMI)</h2>
+    <p class="muted">Styl słupków na monitorze. Zmiana restartuje wizualizer
+       (muzyka gra dalej).</p>
+    <div id="vizPresets"></div>
+    <button class="btn sec" id="vizToggle" onclick="vizToggle()">…</button>
+    <p id="vizMsg" class="muted"></p>
+  </div>
+
   <div class="card">
     <h2>ℹ️ Jak to działa</h2>
     <p class="muted">Sieci trafiają do bazy DietPi (tej samej, którą widzi
@@ -889,6 +982,43 @@ function pick(ssid) {
   document.getElementById('key').focus();
 }
 
+async function vizRefresh() {
+  try {
+    const r = await fetch('/api/viz', {cache:'no-store'});
+    const v = await r.json();
+    if (!v.installed) return;
+    document.getElementById('vizCard').style.display = '';
+    document.getElementById('vizPresets').innerHTML = (v.presets||[]).map(p =>
+      '<button class="btn ' + (p.id === v.preset ? '' : 'sec') + '" ' +
+      'onclick="vizPreset(\\'' + p.id + '\\')">' + escapeHtml(p.label) +
+      (p.id === v.preset ? ' ✓' : '') + '</button>'
+    ).join('');
+    document.getElementById('vizToggle').textContent =
+      v.active ? '⏻ Zatrzymaj wizualizer' : '⏻ Uruchom wizualizer';
+  } catch(e) {}
+}
+
+async function vizPreset(name) {
+  try {
+    const r = await fetch('/api/viz/preset', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name})
+    });
+    const j = await r.json();
+    document.getElementById('vizMsg').textContent = j.message || '';
+  } catch(e) {}
+  vizRefresh();
+}
+
+async function vizToggle() {
+  try {
+    const r = await fetch('/api/viz/toggle', {method:'POST'});
+    const j = await r.json();
+    document.getElementById('vizMsg').textContent = j.message || '';
+  } catch(e) {}
+  setTimeout(vizRefresh, 500);
+}
+
 function msg(t) { document.getElementById('msg').textContent = t; }
 
 function escapeHtml(s) {
@@ -897,6 +1027,7 @@ function escapeHtml(s) {
 }
 
 refresh();
+vizRefresh();
 setInterval(refresh, 5000);
 </script>
 </body>
@@ -936,6 +1067,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps(_wifi_payload()), "application/json")
         elif self.path == "/api/wifi/scan":
             self._send(200, json.dumps({"networks": _wifi_scan()}), "application/json")
+        elif self.path == "/api/viz":
+            self._send(200, json.dumps(_viz_state()), "application/json")
         elif self.path == "/healthz":
             self._send(200, "ok", "text/plain")
         else:
@@ -962,6 +1095,15 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError):
                 slot = -1
             ok, message = _wifi_remove(slot)
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/viz/preset":
+            body = self._json_body()
+            ok, message = _viz_set_preset(str(body.get("name", "")))
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/viz/toggle":
+            ok, message = _viz_toggle()
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         else:
