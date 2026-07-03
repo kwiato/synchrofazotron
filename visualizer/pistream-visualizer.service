@@ -13,6 +13,8 @@ TTYPath=/dev/tty1
 TTYReset=yes
 TTYVHangup=yes
 Environment=TERM=linux
+# cava odmawia startu bez HOME (ERR_HOMELESS), nawet z jawnym -p
+Environment=HOME=/root
 Restart=on-failure
 RestartSec=3
 

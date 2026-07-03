@@ -15,10 +15,14 @@ hdmi_connected() {
     return 1
 }
 
-# Bez KMS nie ma statusu DRM — nie kręcimy się bez sensu.
+# Bez KMS nie ma statusu DRM, więc nie wykryjemy hotplugu. Fallback:
+# wizualizer działa NA STAŁE (obsługa Pi i tak przez SSH; cava bez wpiętego
+# monitora to tylko kilka % CPU). sleep infinity, żeby Restart=always nie
+# respawnował usługi w kółko.
 if ! compgen -G "/sys/class/drm/card*-HDMI-A-*/status" >/dev/null; then
-    echo "Brak /sys/class/drm/*-HDMI-*/status (kernel bez KMS?) — watcher kończy pracę."
-    exit 0
+    echo "Brak /sys/class/drm/*-HDMI-*/status (kernel bez KMS?) — wizualizer na stałe."
+    systemctl start "$VIZ"
+    exec sleep infinity
 fi
 
 while :; do
