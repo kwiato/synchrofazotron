@@ -13,9 +13,12 @@ RAW="https://raw.githubusercontent.com/$REPO/$BRANCH/web"
 FILES=(pistream_panel.py pistream-panel.service bt-agent.service)
 DEST=/opt/pistream-panel
 
+# Tryb lokalny TYLKO gdy skrypt uruchomiono jako plik (bash install.sh).
+# Przy `curl | bash` $0 to "bash" — wtedy zawsze pobieramy z GitHuba, nawet
+# jeśli w bieżącym katalogu przypadkiem leżą (stare) pliki panelu.
 SRC_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo .)"
-if [[ ! -f "$SRC_DIR/pistream_panel.py" ]]; then
-  echo "==> Brak plików lokalnie — pobieram $REPO@$BRANCH z GitHuba"
+if [[ "$(basename -- "$0")" != "install.sh" || ! -f "$SRC_DIR/pistream_panel.py" ]]; then
+  echo "==> Pobieram $REPO@$BRANCH z GitHuba"
   SRC_DIR="$(mktemp -d)"
   trap 'rm -rf "$SRC_DIR"' EXIT
   for f in "${FILES[@]}"; do
