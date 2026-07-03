@@ -4,10 +4,10 @@
 # Dwa tryby:
 #   1) lokalnie (pliki obok skryptu):   sudo bash install.sh
 #   2) prosto z GitHuba (instalacja LUB update):
-#        curl -fsSL https://raw.githubusercontent.com/Kwiato/synchrofazotron/main/web/install.sh | sudo bash
+#        curl -fsSL https://raw.githubusercontent.com/kwiato/synchrofazotron/main/web/install.sh | sudo bash
 set -euo pipefail
 
-REPO="${PISTREAM_REPO:-Kwiato/synchrofazotron}"
+REPO="${PISTREAM_REPO:-kwiato/synchrofazotron}"
 BRANCH="${PISTREAM_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/$REPO/$BRANCH/web"
 FILES=(pistream_panel.py pistream-panel.service bt-agent.service)

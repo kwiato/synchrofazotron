@@ -28,7 +28,7 @@ Prosto z GitHuba (instalacja i update to to samo polecenie — pobiera najnowsz�
 wersję i restartuje usługi):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Kwiato/synchrofazotron/main/web/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/kwiato/synchrofazotron/main/web/install.sh | sudo bash
 ```
 
 Albo lokalnie (pliki skopiowane na Pi):
