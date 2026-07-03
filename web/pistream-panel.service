@@ -1,0 +1,16 @@
+[Unit]
+Description=PiStream control panel (HTML + Bluetooth pairing)
+After=network-online.target bluetooth.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# root jest potrzebny do bluetoothctl (discoverable/pairable + agent)
+User=root
+Environment=PISTREAM_PANEL_PORT=8787
+ExecStart=/usr/bin/python3 /opt/pistream-panel/pistream_panel.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
