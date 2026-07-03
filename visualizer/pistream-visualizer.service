@@ -1,0 +1,19 @@
+[Unit]
+Description=PiStream audio visualizer (cava) na konsoli HDMI
+# Przejmujemy tty1 — konsola logowania wraca po: systemctl start getty@tty1
+Conflicts=getty@tty1.service
+After=getty@tty1.service
+
+[Service]
+ExecStart=/usr/bin/cava -p /opt/pistream-visualizer/cava.conf
+StandardInput=tty
+StandardOutput=tty
+StandardError=journal
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+Environment=TERM=linux
+Restart=on-failure
+RestartSec=3
+
+# Uruchamiana wyłącznie przez pistream-hdmi-watch — brak sekcji [Install] celowo.

@@ -1,0 +1,11 @@
+[Unit]
+Description=PiStream: start/stop wizualizera wg statusu HDMI
+After=multi-user.target
+
+[Service]
+ExecStart=/opt/pistream-visualizer/hdmi-watch.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
