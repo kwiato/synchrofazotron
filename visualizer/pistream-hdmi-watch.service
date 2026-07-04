@@ -1,5 +1,5 @@
 [Unit]
-Description=PiStream: start/stop wizualizera wg statusu HDMI
+Description=Synchrofazotron: start/stop the visualizer based on HDMI status
 After=multi-user.target
 
 [Service]

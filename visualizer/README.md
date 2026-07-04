@@ -1,73 +1,75 @@
-# PiStream visualizer — słupki cava na HDMI
+# Synchrofazotron visualizer — cava bars on HDMI
 
-"Fajerwerki na specjalną okazję": gdy do Pi jest wpięty HDMI, na ekranie tańczą
-słupki [cava](https://github.com/karlstav/cava) w rytm tego, co aktualnie gra
-(LMS, AirPlay, Bluetooth). Gdy HDMI wypięte — wizualizer nie działa i nie zużywa
-zasobów. Muzyka gra identycznie w obu przypadkach.
+"Fireworks for special occasions": when an HDMI display is plugged into the Pi,
+[cava](https://github.com/karlstav/cava) bars dance on the screen in sync with
+whatever is playing (LMS, AirPlay, Bluetooth). With HDMI unplugged the
+visualizer is off and uses no resources. Music plays identically either way.
 
-## Architektura
+## Architecture
 
 ```
-źródła (squeezelite / shairport / bluealsa-aplay)
+sources (squeezelite / shairport / bluealsa-aplay)
    └─> pcm "pistream"  (ALSA: plug -> route -> multi)
-         ├─> hw:BossDAC          (dźwięk — zawsze)
-         └─> hw:Loopback,0,0     (kopia strumienia — snd-aloop)
-                └─> plughw:Loopback,1,0  <- czyta cava (tylko gdy HDMI wpięte)
+         ├─> hw:BossDAC          (audio — always)
+         └─> hw:Loopback,0,0     (stream copy — snd-aloop)
+                └─> plughw:Loopback,1,0  <- read by cava (only when HDMI is in)
 ```
 
-- **Tor audio jest stały** — o wpięciu HDMI decyduje tylko to, czy działa cava.
-  Dzięki temu wpinanie/wypinanie kabla nigdy nie przerywa muzyki. (Dynamiczne
-  przepinanie toru wymagałoby restartu odtwarzaczy przy każdym hotplugu, bo
-  libasound czyta konfigurację raz na start procesu.)
-- **`pistream-hdmi-watch`** co 5 s sprawdza `/sys/class/drm/*-HDMI-*/status`
-  i startuje/zatrzymuje `pistream-visualizer` (cava na `tty1`).
-- Koszt stały: znikomy CPU na kopiowanie sampli; tor przechodzi przez `plug`,
-  więc formalnie przestaje być bit-perfect (w praktyce niesłyszalne).
+- **The audio path is fixed** — plugging HDMI in only decides whether cava
+  runs. That way plugging/unplugging the cable never interrupts the music.
+  (Re-routing the path dynamically would require restarting the players on
+  every hotplug, because libasound reads its configuration once per process.)
+- **`pistream-hdmi-watch`** checks `/sys/class/drm/*-HDMI-*/status` every 5 s
+  and starts/stops `pistream-visualizer` (cava on `tty1`).
+- Fixed cost: negligible CPU for copying samples; the path goes through `plug`,
+  so it formally stops being bit-perfect (inaudible in practice).
 
-## Instalacja / aktualizacja
+## Install / update
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kwiato/synchrofazotron/main/visualizer/install.sh | sudo bash
 ```
 
-Skrypt robi backupy zmienianych configów (`*.bak.<data>`). Pełny powrót do
-toru bezpośredniego:
+The script backs up every config it touches (`*.bak.<date>`). Full revert to
+the direct audio path:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kwiato/synchrofazotron/main/visualizer/uninstall.sh | sudo bash
 ```
 
-## Sterowanie ręczne
+## Manual control
 
 ```bash
-systemctl start|stop pistream-visualizer     # ręczne fajerwerki
-systemctl stop pistream-hdmi-watch           # wyłącz automat (do restartu)
-# konsola logowania na HDMI zamiast wizualizera:
+systemctl start|stop pistream-visualizer     # manual fireworks
+systemctl stop pistream-hdmi-watch           # disable the automation (until reboot)
+# login console on HDMI instead of the visualizer:
 systemctl stop pistream-hdmi-watch pistream-visualizer && systemctl start getty@tty1
 ```
 
-Wizualizer zajmuje `tty1`; konsole tekstowe nadal dostępne na Alt+F2…F6.
+The visualizer occupies `tty1`; text consoles remain available on Alt+F2…F6.
 
-## Diagnostyka
+## Troubleshooting
 
-- **Słupki stoją mimo muzyki** — sprawdź, czy źródło faktycznie gra przez
-  `pistream`: `grep -o '\-o [^ ]*' /etc/default/squeezelite` (i analogicznie
-  shairport/bluealsa). Po instalacji źródła wymagają restartu (skrypt to robi).
-- **Test pętli bez HDMI**: puść muzykę i
-  `arecord -D plughw:Loopback,1,0 -f S16_LE -d 1 /tmp/t.wav` — plik powinien
-  zawierać dźwięk, nie ciszę.
-- **Watcher kończy pracę od razu** — kernel bez KMS nie wystawia statusu DRM;
-  wtedy zostaje sterowanie ręczne (patrz wyżej).
-- **cava wygląda blado** — konsola linuksowa ma ubogą paletę; kolory/gradienty
-  można stroić w `/opt/pistream-visualizer/cava.conf` (sekcja `[color]`),
-  po zmianie `systemctl restart pistream-visualizer`.
+- **Bars frozen despite music playing** — check that the source really plays
+  through `pistream`: `grep -o '\-o [^ ]*' /etc/default/squeezelite` (and the
+  same for shairport/bluealsa). Sources need a restart after install (the
+  script does that).
+- **Loopback test without HDMI**: play some music and run
+  `arecord -D plughw:Loopback,1,0 -f S16_LE -d 1 /tmp/t.wav` — the file should
+  contain sound, not silence.
+- **The watcher exits immediately** — a kernel without KMS exposes no DRM
+  status; manual control remains (see above).
+- **cava looks washed out** — the Linux console has a poor palette;
+  colors/gradients can be tuned in `/opt/pistream-visualizer/cava.conf`
+  (`[color]` section), then `systemctl restart pistream-visualizer`.
+  Presets are also available in the panel under `/settings`.
 
-## Pliki
+## Files
 
-| Plik | Trafia do | Rola |
+| File | Goes to | Role |
 |---|---|---|
-| `asound-tee.conf` | blok w `/etc/asound.conf` | urządzenie `pistream` (DAC+pętla) |
-| `cava.conf` | `/opt/pistream-visualizer/` | konfiguracja wizualizera |
-| `hdmi-watch.sh` | `/opt/pistream-visualizer/` | pętla hotplug HDMI |
-| `pistream-visualizer.service` | `/etc/systemd/system/` | cava na tty1 |
+| `asound-tee.conf` | block in `/etc/asound.conf` | the `pistream` device (DAC+loopback) |
+| `cava.conf` | `/opt/pistream-visualizer/` | visualizer configuration |
+| `hdmi-watch.sh` | `/opt/pistream-visualizer/` | HDMI hotplug loop |
+| `pistream-visualizer.service` | `/etc/systemd/system/` | cava on tty1 |
 | `pistream-hdmi-watch.service` | `/etc/systemd/system/` | watcher (enabled) |

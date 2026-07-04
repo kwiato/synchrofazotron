@@ -1,6 +1,6 @@
 [Unit]
-Description=PiStream audio visualizer (cava) na konsoli HDMI
-# Przejmujemy tty1 — konsola logowania wraca po: systemctl start getty@tty1
+Description=Synchrofazotron audio visualizer (cava) on the HDMI console
+# We take over tty1 — the login console comes back with: systemctl start getty@tty1
 Conflicts=getty@tty1.service
 After=getty@tty1.service
 
@@ -13,9 +13,9 @@ TTYPath=/dev/tty1
 TTYReset=yes
 TTYVHangup=yes
 Environment=TERM=linux
-# cava odmawia startu bez HOME (ERR_HOMELESS), nawet z jawnym -p
+# cava refuses to start without HOME (ERR_HOMELESS), even with an explicit -p
 Environment=HOME=/root
 Restart=on-failure
 RestartSec=3
 
-# Uruchamiana wyłącznie przez pistream-hdmi-watch — brak sekcji [Install] celowo.
+# Started exclusively by pistream-hdmi-watch — no [Install] section on purpose.

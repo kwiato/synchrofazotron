@@ -5,7 +5,7 @@ Requires=bluetooth.service
 
 [Service]
 Type=simple
-# NoInputNoOutput => parowanie "Just Works", bez potwierdzania po stronie Pi
+# NoInputNoOutput => "Just Works" pairing, no confirmation on the Pi side
 ExecStart=/usr/bin/bt-agent -c NoInputNoOutput
 Restart=on-failure
 RestartSec=3

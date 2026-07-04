@@ -1,6 +1,6 @@
 #!/bin/bash
-# Fajerwerki na specjalną okazję: pilnuje statusu HDMI i włącza/wyłącza
-# wizualizer. Status hotplug czytamy z DRM (/sys/class/drm/*-HDMI-*/status).
+# Fireworks for special occasions: watches the HDMI status and starts/stops
+# the visualizer. Hotplug status is read from DRM (/sys/class/drm/*-HDMI-*/status).
 set -u
 
 VIZ=pistream-visualizer.service
@@ -15,12 +15,12 @@ hdmi_connected() {
     return 1
 }
 
-# Bez KMS nie ma statusu DRM, więc nie wykryjemy hotplugu. Fallback:
-# wizualizer działa NA STAŁE (obsługa Pi i tak przez SSH; cava bez wpiętego
-# monitora to tylko kilka % CPU). sleep infinity, żeby Restart=always nie
-# respawnował usługi w kółko.
+# Without KMS there is no DRM status, so hotplug cannot be detected. Fallback:
+# the visualizer runs PERMANENTLY (the Pi is managed over SSH anyway; cava with
+# no monitor attached is only a few % CPU). sleep infinity so Restart=always
+# does not respawn the unit in a loop.
 if ! compgen -G "/sys/class/drm/card*-HDMI-A-*/status" >/dev/null; then
-    echo "Brak /sys/class/drm/*-HDMI-*/status (kernel bez KMS?) — wizualizer na stałe."
+    echo "No /sys/class/drm/*-HDMI-*/status (kernel without KMS?) — visualizer stays on permanently."
     systemctl start "$VIZ"
     exec sleep infinity
 fi

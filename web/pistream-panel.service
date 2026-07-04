@@ -1,13 +1,17 @@
 [Unit]
-Description=PiStream control panel (HTML + Bluetooth pairing)
+Description=Synchrofazotron control panel (HTML + Bluetooth pairing)
 After=network-online.target bluetooth.service
 Wants=network-online.target
 
 [Service]
 Type=simple
-# root jest potrzebny do bluetoothctl (discoverable/pairable + agent)
+# root is required by bluetoothctl (discoverable/pairable + agent)
 User=root
 Environment=PISTREAM_PANEL_PORT=8787
+# Default UI language (en|pl); can also be switched at runtime in /settings.
+#Environment=PISTREAM_LANG=en
+# Set to 0 to disable auto-pausing the previous source when a new one starts.
+#Environment=PISTREAM_AUTOPAUSE=0
 ExecStart=/usr/bin/python3 /opt/pistream-panel/pistream_panel.py
 Restart=on-failure
 RestartSec=3

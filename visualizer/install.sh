@@ -1,15 +1,15 @@
 #!/bin/bash
-# PiStream visualizer — instalacja / aktualizacja.
+# Synchrofazotron visualizer — install / update.
 #
 #   curl -fsSL https://raw.githubusercontent.com/kwiato/synchrofazotron/main/visualizer/install.sh | sudo bash
 #
-# Co robi:
-#   1) snd-aloop (wirtualna pętla audio) ładowany przy boocie
-#   2) urządzenie ALSA "pistream" = DAC + kopia do pętli (blok w /etc/asound.conf)
-#   3) przepina squeezelite / shairport-sync / bluealsa-aplay na "pistream" (z backupami)
-#   4) cava czytająca z pętli, wyświetlana na HDMI (tty1)
-#   5) watcher: HDMI wpięte -> wizualizer startuje; wypięte -> gaśnie
-# Odwrócenie wszystkiego: uninstall.sh z tego samego katalogu repo.
+# What it does:
+#   1) snd-aloop (virtual audio loopback) loaded at boot
+#   2) ALSA device "pistream" = DAC + a copy into the loopback (block in /etc/asound.conf)
+#   3) repoints squeezelite / shairport-sync / bluealsa-aplay at "pistream" (with backups)
+#   4) cava reading from the loopback, displayed on HDMI (tty1)
+#   5) watcher: HDMI plugged in -> visualizer starts; unplugged -> it goes dark
+# To undo everything: uninstall.sh from the same repo directory.
 set -euo pipefail
 
 REPO="${PISTREAM_REPO:-kwiato/synchrofazotron}"
@@ -17,12 +17,12 @@ BRANCH="${PISTREAM_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/$REPO/$BRANCH/visualizer"
 FILES=(asound-tee.conf cava.conf pistream-visualizer.service pistream-hdmi-watch.service hdmi-watch.sh)
 DEST=/opt/pistream-visualizer
-DAC_PCM="hw:CARD=BossDAC,DEV=0"   # do czego wracamy przy uninstallu
+DAC_PCM="hw:CARD=BossDAC,DEV=0"   # what uninstall reverts to
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
 SRC_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo .)"
 if [[ "$(basename -- "$0")" != "install.sh" || ! -f "$SRC_DIR/asound-tee.conf" ]]; then
-  echo "==> Pobieram $REPO@$BRANCH z GitHuba"
+  echo "==> Downloading $REPO@$BRANCH from GitHub"
   SRC_DIR="$(mktemp -d)"
   trap 'rm -rf "$SRC_DIR"' EXIT
   for f in "${FILES[@]}"; do
@@ -30,26 +30,26 @@ if [[ "$(basename -- "$0")" != "install.sh" || ! -f "$SRC_DIR/asound-tee.conf" ]
   done
 fi
 
-echo "==> Instalacja cava"
+echo "==> Installing cava"
 if ! command -v cava >/dev/null 2>&1; then
   DEBIAN_FRONTEND=noninteractive apt-get install -y cava
 fi
 
-echo "==> Moduł snd-aloop (pętla audio)"
+echo "==> snd-aloop module (audio loopback)"
 echo snd-aloop > /etc/modules-load.d/pistream-visualizer.conf
-# index=7: pętla nie może podebrać numeru karty 0 DAC-owi
+# index=7: the loopback must not steal card number 0 from the DAC
 echo "options snd-aloop index=7 pcm_substreams=2" > /etc/modprobe.d/pistream-aloop.conf
 modprobe snd-aloop index=7 pcm_substreams=2 2>/dev/null || true
-grep -q Loopback /proc/asound/cards || { echo "BŁĄD: snd-aloop nie wstał"; exit 1; }
+grep -q Loopback /proc/asound/cards || { echo "ERROR: snd-aloop did not come up"; exit 1; }
 
-echo "==> Urządzenie ALSA 'pistream' (DAC + kopia do pętli)"
+echo "==> ALSA device 'pistream' (DAC + copy into the loopback)"
 touch /etc/asound.conf
 cp /etc/asound.conf "/etc/asound.conf.bak.$STAMP"
 sed -i '/# PISTREAM-VIZ BEGIN/,/# PISTREAM-VIZ END/d' /etc/asound.conf
 cat "$SRC_DIR/asound-tee.conf" >> /etc/asound.conf
 
-echo "==> Przepinam źródła audio na 'pistream'"
-# squeezelite: -o <cokolwiek>  ->  -o pistream
+echo "==> Repointing audio sources at 'pistream'"
+# squeezelite: -o <whatever>  ->  -o pistream
 if [[ -f /etc/default/squeezelite ]]; then
   cp /etc/default/squeezelite "/etc/default/squeezelite.bak.$STAMP"
   sed -i -E "s|-o [^ ']+|-o pistream|" /etc/default/squeezelite
@@ -61,7 +61,7 @@ if [[ -f $SP_CONF ]]; then
   cp "$SP_CONF" "$SP_CONF.bak.$STAMP"
   sed -i -E 's|^([[:space:]]*)output_device = ".*";|\1output_device = "pistream";|' "$SP_CONF"
 fi
-# bluealsa-aplay: override systemd
+# bluealsa-aplay: systemd override
 install -d /etc/systemd/system/bluealsa-aplay.service.d
 cat > /etc/systemd/system/bluealsa-aplay.service.d/override.conf <<'EOF'
 [Service]
@@ -69,7 +69,7 @@ ExecStart=
 ExecStart=/usr/bin/bluealsa-aplay -S -d pistream
 EOF
 
-echo "==> Pliki wizualizera i usługi"
+echo "==> Visualizer files and services"
 install -d "$DEST"
 install -m 0644 "$SRC_DIR/cava.conf" "$DEST/cava.conf"
 install -m 0755 "$SRC_DIR/hdmi-watch.sh" "$DEST/hdmi-watch.sh"
@@ -84,7 +84,7 @@ systemctl enable --now pistream-hdmi-watch.service
 systemctl restart pistream-hdmi-watch.service
 
 echo
-echo "==> Gotowe. Backupy configów: *.bak.$STAMP"
-echo "    HDMI wpięte  -> wizualizer wstaje sam (do ~5 s)"
-echo "    Konsola logowania na HDMI wróci po: systemctl stop pistream-hdmi-watch pistream-visualizer && systemctl start getty@tty1"
-echo "    Test bez HDMI: puść muzykę i sprawdź 'arecord -D plughw:Loopback,1,0 -f S16_LE -d 1 /tmp/t.wav'"
+echo "==> Done. Config backups: *.bak.$STAMP"
+echo "    HDMI plugged in  -> the visualizer comes up on its own (within ~5 s)"
+echo "    Login console on HDMI comes back with: systemctl stop pistream-hdmi-watch pistream-visualizer && systemctl start getty@tty1"
+echo "    Test without HDMI: play some music and check 'arecord -D plughw:Loopback,1,0 -f S16_LE -d 1 /tmp/t.wav'"
