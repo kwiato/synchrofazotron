@@ -97,6 +97,11 @@ configuration on the fly (`wpa_cli reconfigure`) — no reboot and no dropping
 the current connection. You can add a network that is out of range (e.g. the
 home network before moving the device).
 
+In setup-AP mode (see `../ap-fallback/`) `/api/wifi/scan` serves the snapshot
+taken just before the AP went up — the shared radio cannot scan while being
+an AP. Saving a network then also tells the watchdog to tear the AP down and
+join it.
+
 ## Notes
 
 - The service runs as **root** (required by `bluetoothctl` for agent and

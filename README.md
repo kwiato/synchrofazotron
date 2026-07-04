@@ -40,6 +40,7 @@ DietPi. One box that plays everything the household throws at it:
    | `PISTREAM_DAC_OVERLAY` | `allo-boss-dac-pcm512x-audio` | overlay for the DAC (alternative: `hifiberry-dacplus`) |
    | `PISTREAM_VISUALIZER` | `0` | `1` = also install the HDMI visualizer |
    | `PISTREAM_TAILSCALE` | `1` | `0` = skip Tailscale install |
+   | `PISTREAM_AP_FALLBACK` | `1` | `0` = skip the setup-AP fallback (captive portal) |
 
    Example — HDMI audio + visualizer:
 
@@ -70,8 +71,13 @@ The practical recipe:
    its own; reach the panel via Tailscale and add the local Wi-Fi from there.
 
 The `/settings` page also shows the current **LAN IP / Tailscale IP** in case
-MagicDNS is not resolving. A captive-portal fallback AP (Chromecast-style
-first-run setup) is planned but not built yet.
+MagicDNS is not resolving.
+
+And if none of that was prepared: after ~2 minutes without Wi-Fi the device
+raises its own **setup AP** (`Synchrofazotron-Setup`, password
+`synchrofazotron`) with a captive portal that opens the panel — add the local
+network there and the device switches over on its own. Details in
+[ap-fallback/README.md](ap-fallback/README.md).
 
 ## Repo layout
 
@@ -79,6 +85,7 @@ first-run setup) is planned but not built yet.
 |---|---|
 | `setup.sh` | full provisioning of a clean DietPi (everything below included) |
 | `web/` | control panel (Python stdlib microservice) + bt-agent, own `install.sh` |
+| `ap-fallback/` | setup AP + captive portal when Wi-Fi is down, own `install.sh` / `uninstall.sh` |
 | `visualizer/` | cava HDMI visualizer + audio tee, own `install.sh` / `uninstall.sh` |
 | `plan.md` | original configuration plan / design notes |
 | `dac-setup.md` | how to switch audio back from HDMI to a (working) DAC HAT |

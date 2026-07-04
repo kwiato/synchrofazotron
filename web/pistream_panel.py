@@ -467,6 +467,23 @@ def _tailscale_ip():
     return first if re.fullmatch(r"[\d.]+", first) else ""
 
 
+# Setup-AP integration (ap-fallback/): while the device runs its fallback
+# access point the shared radio cannot scan, so net-watch.sh snapshots the
+# neighborhood right before raising the AP and we serve that snapshot instead.
+AP_MARKER = "/run/pistream-ap.active"
+AP_SCAN_CACHE = "/run/pistream-ap-scan.json"
+
+
+def _wifi_scan_networks():
+    if os.path.exists(AP_MARKER):
+        try:
+            with open(AP_SCAN_CACHE, encoding="utf-8") as fh:
+                return json.load(fh).get("networks", [])
+        except Exception:  # noqa: BLE001
+            return []
+    return _wifi_scan()
+
+
 def _wifi_payload():
     slots = _wifi_db_read()
     saved = [{"slot": i, "ssid": s.get("SSID", ""), "keymgr": s.get("KEYMGR", "")}
@@ -1415,7 +1432,8 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/wifi":
             self._send(200, json.dumps(_wifi_payload()), "application/json")
         elif self.path == "/api/wifi/scan":
-            self._send(200, json.dumps({"networks": _wifi_scan()}), "application/json")
+            self._send(200, json.dumps({"networks": _wifi_scan_networks()}),
+                       "application/json")
         elif self.path == "/api/viz":
             self._send(200, json.dumps(_viz_state()), "application/json")
         elif self.path == "/api/lang":

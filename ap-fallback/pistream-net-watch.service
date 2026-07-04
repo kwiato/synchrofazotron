@@ -1,0 +1,13 @@
+[Unit]
+Description=Synchrofazotron: setup AP fallback when Wi-Fi is down
+After=multi-user.target pistream-panel.service
+
+[Service]
+ExecStart=/opt/pistream-ap/net-watch.sh
+# Never leave the AP (and the hijacked interface) behind if the service dies.
+ExecStopPost=/opt/pistream-ap/net-watch.sh cleanup
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

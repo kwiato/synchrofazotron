@@ -12,6 +12,7 @@
 #                               candidate for the PCM5122 is hifiberry-dacplus)
 #   PISTREAM_VISUALIZER=1       also install the HDMI audio visualizer (default: 0)
 #   PISTREAM_TAILSCALE=0        skip Tailscale install (default: 1 = install)
+#   PISTREAM_AP_FALLBACK=0      skip the setup-AP fallback (default: 1 = install)
 #   PISTREAM_REPO / PISTREAM_BRANCH   where the panel files are fetched from
 #
 # What it does (see README.md for the full picture):
@@ -23,7 +24,8 @@
 #   5) points all players at the chosen ALSA output
 #   6) control panel + bt-agent (web/install.sh)
 #   7) Tailscale (install only — `tailscale up` needs interactive auth)
-#   8) optionally the HDMI visualizer (visualizer/install.sh)
+#   8) setup-AP fallback — captive portal when Wi-Fi is down (ap-fallback/)
+#   9) optionally the HDMI visualizer (visualizer/install.sh)
 #
 # Manual steps that cannot be automated are printed at the end.
 set -euo pipefail
@@ -48,7 +50,7 @@ LOCAL=0
 REBOOT_NEEDED=0
 
 # --------------------------------------------------------------------------
-echo "==> [1/8] Audio output: $AUDIO"
+echo "==> [1/9] Audio output: $AUDIO"
 # --------------------------------------------------------------------------
 CFG=/boot/firmware/config.txt
 [[ -f $CFG ]] || CFG=/boot/config.txt
@@ -98,7 +100,7 @@ else
 fi
 
 # --------------------------------------------------------------------------
-echo "==> [2/8] zram (zstd, 50% RAM)"
+echo "==> [2/9] zram (zstd, 50% RAM)"
 # --------------------------------------------------------------------------
 if ! dpkg -s zram-tools >/dev/null 2>&1; then
   apt-get install -y zram-tools </dev/null
@@ -107,7 +109,7 @@ sed -i -E 's|^#?\s*ALGO=.*|ALGO=zstd|; s|^#?\s*PERCENT=.*|PERCENT=50|' /etc/defa
 systemctl restart zramswap 2>/dev/null || true
 
 # --------------------------------------------------------------------------
-echo "==> [3/8] Players via dietpi-software (LMS, Squeezelite, Shairport, Avahi)"
+echo "==> [3/9] Players via dietpi-software (LMS, Squeezelite, Shairport, Avahi)"
 # --------------------------------------------------------------------------
 # DietPi software IDs: 35 = Lyrion Music Server, 36 = Squeezelite,
 #                      37 = Shairport Sync,      152 = Avahi-Daemon
@@ -124,7 +126,7 @@ else
 fi
 
 # --------------------------------------------------------------------------
-echo "==> [4/8] Bluetooth (adapter + A2DP sink via bluez-alsa)"
+echo "==> [4/9] Bluetooth (adapter + A2DP sink via bluez-alsa)"
 # --------------------------------------------------------------------------
 if ! lsmod | grep -q '^bluetooth' && ! systemctl is-active -q bluetooth; then
   /boot/dietpi/func/dietpi-set_hardware bluetooth enable </dev/null
@@ -136,7 +138,7 @@ fi
 systemctl enable --now bluealsa.service bluealsa-aplay.service 2>/dev/null || true
 
 # --------------------------------------------------------------------------
-echo "==> [5/8] Pointing players at the audio output ($OUT_PCM)"
+echo "==> [5/9] Pointing players at the audio output ($OUT_PCM)"
 # --------------------------------------------------------------------------
 # If the visualizer is installed, players go through its 'pistream' tee device
 # instead — do not touch those. (visualizer/install.sh manages them.)
@@ -191,7 +193,7 @@ EOF
 fi
 
 # --------------------------------------------------------------------------
-echo "==> [6/8] Control panel + bt-agent"
+echo "==> [6/9] Control panel + bt-agent"
 # --------------------------------------------------------------------------
 if [[ $LOCAL == 1 ]]; then
   bash "$SRC_DIR/web/install.sh"
@@ -200,7 +202,7 @@ else
 fi
 
 # --------------------------------------------------------------------------
-echo "==> [7/8] Tailscale"
+echo "==> [7/9] Tailscale"
 # --------------------------------------------------------------------------
 if [[ "${PISTREAM_TAILSCALE:-1}" == "1" ]]; then
   if command -v tailscale >/dev/null 2>&1; then
@@ -213,7 +215,20 @@ else
 fi
 
 # --------------------------------------------------------------------------
-echo "==> [8/8] HDMI visualizer"
+echo "==> [8/9] Setup-AP fallback (captive portal when Wi-Fi is down)"
+# --------------------------------------------------------------------------
+if [[ "${PISTREAM_AP_FALLBACK:-1}" == "1" ]]; then
+  if [[ $LOCAL == 1 ]]; then
+    bash "$SRC_DIR/ap-fallback/install.sh"
+  else
+    curl -fsSL "$RAW/ap-fallback/install.sh" | bash
+  fi
+else
+  echo "    skipped (PISTREAM_AP_FALLBACK=0)"
+fi
+
+# --------------------------------------------------------------------------
+echo "==> [9/9] HDMI visualizer"
 # --------------------------------------------------------------------------
 if [[ "${PISTREAM_VISUALIZER:-0}" == "1" ]]; then
   if [[ $LOCAL == 1 ]]; then
