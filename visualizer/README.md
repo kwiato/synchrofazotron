@@ -51,9 +51,9 @@ The visualizer occupies `tty1`; text consoles remain available on Alt+F2…F6.
 ## Troubleshooting
 
 - **Bars frozen despite music playing** — check that the source really plays
-  through `pistream`: `grep -o '\-o [^ ]*' /etc/default/squeezelite` (and the
-  same for shairport/bluealsa). Sources need a restart after install (the
-  script does that).
+  through `pistream`: `grep -E 'SL_SOUNDCARD|-o ' /etc/default/squeezelite`
+  (and the same for shairport/bluealsa). Sources need a restart after install
+  (the script does that).
 - **Loopback test without HDMI**: play some music and run
   `arecord -D plughw:Loopback,1,0 -f S16_LE -d 1 /tmp/t.wav` — the file should
   contain sound, not silence.

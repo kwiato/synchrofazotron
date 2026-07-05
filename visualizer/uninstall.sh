@@ -19,7 +19,11 @@ sed -i '/# PISTREAM-VIZ BEGIN/,/# PISTREAM-VIZ END/d' /etc/asound.conf 2>/dev/nu
 
 echo "==> Repointing sources back at $DAC_PCM"
 if [[ -f /etc/default/squeezelite ]]; then
-  sed -i -E "s|-o [^ ']+|-o $DAC_PCM|" /etc/default/squeezelite
+  if grep -qE '^#?SL_SOUNDCARD=' /etc/default/squeezelite; then
+    sed -i -E "s|^#?SL_SOUNDCARD=.*|SL_SOUNDCARD=\"$DAC_PCM\"|" /etc/default/squeezelite
+  else
+    sed -i -E "s|-o [^ '\"]+|-o $DAC_PCM|" /etc/default/squeezelite
+  fi
 fi
 SP_CONF=/usr/local/etc/shairport-sync.conf
 [[ -f $SP_CONF ]] || SP_CONF=/etc/shairport-sync.conf

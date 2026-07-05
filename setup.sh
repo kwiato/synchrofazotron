@@ -297,25 +297,42 @@ step 6/10 "Pointing players at the audio output ($OUT_PCM)"
 SL=/etc/default/squeezelite
 if [[ -f $SL ]]; then
   SL_CHANGED=0
-  if grep -q -- '-o pistream' "$SL"; then
-    ok "squeezelite: already routed through the visualizer tee, leaving as is"
-  elif grep -qE -- '-o +[^ ]+' "$SL"; then
-    sed -i -E "s|-o [^ ']+|-o $OUT_PCM|" "$SL"
-    SL_CHANGED=1
-  else
-    warn "no '-o <device>' found in $SL —"
-    warn "set the output to '$OUT_PCM' manually (dietpi-config or the file itself)"
-  fi
   # -C 5: close the ALSA device 5 s after pause/stop. Without it a paused
   # squeezelite holds the DAC forever and blocks Bluetooth/AirPlay (a hardware
   # DAC has a single substream — unlike HDMI audio, sources cannot mix there).
-  if grep -qE -- '-o ' "$SL" && ! grep -qE -- '-C ?[0-9]+' "$SL"; then
-    sed -i -E "s|-o |-C 5 -o |" "$SL"
-    SL_CHANGED=1
+  if grep -qE -- '-o pistream|^SL_SOUNDCARD="?pistream' "$SL"; then
+    ok "squeezelite: already routed through the visualizer tee, leaving as is"
+  elif grep -qE '^#?SL_SOUNDCARD=' "$SL"; then
+    # Debian-package config: variables sourced by the init script
+    # (SL_SOUNDCARD becomes -o, SB_EXTRA_ARGS is appended)
+    if ! grep -qE "^SL_SOUNDCARD=\"$OUT_PCM\"\$" "$SL"; then
+      sed -i -E "s|^#?SL_SOUNDCARD=.*|SL_SOUNDCARD=\"$OUT_PCM\"|" "$SL"
+      SL_CHANGED=1
+    fi
+    if ! { grep -E '^SB_EXTRA_ARGS=' "$SL" | grep -qE -- '-C ?[0-9]+'; }; then
+      if grep -qE '^SB_EXTRA_ARGS="' "$SL"; then
+        sed -i -E 's|^SB_EXTRA_ARGS="|SB_EXTRA_ARGS="-C 5 |' "$SL"
+      elif grep -qE '^#?SB_EXTRA_ARGS=' "$SL"; then
+        sed -i -E '0,/^#?SB_EXTRA_ARGS=/s|^#?SB_EXTRA_ARGS=.*|SB_EXTRA_ARGS="-C 5"|' "$SL"
+      else
+        echo 'SB_EXTRA_ARGS="-C 5"' >> "$SL"
+      fi
+      SL_CHANGED=1
+    fi
+  elif grep -qE -- '-o +[^ ]+' "$SL"; then
+    # legacy DietPi config: raw squeezelite arguments
+    if ! grep -qF -- "-o $OUT_PCM" "$SL" || ! grep -qE -- '-C ?[0-9]+' "$SL"; then
+      sed -i -E "s|-o [^ '\"]+|-o $OUT_PCM|" "$SL"
+      grep -qE -- '-C ?[0-9]+' "$SL" || sed -i -E "s|-o |-C 5 -o |" "$SL"
+      SL_CHANGED=1
+    fi
+  else
+    warn "unrecognized format of $SL —"
+    warn "set the output to '$OUT_PCM' manually (dietpi-config or the file itself)"
   fi
   if [[ $SL_CHANGED == 1 ]]; then
     systemctl restart squeezelite 2>/dev/null || true
-    ok "squeezelite → $OUT_PCM"
+    ok "squeezelite → $OUT_PCM (with -C 5)"
   fi
 fi
 # shairport-sync

@@ -49,10 +49,15 @@ sed -i '/# PISTREAM-VIZ BEGIN/,/# PISTREAM-VIZ END/d' /etc/asound.conf
 cat "$SRC_DIR/asound-tee.conf" >> /etc/asound.conf
 
 echo "==> Repointing audio sources at 'pistream'"
-# squeezelite: -o <whatever>  ->  -o pistream
+# squeezelite: output -> pistream (Debian package uses SL_SOUNDCARD=, the
+# legacy DietPi config had raw '-o <device>' arguments)
 if [[ -f /etc/default/squeezelite ]]; then
   cp /etc/default/squeezelite "/etc/default/squeezelite.bak.$STAMP"
-  sed -i -E "s|-o [^ ']+|-o pistream|" /etc/default/squeezelite
+  if grep -qE '^#?SL_SOUNDCARD=' /etc/default/squeezelite; then
+    sed -i -E 's|^#?SL_SOUNDCARD=.*|SL_SOUNDCARD="pistream"|' /etc/default/squeezelite
+  else
+    sed -i -E "s|-o [^ '\"]+|-o pistream|" /etc/default/squeezelite
+  fi
 fi
 # shairport-sync: output_device
 SP_CONF=/usr/local/etc/shairport-sync.conf
