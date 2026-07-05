@@ -51,9 +51,9 @@ DietPi. One box that plays everything the household throws at it:
 3. Reboot when the script asks for it, then finish the manual steps it prints:
    - `tailscale up` (authorize via URL; disable key expiry for the machine in
      the Tailscale admin panel — it is headless)
-   - LMS plugins at `http://<pi>:9000`: enable **TIDAL local** (disable the old
-     TIDAL), **Material Skin**, optionally **Radio Browser**; restart LMS and
-     authorize the TIDAL account
+   - authorize the TIDAL account at `http://<pi>:9000` → Settings → Advanced →
+     TIDAL (**Material Skin** and **TIDAL local** are installed automatically,
+     analytics reporting is disabled; optional plugin: **Radio Browser**)
    - open the panel at `http://<pi>:8787` (language can be switched in `/settings`)
 
 The script is idempotent — re-running it is safe and doubles as an update.

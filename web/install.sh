@@ -41,7 +41,14 @@ install -m 0644 "$SRC_DIR/pistream-panel.service" /etc/systemd/system/pistream-p
 systemctl daemon-reload
 systemctl enable bt-agent.service pistream-panel.service
 # restart (not enable --now): on update this swaps the running process for the new code
-systemctl restart bt-agent.service pistream-panel.service
+systemctl restart pistream-panel.service
+# bt-agent needs bluetooth.service; on a fresh system bluez may not be usable
+# until after a reboot — it is enabled above, so it will start on its own then
+if systemctl cat bluetooth.service >/dev/null 2>&1; then
+  systemctl restart bt-agent.service
+else
+  echo "    bluetooth.service not present yet — bt-agent will start after reboot"
+fi
 
 sleep 1
 systemctl --no-pager --full status pistream-panel.service | head -n 8 || true

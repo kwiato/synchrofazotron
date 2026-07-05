@@ -20,12 +20,14 @@
 #      workaround (config.txt + snd_bcm2835)
 #   2) zram (zstd, 50%) — headroom on the 512 MB Zero 2 W
 #   3) dietpi-software: Lyrion Music Server, Squeezelite, Shairport Sync, Avahi
-#   4) Bluetooth: adapter on + bluez-alsa (A2DP sink)
-#   5) points all players at the chosen ALSA output
-#   6) control panel + bt-agent (web/install.sh)
-#   7) Tailscale (install only — `tailscale up` needs interactive auth)
-#   8) setup-AP fallback — captive portal when Wi-Fi is down (ap-fallback/)
-#   9) optionally the HDMI visualizer (visualizer/install.sh)
+#   4) LMS auto-config: skips the first-run wizard, installs Material Skin +
+#      TIDAL local plugins, disables the analytics reporting plugin
+#   5) Bluetooth: adapter on + bluez-alsa (A2DP sink)
+#   6) points all players at the chosen ALSA output
+#   7) control panel + bt-agent (web/install.sh)
+#   8) Tailscale (install only — `tailscale up` needs interactive auth)
+#   9) setup-AP fallback — captive portal when Wi-Fi is down (ap-fallback/)
+#  10) optionally the HDMI visualizer (visualizer/install.sh)
 #
 # Manual steps that cannot be automated are printed at the end.
 set -euo pipefail
@@ -50,7 +52,7 @@ LOCAL=0
 REBOOT_NEEDED=0
 
 # --------------------------------------------------------------------------
-echo "==> [1/9] Audio output: $AUDIO"
+echo "==> [1/10] Audio output: $AUDIO"
 # --------------------------------------------------------------------------
 CFG=/boot/firmware/config.txt
 [[ -f $CFG ]] || CFG=/boot/config.txt
@@ -100,7 +102,7 @@ else
 fi
 
 # --------------------------------------------------------------------------
-echo "==> [2/9] zram (zstd, 50% RAM)"
+echo "==> [2/10] zram (zstd, 50% RAM)"
 # --------------------------------------------------------------------------
 if ! dpkg -s zram-tools >/dev/null 2>&1; then
   apt-get install -y zram-tools </dev/null
@@ -109,7 +111,7 @@ sed -i -E 's|^#?\s*ALGO=.*|ALGO=zstd|; s|^#?\s*PERCENT=.*|PERCENT=50|' /etc/defa
 systemctl restart zramswap 2>/dev/null || true
 
 # --------------------------------------------------------------------------
-echo "==> [3/9] Players via dietpi-software (LMS, Squeezelite, Shairport, Avahi)"
+echo "==> [3/10] Players via dietpi-software (LMS, Squeezelite, Shairport, Avahi)"
 # --------------------------------------------------------------------------
 # DietPi software IDs: 35 = Lyrion Music Server, 36 = Squeezelite,
 #                      37 = Shairport Sync,      152 = Avahi-Daemon
@@ -126,9 +128,75 @@ else
 fi
 
 # --------------------------------------------------------------------------
-echo "==> [4/9] Bluetooth (adapter + A2DP sink via bluez-alsa)"
+echo "==> [4/10] LMS auto-config (skip wizard, Material Skin + TIDAL, analytics off)"
 # --------------------------------------------------------------------------
-if ! lsmod | grep -q '^bluetooth' && ! systemctl is-active -q bluetooth; then
+LMS_UNIT="$(systemctl list-unit-files --no-legend 'lyrionmusicserver.service' 'logitechmediaserver.service' 2>/dev/null | awk 'NR==1{print $1}' || true)"
+
+lms_rpc() {  # lms_rpc '["cmd",...]' — JSON-RPC request to the local LMS
+  curl -sf -m 10 -H 'Content-Type: application/json' \
+    -d "{\"id\":1,\"method\":\"slim.request\",\"params\":[\"\",$1]}" \
+    http://127.0.0.1:9000/jsonrpc.js
+}
+lms_plugin_state() {  # -> enabled|disabled|needs-install|… or "" (not installed)
+  lms_rpc "[\"pref\",\"plugin.state:$1\",\"?\"]" | grep -oE '"_p2":"[^"]+"' | cut -d'"' -f4 || true
+}
+
+# the first LMS start on a Zero 2 W takes a good while — wait up to 3 min
+LMS_UP=0
+for _ in $(seq 60); do
+  lms_rpc '["serverstatus",0,0]' >/dev/null 2>&1 && { LMS_UP=1; break; }
+  sleep 3
+done
+
+if [[ $LMS_UP == 1 ]]; then
+  LMS_RESTART=0
+  # first-run wizard off (it only asks about language + media dirs — both can
+  # be set later under Settings)
+  lms_rpc '["pref","wizardDone","1"]' >/dev/null || true
+  # bundled "Report Analytics Data" plugin off
+  if [[ "$(lms_plugin_state Analytics)" != "disabled" ]]; then
+    lms_rpc '["pref","plugin.state:Analytics","disabled"]' >/dev/null || true
+    LMS_RESTART=1
+  fi
+  # Material Skin + TIDAL local: send the same POST the "Manage plugins" page
+  # sends — LMS downloads the zips itself and unpacks them on its next restart
+  INSTALL=""
+  for P in MaterialSkin TIDAL; do
+    [[ -z "$(lms_plugin_state "$P")" ]] && INSTALL+="install:$P=1&"
+  done
+  if [[ -n $INSTALL ]]; then
+    echo "    installing plugins: Material Skin, TIDAL local"
+    curl -sf -m 90 -d "${INSTALL}saveSettings=1" \
+      http://127.0.0.1:9000/settings/server/plugins.html >/dev/null || true
+    for _ in $(seq 30); do   # wait for the downloads (state flips to needs-install)
+      PENDING=0
+      for P in MaterialSkin TIDAL; do
+        [[ -z "$(lms_plugin_state "$P")" ]] && PENDING=1
+      done
+      [[ $PENDING == 0 ]] && break
+      sleep 2
+    done
+    LMS_RESTART=1
+  fi
+  if [[ $LMS_RESTART == 0 ]]; then
+    echo "    already configured"
+  elif [[ -n $LMS_UNIT ]]; then
+    echo "    restarting LMS to activate the changes"
+    systemctl restart "$LMS_UNIT" || true
+  else
+    echo "    NOTE: restart LMS manually to activate the changes"
+  fi
+else
+  echo "    WARNING: LMS not reachable on :9000 — skipped. Re-run setup.sh later or"
+  echo "             configure by hand: http://$(hostname):9000 → Settings → Manage Plugins"
+fi
+
+# --------------------------------------------------------------------------
+echo "==> [5/10] Bluetooth (adapter + A2DP sink via bluez-alsa)"
+# --------------------------------------------------------------------------
+# Check for bluez itself, not the kernel module — on images without disable-bt
+# the module is loaded even though bluez (bluetoothd) was never installed.
+if ! dpkg -s bluez >/dev/null 2>&1 || ! systemctl cat bluetooth.service >/dev/null 2>&1; then
   /boot/dietpi/func/dietpi-set_hardware bluetooth enable </dev/null
   REBOOT_NEEDED=1
 fi
@@ -138,7 +206,7 @@ fi
 systemctl enable --now bluealsa.service bluealsa-aplay.service 2>/dev/null || true
 
 # --------------------------------------------------------------------------
-echo "==> [5/9] Pointing players at the audio output ($OUT_PCM)"
+echo "==> [6/10] Pointing players at the audio output ($OUT_PCM)"
 # --------------------------------------------------------------------------
 # If the visualizer is installed, players go through its 'pistream' tee device
 # instead — do not touch those. (visualizer/install.sh manages them.)
@@ -193,7 +261,7 @@ EOF
 fi
 
 # --------------------------------------------------------------------------
-echo "==> [6/9] Control panel + bt-agent"
+echo "==> [7/10] Control panel + bt-agent"
 # --------------------------------------------------------------------------
 if [[ $LOCAL == 1 ]]; then
   bash "$SRC_DIR/web/install.sh"
@@ -202,7 +270,7 @@ else
 fi
 
 # --------------------------------------------------------------------------
-echo "==> [7/9] Tailscale"
+echo "==> [8/10] Tailscale"
 # --------------------------------------------------------------------------
 if [[ "${PISTREAM_TAILSCALE:-1}" == "1" ]]; then
   if command -v tailscale >/dev/null 2>&1; then
@@ -215,7 +283,7 @@ else
 fi
 
 # --------------------------------------------------------------------------
-echo "==> [8/9] Setup-AP fallback (captive portal when Wi-Fi is down)"
+echo "==> [9/10] Setup-AP fallback (captive portal when Wi-Fi is down)"
 # --------------------------------------------------------------------------
 if [[ "${PISTREAM_AP_FALLBACK:-1}" == "1" ]]; then
   if [[ $LOCAL == 1 ]]; then
@@ -228,7 +296,7 @@ else
 fi
 
 # --------------------------------------------------------------------------
-echo "==> [9/9] HDMI visualizer"
+echo "==> [10/10] HDMI visualizer"
 # --------------------------------------------------------------------------
 if [[ "${PISTREAM_VISUALIZER:-0}" == "1" ]]; then
   if [[ $LOCAL == 1 ]]; then
@@ -246,9 +314,9 @@ echo "==> Done. Remaining MANUAL steps:"
 echo
 echo "  1) Tailscale:    tailscale up     (authorize via the printed URL;"
 echo "                   then disable key expiry for this machine in the admin panel)"
-echo "  2) LMS plugins:  http://$(hostname):9000 → Settings → Manage Plugins:"
-echo "                   enable 'TIDAL local' (disable old 'TIDAL'), 'Material Skin',"
-echo "                   optionally 'Radio Browser'; restart LMS, then authorize TIDAL"
+echo "  2) LMS TIDAL:    http://$(hostname):9000 → Settings → Advanced → TIDAL:"
+echo "                   authorize your TIDAL account (Material Skin + TIDAL local are"
+echo "                   installed automatically; optional plugin: Radio Browser)"
 echo "  3) Panel:        http://$(hostname):8787 (language switch is in /settings)"
 if [[ $REBOOT_NEEDED == 1 ]]; then
   echo
