@@ -276,7 +276,11 @@ if [[ "${PISTREAM_TAILSCALE:-1}" == "1" ]]; then
   if command -v tailscale >/dev/null 2>&1; then
     echo "    already installed"
   else
-    curl -fsSL https://tailscale.com/install.sh | sh </dev/null
+    # to a file first — `| sh </dev/null` would starve sh of the piped script
+    TS_SH="$(mktemp)"
+    curl -fsSL https://tailscale.com/install.sh -o "$TS_SH"
+    sh "$TS_SH" </dev/null
+    rm -f "$TS_SH"
   fi
 else
   echo "    skipped (PISTREAM_TAILSCALE=0)"
