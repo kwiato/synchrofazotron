@@ -302,6 +302,18 @@ if [[ -f $SL ]]; then
   # DAC has a single substream — unlike HDMI audio, sources cannot mix there).
   if grep -qE -- '-o pistream|^SL_SOUNDCARD="?pistream' "$SL"; then
     ok "squeezelite: already routed through the visualizer tee, leaving as is"
+  elif grep -qE "^ARGS=" "$SL"; then
+    # DietPi config: a single ARGS='…' line with raw squeezelite arguments
+    # (by default it has no -o at all — append one inside the quotes)
+    if ! grep -qF -- "-o $OUT_PCM" "$SL" || ! grep -qE -- '-C ?[0-9]+' "$SL"; then
+      if grep -qE -- '^ARGS=.*-o ' "$SL"; then
+        sed -i -E "s|-o [^ '\"]+|-o $OUT_PCM|" "$SL"
+      else
+        sed -i -E "s|^ARGS=(['\"])(.*)\1|ARGS=\1\2 -o $OUT_PCM\1|" "$SL"
+      fi
+      grep -qE -- '-C ?[0-9]+' "$SL" || sed -i -E "s|-o |-C 5 -o |" "$SL"
+      SL_CHANGED=1
+    fi
   elif grep -qE '^#?SL_SOUNDCARD=' "$SL"; then
     # Debian-package config: variables sourced by the init script
     # (SL_SOUNDCARD becomes -o, SB_EXTRA_ARGS is appended)
