@@ -86,8 +86,19 @@ for pkg in python3-numpy python3-pygame python3-opengl; do
     || echo "    $pkg not installable — the shader engine may stay hidden in the panel"
 done
 if ! command -v glslViewer >/dev/null 2>&1 && ! command -v glslviewer >/dev/null 2>&1; then
-  DEBIAN_FRONTEND=noninteractive apt-get install -y glslviewer 2>/dev/null \
-    || echo "    glslviewer not in APT — using the pygame/PyOpenGL runner instead"
+  if ! DEBIAN_FRONTEND=noninteractive apt-get install -y glslviewer 2>/dev/null; then
+    # no APT package -> the prebuilt DRM binary from our GitHub Actions release
+    if [[ "$(uname -m)" == aarch64 ]] && \
+       curl -fsSL --retry 5 --retry-delay 2 \
+         "https://github.com/$REPO/releases/download/glslviewer-arm64/glslviewer-arm64.tar.gz" \
+         | tar -xz -C /usr/local/bin 2>/dev/null; then
+      chmod 0755 /usr/local/bin/glslViewer
+      DEBIAN_FRONTEND=noninteractive apt-get install -y libgbm1 libdrm2 libegl1 libgles2 2>/dev/null || true
+      echo "    glslViewer: installed the prebuilt DRM binary from GitHub Releases"
+    else
+      echo "    glslviewer not in APT and no prebuilt release — using the pygame/PyOpenGL runner"
+    fi
+  fi
 fi
 
 echo "==> Visualizer files and services"

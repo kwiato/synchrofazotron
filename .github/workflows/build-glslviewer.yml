@@ -1,0 +1,58 @@
+# Builds glslViewer for arm64 (DRM/no-X11 variant, Debian bookworm — the same
+# base DietPi runs on) and publishes the binary as a GitHub Release asset.
+# visualizer/install.sh downloads it when the glslviewer APT package is
+# unavailable, so the Pi Zero 2 W never has to compile C++ itself.
+#
+# Run it manually from the Actions tab (workflow_dispatch); it also re-runs
+# when this file changes. Takes a while (~1 h) — the build is emulated by QEMU.
+name: Build glslViewer (arm64)
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths: ['.github/workflows/build-glslviewer.yml']
+
+permissions:
+  contents: write   # needed to create/update the release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up QEMU (arm64 emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Compile in an arm64 Debian bookworm container
+        run: |
+          docker run --rm --platform linux/arm64 -v "$PWD:/out" debian:bookworm bash -euc '
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y \
+              git cmake build-essential libgbm-dev libdrm-dev \
+              libegl1-mesa-dev libgles2-mesa-dev \
+              libncurses5-dev libncursesw5-dev libxcb-randr0-dev
+            git clone --depth 1 --recursive \
+              https://github.com/patriciogonzalezvivo/glslViewer.git /src
+            cmake -S /src -B /build -DCMAKE_BUILD_TYPE=Release -DFORCE_DRM=TRUE
+            cmake --build /build -j"$(nproc)"
+            BIN="$(find /build -name glslViewer -type f | head -n1)"
+            test -n "$BIN"
+            strip "$BIN"
+            tar -C "$(dirname "$BIN")" -czf /out/glslviewer-arm64.tar.gz glslViewer
+          '
+
+      - name: Smoke-check the tarball
+        run: |
+          tar -tzf glslviewer-arm64.tar.gz | grep -qx glslViewer
+          ls -lh glslviewer-arm64.tar.gz
+
+      - name: Publish / update the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: glslviewer-arm64
+          name: glslViewer arm64 (DRM build for the Pi)
+          body: |
+            glslViewer compiled for arm64 / Debian bookworm with -DFORCE_DRM=TRUE
+            (renders straight to the console via DRM/GBM, no X needed).
+            Installed automatically by visualizer/install.sh when the APT
+            package is unavailable. Upstream: patriciogonzalezvivo/glslViewer.
+          files: glslviewer-arm64.tar.gz
