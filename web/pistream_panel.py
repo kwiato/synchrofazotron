@@ -131,6 +131,8 @@ STR = {
         "wifi_scan_btn": "🔍 Scan for networks",
         "viz_head": "📊 Visualizer (HDMI)",
         "viz_note": "Bar style on the monitor. Changing it restarts the visualizer (music keeps playing).",
+        "audio_head": "🔊 Audio output",
+        "audio_note": "Where the sound goes: the DAC HAT or the monitor over HDMI. Switching rewrites the boot config and takes effect after a reboot.",
         "lang_head": "🌐 Language",
         "lang_note": "Panel language. The choice is saved on the device.",
         "how_head": "ℹ️ How it works",
@@ -153,6 +155,11 @@ STR = {
         "js_scan_fail": "Scan failed — try again.",
         "js_viz_stop": "⏻ Stop visualizer",
         "js_viz_start": "⏻ Start visualizer",
+        "js_audio_confirm": "Switch the audio output? The change needs a reboot.",
+        "js_audio_reboot": "Config changed — reboot to apply.",
+        "js_reboot": "🔁 Reboot the device",
+        "js_reboot_confirm": "Reboot now? Music will stop for about a minute.",
+        "js_rebooting": "Rebooting… the panel will come back in about a minute.",
         # server messages
         "wifi_bad_ssid": "Invalid SSID.",
         "wifi_bad_key": "A WPA password must be 8–63 characters (empty = open network).",
@@ -167,6 +174,9 @@ STR = {
         "viz_preset_set": "Preset „{label}” applied.",
         "viz_stopped": "Visualizer stopped (until reboot / manual start).",
         "viz_started": "Visualizer started.",
+        "audio_bad": "Unknown output (expected dac or hdmi).",
+        "audio_cfg_fail": "Could not read the boot config (config.txt).",
+        "audio_set": "Output switched to {out} — reboot the device to apply.",
         "lang_set": "Language switched to English.",
         # visualizer preset labels
         "preset_classic": "Classic",
@@ -227,6 +237,8 @@ STR = {
         "wifi_scan_btn": "🔍 Skanuj otoczenie",
         "viz_head": "📊 Wizualizer (HDMI)",
         "viz_note": "Styl słupków na monitorze. Zmiana restartuje wizualizer (muzyka gra dalej).",
+        "audio_head": "🔊 Wyjście dźwięku",
+        "audio_note": "Którędy wychodzi dźwięk: DAC (nakładka HAT) albo monitor po HDMI. Przełączenie przepisuje konfigurację startową i działa po restarcie urządzenia.",
         "lang_head": "🌐 Język",
         "lang_note": "Język panelu. Wybór zapisuje się na urządzeniu.",
         "how_head": "ℹ️ Jak to działa",
@@ -248,6 +260,11 @@ STR = {
         "js_scan_fail": "Skan nie wyszedł — spróbuj ponownie.",
         "js_viz_stop": "⏻ Zatrzymaj wizualizer",
         "js_viz_start": "⏻ Uruchom wizualizer",
+        "js_audio_confirm": "Przełączyć wyjście dźwięku? Zmiana wymaga restartu.",
+        "js_audio_reboot": "Konfiguracja zmieniona — zrestartuj, żeby zadziałało.",
+        "js_reboot": "🔁 Zrestartuj urządzenie",
+        "js_reboot_confirm": "Zrestartować teraz? Muzyka przestanie grać na około minutę.",
+        "js_rebooting": "Restartuję… panel wróci za około minutę.",
         "wifi_bad_ssid": "Nieprawidłowy SSID.",
         "wifi_bad_key": "Hasło WPA musi mieć 8–63 znaki (puste = sieć otwarta).",
         "wifi_no_slot": "Brak miejsca — DietPi mieści {n} sieci. Usuń jakąś.",
@@ -261,6 +278,9 @@ STR = {
         "viz_preset_set": "Preset „{label}” ustawiony.",
         "viz_stopped": "Wizualizer zatrzymany (do reboota / ręcznego startu).",
         "viz_started": "Wizualizer wystartowany.",
+        "audio_bad": "Nieznane wyjście (oczekiwane dac lub hdmi).",
+        "audio_cfg_fail": "Nie udało się odczytać konfiguracji startowej (config.txt).",
+        "audio_set": "Wyjście przełączone na {out} — zrestartuj urządzenie, żeby zadziałało.",
         "lang_set": "Przełączono na polski.",
         "preset_classic": "Klasyk",
         "preset_dense": "Gęsty",
@@ -628,6 +648,182 @@ def _viz_toggle():
         return True, T("viz_stopped")
     _run(["systemctl", "start", VIZ_SERVICE])
     return True, T("viz_started")
+
+
+# ---------------------------------------------------------------------------
+# Audio output (DAC HAT vs HDMI) — the same rewrites setup.sh does in step 1
+# (config.txt + snd_bcm2835 module) and step 6 (pointing the players at the
+# output), so the output can be switched from the panel. The device-tree
+# changes only apply after a reboot; /api/audio reports that.
+# ---------------------------------------------------------------------------
+BOOT_CFG = ("/boot/firmware/config.txt"
+            if os.path.exists("/boot/firmware/config.txt") else "/boot/config.txt")
+DAC_OVERLAY = os.environ.get("PISTREAM_DAC_OVERLAY", "allo-boss-dac-pcm512x-audio")
+DAC_PCM = "hw:CARD=BossDAC,DEV=0"
+RPI_AUDIO_BLACKLIST = "/etc/modprobe.d/dietpi-disable_rpi_audio.conf"
+HDMI_MODULES = "/etc/modules-load.d/hdmi-audio.conf"
+ASOUND_CONF = "/etc/asound.conf"
+SQUEEZELITE_DEFAULT = "/etc/default/squeezelite"
+SHAIRPORT_CONFS = ("/usr/local/etc/shairport-sync.conf", "/etc/shairport-sync.conf")
+BLUEALSA_OVERRIDE = "/etc/systemd/system/bluealsa-aplay.service.d/override.conf"
+_DAC_OVERLAY_RE = re.compile(r"^dtoverlay=(allo-boss|hifiberry)\S*", re.M)
+_audio_lock = threading.Lock()
+
+
+def _file_read(path):
+    try:
+        return open(path, encoding="utf-8", errors="replace").read()
+    except OSError:
+        return ""
+
+
+def _file_write(path, txt):
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(txt)
+    os.replace(tmp, path)
+
+
+def _cfg_set(txt, key, val):
+    """config.txt: replace the key (even a commented-out one) or append it."""
+    pat = re.compile(rf"^#?{re.escape(key)}=.*$", re.M)
+    if pat.search(txt):
+        return pat.sub(f"{key}={val}", txt)
+    return txt.rstrip("\n") + f"\n{key}={val}\n"
+
+
+def _audio_cfg_mode():
+    """What config.txt says: 'dac' | 'hdmi' | 'unknown' (takes effect at boot)."""
+    txt = _file_read(BOOT_CFG)
+    if not txt:
+        return "unknown"
+    if _DAC_OVERLAY_RE.search(txt):
+        return "dac"
+    if re.search(r"^dtparam=audio=on", txt, re.M):
+        return "hdmi"
+    return "unknown"
+
+
+def _audio_running_mode():
+    """What is actually loaded right now (per /proc/asound/cards)."""
+    cards = _file_read("/proc/asound/cards")
+    if "BossDAC" in cards or "sndrpihifiberry" in cards:
+        return "dac"
+    if "bcm2835" in cards or "vc4-hdmi" in cards or "vc4hdmi" in cards:
+        return "hdmi"
+    return "unknown"
+
+
+def _audio_state():
+    cfg, running = _audio_cfg_mode(), _audio_running_mode()
+    return {"output": cfg, "running": running, "overlay": DAC_OVERLAY,
+            "reboot_required": ("unknown" not in (cfg, running) and cfg != running)}
+
+
+def _audio_retarget_players(pcm, card):
+    """Points squeezelite / shairport-sync / bluealsa-aplay at the new output.
+
+    Players already routed through the visualizer's 'pistream' tee are left
+    alone — instead the tee's DAC slave (in the PISTREAM-VIZ asound.conf
+    block) is repointed at the new card.
+    """
+    asound = _file_read(ASOUND_CONF)
+    if "# PISTREAM-VIZ BEGIN" in asound and "# PISTREAM-VIZ END" in asound:
+        pre, rest = asound.split("# PISTREAM-VIZ BEGIN", 1)
+        block, post = rest.split("# PISTREAM-VIZ END", 1)
+        block = re.sub(r"^(\s*card )(?!Loopback\b)\S+$", rf"\g<1>{card}",
+                       block, flags=re.M)
+        _file_write(ASOUND_CONF,
+                    pre + "# PISTREAM-VIZ BEGIN" + block + "# PISTREAM-VIZ END" + post)
+
+    sl = _file_read(SQUEEZELITE_DEFAULT)
+    if sl and not re.search(r"-o pistream|^SL_SOUNDCARD=\"?pistream", sl, re.M):
+        new = sl
+        if re.search(r"^ARGS=", sl, re.M):          # DietPi: single ARGS='…' line
+            if re.search(r"^ARGS=.*-o ", sl, re.M):
+                new = re.sub(r"-o [^ '\"]+", f"-o {pcm}", sl)
+            else:
+                new = re.sub(r"^ARGS=(['\"])(.*)\1",
+                             rf"ARGS=\g<1>\g<2> -o {pcm}\g<1>", sl, flags=re.M)
+        elif re.search(r"^#?SL_SOUNDCARD=", sl, re.M):   # Debian package format
+            new = re.sub(r"^#?SL_SOUNDCARD=.*$", f'SL_SOUNDCARD="{pcm}"',
+                         sl, flags=re.M)
+        elif re.search(r"-o +\S+", sl):             # legacy raw arguments
+            new = re.sub(r"-o [^ '\"]+", f"-o {pcm}", sl)
+        if new != sl:
+            _file_write(SQUEEZELITE_DEFAULT, new)
+            _run(["systemctl", "try-restart", "squeezelite"])
+
+    for sp in SHAIRPORT_CONFS:
+        txt = _file_read(sp)
+        if not txt:
+            continue
+        if 'output_device = "pistream"' not in txt:
+            new = re.sub(r'^(\s*)(//\s*)?output_device = ".*";',
+                         rf'\g<1>output_device = "{pcm}";', txt, flags=re.M)
+            if new != txt:
+                _file_write(sp, new)
+                _run(["systemctl", "try-restart", "shairport-sync"])
+        break
+
+    ovr = _file_read(BLUEALSA_OVERRIDE)
+    if "pistream" not in ovr:
+        os.makedirs(os.path.dirname(BLUEALSA_OVERRIDE), exist_ok=True)
+        _file_write(BLUEALSA_OVERRIDE,
+                    f"[Service]\nExecStart=\nExecStart=/usr/bin/bluealsa-aplay -S -d {pcm}\n")
+        _run(["systemctl", "daemon-reload"])
+        _run(["systemctl", "try-restart", "bluealsa-aplay"])
+
+
+def _audio_set(mode):
+    """Switches the output in the boot config + player configs. (ok, message)."""
+    if mode not in ("dac", "hdmi"):
+        return False, T("audio_bad")
+    with _audio_lock:
+        txt = _file_read(BOOT_CFG)
+        if not txt:
+            return False, T("audio_cfg_fail")
+        if mode == "dac":
+            txt = _cfg_set(txt, "dtparam=audio", "off")
+            # bring back a commented-out DAC overlay, or add ours
+            txt = re.sub(rf"^#\s*(dtoverlay={re.escape(DAC_OVERLAY)}\b.*)$",
+                         r"\1", txt, flags=re.M)
+            if not _DAC_OVERLAY_RE.search(txt):
+                txt = txt.rstrip("\n") + f"\ndtoverlay={DAC_OVERLAY}\n"
+            # DietPi keeps the on-board audio blacklisted — restore that
+            bl = _file_read(RPI_AUDIO_BLACKLIST)
+            if "#blacklist snd_bcm2835" in bl:
+                bl = bl.replace("#blacklist snd_bcm2835", "blacklist snd_bcm2835")
+            elif "blacklist snd_bcm2835" not in bl:
+                bl = (bl.rstrip("\n") + "\nblacklist snd_bcm2835\n").lstrip("\n")
+            _file_write(RPI_AUDIO_BLACKLIST, bl)
+            try:
+                os.remove(HDMI_MODULES)
+            except OSError:
+                pass
+            pcm, card = DAC_PCM, "BossDAC"
+        else:  # hdmi — the workaround documented in dac-setup.md
+            txt = _cfg_set(txt, "dtparam=audio", "on")
+            txt = _cfg_set(txt, "hdmi_drive", "2")
+            txt = _cfg_set(txt, "hdmi_force_hotplug", "1")
+            txt = _cfg_set(txt, "hdmi_blanking", "0")
+            txt = re.sub(r"^(dtoverlay=(?:hifiberry|allo-boss)\S*.*)$",
+                         r"#\1", txt, flags=re.M)
+            bl = _file_read(RPI_AUDIO_BLACKLIST)
+            if bl:
+                _file_write(RPI_AUDIO_BLACKLIST,
+                            re.sub(r"^blacklist snd_bcm2835",
+                                   "#blacklist snd_bcm2835", bl, flags=re.M))
+            _file_write(HDMI_MODULES, "snd_bcm2835\n")
+            asound = _file_read(ASOUND_CONF)
+            if "pcm.!default" not in asound:
+                _file_write(ASOUND_CONF, asound
+                            + "pcm.!default { type hw; card 0; }\n"
+                            + "ctl.!default { type hw; card 0; }\n")
+            pcm, card = "default", "0"
+        _file_write(BOOT_CFG, txt)
+        _audio_retarget_players(pcm, card)
+    return True, T("audio_set").format(out=mode.upper())
 
 
 # ---------------------------------------------------------------------------
@@ -1234,6 +1430,17 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
   </div>
 
   <div class="card">
+    <h2>{{T:audio_head}}</h2>
+    <p class="muted">{{T:audio_note}}</p>
+    <div class="lrow">
+      <button class="btn sec" id="audioDac" onclick="audioSet('dac')">🎛 DAC</button>
+      <button class="btn sec" id="audioHdmi" onclick="audioSet('hdmi')">🖥 HDMI</button>
+    </div>
+    <button class="btn sec" id="rebootBtn" style="display:none;" onclick="doReboot()">{{T:js_reboot}}</button>
+    <p id="audioMsg" class="muted"></p>
+  </div>
+
+  <div class="card">
     <h2>{{T:lang_head}}</h2>
     <p class="muted">{{T:lang_note}}</p>
     <div class="lrow">
@@ -1369,6 +1576,44 @@ async function vizToggle() {
   setTimeout(vizRefresh, 500);
 }
 
+async function audioRefresh() {
+  try {
+    const r = await fetch('/api/audio', {cache:'no-store'});
+    const a = await r.json();
+    const d = document.getElementById('audioDac');
+    const h = document.getElementById('audioHdmi');
+    d.className = 'btn' + (a.output === 'dac' ? '' : ' sec');
+    h.className = 'btn' + (a.output === 'hdmi' ? '' : ' sec');
+    d.textContent = '🎛 DAC' + (a.output === 'dac' ? ' ✓' : '');
+    h.textContent = '🖥 HDMI' + (a.output === 'hdmi' ? ' ✓' : '');
+    document.getElementById('rebootBtn').style.display =
+      a.reboot_required ? '' : 'none';
+    if (a.reboot_required)
+      document.getElementById('audioMsg').textContent = '{{T:js_audio_reboot}}';
+  } catch(e) {}
+}
+
+async function audioSet(mode) {
+  if (!confirm('{{T:js_audio_confirm}}')) return;
+  try {
+    const r = await fetch('/api/audio/set', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({output: mode})
+    });
+    const j = await r.json();
+    document.getElementById('audioMsg').textContent = j.message || '';
+  } catch(e) {
+    document.getElementById('audioMsg').textContent = '{{T:js_conn_error}}';
+  }
+  audioRefresh();
+}
+
+async function doReboot() {
+  if (!confirm('{{T:js_reboot_confirm}}')) return;
+  try { await fetch('/api/reboot', {method:'POST'}); } catch(e) {}
+  document.getElementById('audioMsg').textContent = '{{T:js_rebooting}}';
+}
+
 async function setLang(lang) {
   try {
     await fetch('/api/lang', {
@@ -1394,6 +1639,7 @@ document.querySelectorAll('[class*="LANGBTN_"]').forEach(b => {
 
 refresh();
 vizRefresh();
+audioRefresh();
 setInterval(refresh, 5000);
 </script>
 </body>
@@ -1436,6 +1682,8 @@ class Handler(BaseHTTPRequestHandler):
                        "application/json")
         elif self.path == "/api/viz":
             self._send(200, json.dumps(_viz_state()), "application/json")
+        elif self.path == "/api/audio":
+            self._send(200, json.dumps(_audio_state()), "application/json")
         elif self.path == "/api/lang":
             self._send(200, json.dumps({"lang": _lang, "available": LANGS}),
                        "application/json")
@@ -1476,6 +1724,14 @@ class Handler(BaseHTTPRequestHandler):
             ok, message = _viz_toggle()
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
+        elif self.path == "/api/audio/set":
+            body = self._json_body()
+            ok, message = _audio_set(str(body.get("output", "")))
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/reboot":
+            self._send(200, json.dumps({"ok": True}), "application/json")
+            threading.Timer(1.0, lambda: _run(["systemctl", "reboot"])).start()
         elif self.path == "/api/lang":
             body = self._json_body()
             ok = _lang_set(str(body.get("lang", "")))
