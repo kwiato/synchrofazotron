@@ -27,7 +27,7 @@ jobs:
           docker run --rm --platform linux/arm64 -v "$PWD:/out" debian:bookworm bash -euc '
             apt-get update
             DEBIAN_FRONTEND=noninteractive apt-get install -y \
-              git cmake build-essential libgbm-dev libdrm-dev \
+              git cmake build-essential python3 libgbm-dev libdrm-dev \
               libegl1-mesa-dev libgles2-mesa-dev \
               libncurses5-dev libncursesw5-dev libxcb-randr0-dev
             git clone --depth 1 --recursive \
