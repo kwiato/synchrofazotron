@@ -107,3 +107,23 @@ network there and the device switches over on its own. Details in
   the `pistream` ALSA device) keep the old name on purpose — renaming them
   would break updates on already-deployed devices. The display name in the
   panel comes from the device hostname (override with `PISTREAM_NAME`).
+
+## Credits
+
+Synchrofazotron is a thin layer of glue — the heavy lifting is done by these
+excellent open-source projects and the people behind them:
+
+| Project | Author / community | What it does here |
+|---|---|---|
+| [cava](https://github.com/karlstav/cava) | [Karl Stavestrand](https://github.com/karlstav) | console audio spectrum — the bars engine |
+| [glslViewer](https://github.com/patriciogonzalezvivo/glslViewer) | [Patricio Gonzalez Vivo](https://github.com/patriciogonzalezvivo) | GLSL shader engine (demoscene presets) |
+| [Lyrion Music Server](https://github.com/LMS-Community/slimserver) | [LMS Community](https://github.com/LMS-Community) | music server: TIDAL, radio, local library |
+| [Material Skin](https://github.com/CDrummond/lms-material) | [Craig Drummond](https://github.com/CDrummond) | the LMS web UI actually worth using |
+| [squeezelite](https://github.com/ralph-irving/squeezelite) | Adrian Smith, [Ralph Irving](https://github.com/ralph-irving) | the LMS player endpoint |
+| [Shairport Sync](https://github.com/mikebrady/shairport-sync) | [Mike Brady](https://github.com/mikebrady) | AirPlay receiver |
+| [BlueALSA](https://github.com/arkq/bluez-alsa) | [Arkadiusz Bokowy](https://github.com/arkq) | Bluetooth A2DP sink without PulseAudio |
+| [bluez-tools](https://github.com/khvzak/bluez-tools) | [Alexander Orlenko](https://github.com/khvzak) | headless BT pairing agent |
+| [DietPi](https://github.com/MichaIng/DietPi) | [MichaIng](https://github.com/MichaIng) & community | the lightweight OS underneath it all |
+| [Tailscale](https://github.com/tailscale/tailscale) | Tailscale Inc. | zero-config remote access |
+| [NumPy](https://github.com/numpy/numpy) | NumPy developers | FFT for the audio→shader bridge |
+| [Slimshader](https://github.com/ErikOostveen/Slimshader) | [Erik Oostveen](https://github.com/ErikOostveen) | inspiration for audio-reactive shaders on a Pi |
