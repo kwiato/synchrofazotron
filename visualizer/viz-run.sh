@@ -13,7 +13,12 @@ ENGINE=cava SHADER=plasma
 [[ -n ${SHADER:-} ]] || SHADER=plasma
 
 GLSL_BIN="$(command -v glslViewer || command -v glslviewer || true)"
-if [[ $ENGINE == glsl && -n $GLSL_BIN && -f $DIR/glsl/$SHADER.frag ]]; then
-  exec bash -c "python3 '$DIR/glsl-audio-bridge.py' | '$GLSL_BIN' '$DIR/glsl/$SHADER.frag' --fullscreen"
+if [[ $ENGINE == glsl && -f $DIR/glsl/$SHADER.frag ]]; then
+  if [[ -n $GLSL_BIN ]]; then
+    exec bash -c "python3 '$DIR/glsl-audio-bridge.py' | '$GLSL_BIN' '$DIR/glsl/$SHADER.frag' --fullscreen"
+  elif python3 -c 'import pygame, OpenGL, numpy' 2>/dev/null; then
+    # no glslViewer binary (no arm64 package) -> pygame/PyOpenGL runner
+    exec python3 "$DIR/glsl-run.py" "$DIR/glsl/$SHADER.frag"
+  fi
 fi
 exec /usr/bin/cava -p "$DIR/cava.conf"

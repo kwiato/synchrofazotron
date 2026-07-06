@@ -16,7 +16,7 @@ REPO="${PISTREAM_REPO:-kwiato/synchrofazotron}"
 BRANCH="${PISTREAM_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/$REPO/$BRANCH/visualizer"
 FILES=(asound-tee.conf cava.conf pistream-visualizer.service pistream-hdmi-watch.service hdmi-watch.sh
-       viz-run.sh glsl-audio-bridge.py glsl/plasma.frag glsl/tunnel.frag glsl/copper.frag)
+       viz-run.sh glsl-audio-bridge.py glsl-run.py glsl/plasma.frag glsl/tunnel.frag glsl/copper.frag)
 DEST=/opt/pistream-visualizer
 DAC_PCM="hw:CARD=BossDAC,DEV=0"   # what uninstall reverts to
 STAMP="$(date +%Y%m%d-%H%M%S)"
@@ -76,13 +76,17 @@ ExecStart=
 ExecStart=/usr/bin/bluealsa-aplay -S -d pistream
 EOF
 
-echo "==> glslViewer engine (optional — keygen-style shader presets)"
-# numpy is needed by the audio->uniform bridge
-dpkg -s python3-numpy >/dev/null 2>&1 \
-  || DEBIAN_FRONTEND=noninteractive apt-get install -y python3-numpy || true
+echo "==> GLSL shader engine (keygen-style presets)"
+# numpy: audio FFT; pygame + PyOpenGL: the glsl-run.py renderer used when the
+# glslViewer binary is unavailable (there is no arm64 APT package for it)
+for pkg in python3-numpy python3-pygame python3-opengl; do
+  dpkg -s "$pkg" >/dev/null 2>&1 \
+    || DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg" \
+    || echo "    $pkg not installable — the shader engine may stay hidden in the panel"
+done
 if ! command -v glslViewer >/dev/null 2>&1 && ! command -v glslviewer >/dev/null 2>&1; then
-  DEBIAN_FRONTEND=noninteractive apt-get install -y glslviewer \
-    || echo "    glslviewer not available in APT — the shader engine stays hidden in the panel (cava works as usual)"
+  DEBIAN_FRONTEND=noninteractive apt-get install -y glslviewer 2>/dev/null \
+    || echo "    glslviewer not in APT — using the pygame/PyOpenGL runner instead"
 fi
 
 echo "==> Visualizer files and services"
@@ -91,6 +95,7 @@ install -m 0644 "$SRC_DIR/cava.conf" "$DEST/cava.conf"
 install -m 0755 "$SRC_DIR/hdmi-watch.sh" "$DEST/hdmi-watch.sh"
 install -m 0755 "$SRC_DIR/viz-run.sh" "$DEST/viz-run.sh"
 install -m 0755 "$SRC_DIR/glsl-audio-bridge.py" "$DEST/glsl-audio-bridge.py"
+install -m 0755 "$SRC_DIR/glsl-run.py" "$DEST/glsl-run.py"
 install -m 0644 "$SRC_DIR"/glsl/*.frag "$DEST/glsl/"
 [[ -f $DEST/engine ]] || echo cava > "$DEST/engine"
 install -m 0644 "$SRC_DIR/pistream-visualizer.service" /etc/systemd/system/

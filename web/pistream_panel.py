@@ -800,6 +800,27 @@ def _viz_glsl_bin():
     return shutil.which("glslViewer") or shutil.which("glslviewer")
 
 
+VIZ_GLSL_RUNNER = "/opt/pistream-visualizer/glsl-run.py"
+_glsl_runner_ok = None
+
+
+def _viz_glsl_ok():
+    """The glsl engine works via the glslViewer binary OR the pygame runner."""
+    global _glsl_runner_ok
+    if _viz_glsl_bin():
+        return True
+    if _glsl_runner_ok is None:
+        try:
+            _glsl_runner_ok = bool(
+                os.path.isfile(VIZ_GLSL_RUNNER)
+                and subprocess.run(
+                    ["python3", "-c", "import pygame, OpenGL, numpy"],
+                    capture_output=True, timeout=20).returncode == 0)
+        except Exception:  # noqa: BLE001
+            _glsl_runner_ok = False
+    return _glsl_runner_ok
+
+
 def _viz_shaders():
     return sorted(os.path.splitext(os.path.basename(f))[0]
                   for f in glob.glob(os.path.join(VIZ_GLSL_DIR, "*.frag")))
@@ -839,7 +860,7 @@ def _viz_state():
             "presets": [{"id": k, "label": T(v["label_key"])}
                         for k, v in VIZ_PRESETS.items()],
             "engine": engine, "shader": shader,
-            "glsl_available": bool(_viz_glsl_bin() and _viz_shaders()),
+            "glsl_available": bool(_viz_glsl_ok() and _viz_shaders()),
             "shaders": [{"id": s, "label": _shader_label(s)}
                         for s in _viz_shaders()]}
 
@@ -852,7 +873,7 @@ def _viz_set_engine(engine, shader=""):
         return False, T("viz_engine_bad")
     if engine == "glsl":
         shaders = _viz_shaders()
-        if not shaders or not _viz_glsl_bin():
+        if not shaders or not _viz_glsl_ok():
             return False, T("viz_glsl_missing")
         if shader not in shaders:
             shader = "plasma" if "plasma" in shaders else shaders[0]
