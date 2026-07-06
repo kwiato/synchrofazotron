@@ -444,18 +444,29 @@ if [[ -f $SP_CONF ]]; then
     ok "shairport-sync → $OUT_PCM"
   fi
 fi
-# bluealsa-aplay (systemd override — the unit has no config file)
+# bluealsa-aplay (systemd override — the unit has no config file).
+# NOTE: the device option must be the long --pcm= form: bluez-alsa 3.x used
+# -d, 4.x renamed it, and a stale -d makes the service crash-loop silently.
 BA_OVR=/etc/systemd/system/bluealsa-aplay.service.d/override.conf
 if [[ -f $BA_OVR ]] && grep -q pistream "$BA_OVR"; then
-  ok "bluealsa-aplay: already routed through the visualizer tee, leaving as is"
+  if grep -qE -- '-d +pistream' "$BA_OVR"; then
+    sed -i -E 's|-d +pistream|--pcm=pistream|' "$BA_OVR"
+    systemctl daemon-reload
+    systemctl reset-failed bluealsa-aplay 2>/dev/null || true
+    systemctl restart bluealsa-aplay 2>/dev/null || true
+    ok "bluealsa-aplay: fixed the stale -d option (bluez-alsa 4.x), still routed via the tee"
+  else
+    ok "bluealsa-aplay: already routed through the visualizer tee, leaving as is"
+  fi
 else
   install -d "$(dirname "$BA_OVR")"
   cat > "$BA_OVR" <<EOF
 [Service]
 ExecStart=
-ExecStart=/usr/bin/bluealsa-aplay -S -d $OUT_PCM
+ExecStart=/usr/bin/bluealsa-aplay -S --pcm=$OUT_PCM
 EOF
   systemctl daemon-reload
+  systemctl reset-failed bluealsa-aplay 2>/dev/null || true
   systemctl restart bluealsa-aplay 2>/dev/null || true
   ok "bluealsa-aplay → $OUT_PCM"
 fi

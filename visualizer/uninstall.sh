@@ -33,7 +33,7 @@ fi
 cat > /etc/systemd/system/bluealsa-aplay.service.d/override.conf <<EOF
 [Service]
 ExecStart=
-ExecStart=/usr/bin/bluealsa-aplay -S -d $DAC_PCM
+ExecStart=/usr/bin/bluealsa-aplay -S --pcm=$DAC_PCM
 EOF
 
 echo "==> Disabling snd-aloop at boot"

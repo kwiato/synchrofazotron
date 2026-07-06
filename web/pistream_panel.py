@@ -470,7 +470,8 @@ def _bt_disconnect(mac):
 
 def _aplay_device():
     """The ALSA device bluealsa-aplay is configured to play to."""
-    m = re.search(r"bluealsa-aplay .*?-d (\S+)", _file_read(BLUEALSA_OVERRIDE))
+    m = re.search(r"bluealsa-aplay .*?(?:--pcm=|-d +)(\S+)",
+                  _file_read(BLUEALSA_OVERRIDE))
     return m.group(1) if m else "default"
 
 
@@ -1150,8 +1151,9 @@ def _audio_retarget_players(pcm, card):
     if "pistream" not in ovr:
         os.makedirs(os.path.dirname(BLUEALSA_OVERRIDE), exist_ok=True)
         _file_write(BLUEALSA_OVERRIDE,
-                    f"[Service]\nExecStart=\nExecStart=/usr/bin/bluealsa-aplay -S -d {pcm}\n")
+                    f"[Service]\nExecStart=\nExecStart=/usr/bin/bluealsa-aplay -S --pcm={pcm}\n")
         _run(["systemctl", "daemon-reload"])
+        _run(["systemctl", "reset-failed", "bluealsa-aplay"])
         _run(["systemctl", "try-restart", "bluealsa-aplay"])
 
 

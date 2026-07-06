@@ -68,12 +68,13 @@ if [[ -f $SP_CONF ]]; then
   cp "$SP_CONF" "$SP_CONF.bak.$STAMP"
   sed -i -E 's|^([[:space:]]*)output_device = ".*";|\1output_device = "pistream";|' "$SP_CONF"
 fi
-# bluealsa-aplay: systemd override
+# bluealsa-aplay: systemd override (--pcm=, the long form — the -d short
+# option was removed in bluez-alsa 4.x and crash-loops the service)
 install -d /etc/systemd/system/bluealsa-aplay.service.d
 cat > /etc/systemd/system/bluealsa-aplay.service.d/override.conf <<'EOF'
 [Service]
 ExecStart=
-ExecStart=/usr/bin/bluealsa-aplay -S -d pistream
+ExecStart=/usr/bin/bluealsa-aplay -S --pcm=pistream
 EOF
 
 echo "==> GLSL shader engine (keygen-style presets)"
@@ -104,6 +105,7 @@ install -m 0644 "$SRC_DIR/pistream-hdmi-watch.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl restart squeezelite 2>/dev/null || true
 systemctl restart shairport-sync 2>/dev/null || true
+systemctl reset-failed bluealsa-aplay 2>/dev/null || true
 systemctl restart bluealsa-aplay 2>/dev/null || true
 systemctl enable --now pistream-hdmi-watch.service
 systemctl restart pistream-hdmi-watch.service
