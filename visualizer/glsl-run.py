@@ -30,7 +30,16 @@ FPS = 45
 VERT = "attribute vec2 a_pos; void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }"
 
 
+ERR_FILE = f"{VIZ_DIR}/glsl-error"
+
+
 def fallback_to_cava(reason):
+    # leave the reason where the panel can show it (never hide a failure)
+    try:
+        with open(ERR_FILE, "w", encoding="utf-8") as fh:
+            fh.write(reason + "\n")
+    except OSError:
+        pass
     sys.stderr.write(f"glsl-run: {reason} — falling back to cava\n")
     sys.stderr.flush()
     os.execv("/usr/bin/cava", ["cava", "-p", f"{VIZ_DIR}/cava.conf"])
@@ -69,23 +78,49 @@ class AudioBands(threading.Thread):
             time.sleep(1)   # loopback busy or gone — retry
 
 def main():
+    try:
+        os.remove(ERR_FILE)   # fresh attempt — clear the previous verdict
+    except OSError:
+        pass
     if len(sys.argv) != 2 or not os.path.isfile(sys.argv[1]):
         fallback_to_cava("shader argument missing")
     frag = open(sys.argv[1], encoding="utf-8").read()
 
+    # Without X, PyOpenGL must resolve GL through EGL (its default is GLX,
+    # which explodes on the first GL call on a console-only system).
+    os.environ.setdefault("PYOPENGL_PLATFORM", "egl")
     os.environ.setdefault("SDL_VIDEODRIVER", "kmsdrm")
+    os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")  # no tty banner
     try:
         import pygame
         from OpenGL import GL
     except Exception as e:  # noqa: BLE001
         fallback_to_cava(f"python GL stack missing ({e})")
-    try:
+
+    # vc4/KMSDRM is happiest with a GLES2 context (the RetroPie-trodden
+    # path); plain desktop GL is the second attempt.
+    def try_set_mode(es2):
+        pygame.display.quit()
         pygame.display.init()
+        if es2:
+            pygame.display.gl_set_attribute(
+                pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_ES)
+            pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 2)
+            pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 0)
         pygame.display.set_mode((0, 0),
                                 pygame.FULLSCREEN | pygame.OPENGL | pygame.DOUBLEBUF)
-        pygame.mouse.set_visible(False)
-    except Exception as e:  # noqa: BLE001
-        fallback_to_cava(f"video init failed ({e})")
+
+    err = None
+    for es2 in (True, False):
+        try:
+            try_set_mode(es2)
+            err = None
+            break
+        except Exception as e:  # noqa: BLE001
+            err = e
+    if err is not None:
+        fallback_to_cava(f"video init failed ({err})")
+    pygame.mouse.set_visible(False)
     width, height = pygame.display.get_window_size()
 
     def compile_shader(src, kind):

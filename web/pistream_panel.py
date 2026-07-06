@@ -164,6 +164,7 @@ STR = {
         "viz_eng_cava": "📊 Bars (cava)",
         "viz_eng_glsl": "🌈 Shaders (glslViewer)",
         "viz_engine_set": "Visualizer switched to {engine}.",
+        "js_glsl_err": "⚠ Shader engine failed, showing cava instead. Reason: ",
         "viz_engine_bad": "Unknown engine.",
         "viz_glsl_missing": "glslViewer is not installed on the device (re-run the visualizer installer).",
         "shader_plasma": "Plasma",
@@ -323,6 +324,7 @@ STR = {
         "viz_eng_cava": "📊 Słupki (cava)",
         "viz_eng_glsl": "🌈 Shadery (glslViewer)",
         "viz_engine_set": "Wizualizer przełączony na {engine}.",
+        "js_glsl_err": "⚠ Silnik shaderów nie wystartował, gra cava. Powód: ",
         "viz_engine_bad": "Nieznany silnik.",
         "viz_glsl_missing": "glslViewer nie jest zainstalowany na urządzeniu (odpal ponownie instalator wizualizera).",
         "shader_plasma": "Plazma",
@@ -819,6 +821,7 @@ VIZ_SERVICE = "pistream-visualizer"
 # Second engine: glslViewer shaders (viz-run.sh dispatches on the engine file).
 VIZ_ENGINE_FILE = "/opt/pistream-visualizer/engine"
 VIZ_GLSL_DIR = "/opt/pistream-visualizer/glsl"
+VIZ_GLSL_ERR = "/opt/pistream-visualizer/glsl-error"
 
 _VIZ_TEMPLATE = """# preset: {name} (managed by the Synchrofazotron panel — /settings page)
 [general]
@@ -952,6 +955,7 @@ def _viz_state():
             "presets": [{"id": k, "label": T(v["label_key"])}
                         for k, v in VIZ_PRESETS.items()],
             "engine": engine, "shader": shader,
+            "glsl_error": _file_read(VIZ_GLSL_ERR).strip(),
             "glsl_available": bool(_viz_glsl_ok() and _viz_shaders()),
             "shaders": [{"id": s, "label": _shader_label(s)}
                         for s in _viz_shaders()]}
@@ -1909,6 +1913,7 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
       <button class="btn sec" id="engCava" onclick="vizEngine('cava')">{{T:viz_eng_cava}}</button>
       <button class="btn sec" id="engGlsl" onclick="vizEngine('glsl')">{{T:viz_eng_glsl}}</button>
     </div>
+    <p id="vizErr" class="muted"></p>
     <div id="vizShaders"></div>
     <div id="vizCavaCtl">
     <div id="vizPresets"></div>
@@ -2171,6 +2176,8 @@ async function vizRefresh() {
     g.textContent = '{{T:viz_eng_glsl}}' + (v.glsl_available ? '' : ' ⚠');
     g.title = v.glsl_available ? '' : '{{T:viz_glsl_missing}}';
     document.getElementById('vizCavaCtl').style.display = glsl ? 'none' : '';
+    document.getElementById('vizErr').textContent =
+      (glsl && v.glsl_error) ? '{{T:js_glsl_err}}' + v.glsl_error : '';
     document.getElementById('vizShaders').innerHTML = (glsl ? (v.shaders||[]) : []).map(s =>
       '<button class="btn ' + (s.id === v.shader ? '' : 'sec') + '" ' +
       'onclick="vizShader(\\'' + s.id + '\\')">' + escapeHtml(s.label) +

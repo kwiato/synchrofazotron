@@ -12,13 +12,20 @@ ENGINE=cava SHADER=plasma
 [[ -r $DIR/engine ]] && read -r ENGINE SHADER < "$DIR/engine" || true
 [[ -n ${SHADER:-} ]] || SHADER=plasma
 
+# On any bail-out the reason lands in $DIR/glsl-error — the panel shows it
+# (a silent fallback to cava looks like "the feature just doesn't work").
 GLSL_BIN="$(command -v glslViewer || command -v glslviewer || true)"
-if [[ $ENGINE == glsl && -f $DIR/glsl/$SHADER.frag ]]; then
-  if [[ -n $GLSL_BIN ]]; then
+if [[ $ENGINE == glsl ]]; then
+  if [[ ! -f $DIR/glsl/$SHADER.frag ]]; then
+    echo "shader '$SHADER' not found in $DIR/glsl" > "$DIR/glsl-error"
+  elif [[ -n $GLSL_BIN ]]; then
+    rm -f "$DIR/glsl-error"
     exec bash -c "python3 '$DIR/glsl-audio-bridge.py' | '$GLSL_BIN' '$DIR/glsl/$SHADER.frag' --fullscreen"
   elif python3 -c 'import pygame, OpenGL, numpy' 2>/dev/null; then
-    # no glslViewer binary (no arm64 package) -> pygame/PyOpenGL runner
+    # no glslViewer binary -> pygame/PyOpenGL runner (manages glsl-error itself)
     exec python3 "$DIR/glsl-run.py" "$DIR/glsl/$SHADER.frag"
+  else
+    echo "python GL stack missing (python3-pygame / python3-opengl / python3-numpy)" > "$DIR/glsl-error"
   fi
 fi
 exec /usr/bin/cava -p "$DIR/cava.conf"
