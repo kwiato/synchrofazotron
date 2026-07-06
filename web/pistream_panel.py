@@ -134,6 +134,15 @@ STR = {
         "wifi_scan_btn": "🔍 Scan for networks",
         "viz_head": "📊 Visualizer (HDMI)",
         "viz_note": "Bar style on the monitor. Changing it restarts the visualizer (music keeps playing).",
+        "viz_edit_btn": "🎛 Fine-tune (custom settings)",
+        "viz_p_framerate": "Framerate (fps)",
+        "viz_p_bar_width": "Bar width",
+        "viz_p_bar_spacing": "Bar spacing",
+        "viz_p_noise": "Smoothing (higher = calmer, lower = snappier)",
+        "viz_p_monstercat": "Monstercat smoothing (rounded peaks)",
+        "viz_p_waves": "Waves smoothing (ripple falloff)",
+        "viz_p_color": "Bar color",
+        "viz_apply": "Apply",
         "audio_head": "🔊 Audio output",
         "audio_note": "Where the sound goes: the DAC HAT or the monitor over HDMI. Switching rewrites the boot config and takes effect after a reboot.",
         "lang_head": "🌐 Language",
@@ -175,6 +184,7 @@ STR = {
         "viz_unknown": "Unknown preset.",
         "viz_not_installed": "The visualizer is not installed.",
         "viz_preset_set": "Preset „{label}” applied.",
+        "viz_params_set": "Custom settings applied.",
         "viz_stopped": "Visualizer stopped (until reboot / manual start).",
         "viz_started": "Visualizer started.",
         "audio_bad": "Unknown output (expected dac or hdmi).",
@@ -243,6 +253,15 @@ STR = {
         "wifi_scan_btn": "🔍 Skanuj otoczenie",
         "viz_head": "📊 Wizualizer (HDMI)",
         "viz_note": "Styl słupków na monitorze. Zmiana restartuje wizualizer (muzyka gra dalej).",
+        "viz_edit_btn": "🎛 Dostrój (własne ustawienia)",
+        "viz_p_framerate": "Klatki (fps)",
+        "viz_p_bar_width": "Szerokość słupka",
+        "viz_p_bar_spacing": "Odstęp słupków",
+        "viz_p_noise": "Wygładzanie (więcej = spokojniej, mniej = żwawiej)",
+        "viz_p_monstercat": "Wygładzanie Monstercat (zaokrąglone szczyty)",
+        "viz_p_waves": "Wygładzanie Waves (falujące opadanie)",
+        "viz_p_color": "Kolor słupków",
+        "viz_apply": "Zastosuj",
         "audio_head": "🔊 Wyjście dźwięku",
         "audio_note": "Którędy wychodzi dźwięk: DAC (nakładka HAT) albo monitor po HDMI. Przełączenie przepisuje konfigurację startową i działa po restarcie urządzenia.",
         "lang_head": "🌐 Język",
@@ -282,6 +301,7 @@ STR = {
         "viz_unknown": "Nieznany preset.",
         "viz_not_installed": "Wizualizer nie jest zainstalowany.",
         "viz_preset_set": "Preset „{label}” ustawiony.",
+        "viz_params_set": "Własne ustawienia zastosowane.",
         "viz_stopped": "Wizualizer zatrzymany (do reboota / ręcznego startu).",
         "viz_started": "Wizualizer wystartowany.",
         "audio_bad": "Nieznane wyjście (oczekiwane dac lub hdmi).",
@@ -577,7 +597,7 @@ VIZ_SERVICE = "pistream-visualizer"
 
 _VIZ_TEMPLATE = """# preset: {name} (managed by the Synchrofazotron panel — /settings page)
 [general]
-framerate = 60
+framerate = {framerate}
 autosens = 1
 bars = 0
 bar_width = {bar_width}
@@ -616,6 +636,32 @@ VIZ_PRESETS = {
 _VIZ_LEGACY_IDS = {"klasyk": "classic", "gesty": "dense",
                    "fale": "waves", "masyw": "massive"}
 
+# The Linux console cava draws on has a 16-color palette — hex values are out.
+VIZ_COLORS = ("cyan", "green", "blue", "magenta", "red", "yellow", "white")
+
+
+def _viz_params():
+    """Current cava parameters (parsed from the config the panel writes)."""
+    txt = ""
+    try:
+        txt = open(VIZ_CONF, encoding="utf-8").read()
+    except OSError:
+        pass
+
+    def num(key, default):
+        m = re.search(rf"^{key} = (\d+)", txt, re.M)
+        return int(m.group(1)) if m else default
+
+    m = re.search(r"^foreground = (\S+)", txt, re.M)
+    return {"framerate": num("framerate", 60),
+            "bar_width": num("bar_width", 2),
+            "bar_spacing": num("bar_spacing", 1),
+            "noise_reduction": num("noise_reduction", 77),
+            "monstercat": bool(re.search(r"^monstercat = 1", txt, re.M)),
+            "waves": bool(re.search(r"^waves = 1", txt, re.M)),
+            "color": m.group(1) if m and m.group(1) in VIZ_COLORS else "cyan",
+            "colors": list(VIZ_COLORS)}
+
 
 def _viz_state():
     installed = os.path.isfile(VIZ_CONF)
@@ -630,6 +676,7 @@ def _viz_state():
             pass
     return {"installed": installed, "active": _service_active(VIZ_SERVICE),
             "preset": preset,
+            "params": _viz_params() if installed else None,
             "presets": [{"id": k, "label": T(v["label_key"])}
                         for k, v in VIZ_PRESETS.items()]}
 
@@ -642,10 +689,43 @@ def _viz_set_preset(name):
     if not os.path.isfile(VIZ_CONF):
         return False, T("viz_not_installed")
     with open(VIZ_CONF, "w", encoding="utf-8") as fh:
-        fh.write(_VIZ_TEMPLATE.format(name=name, **{
+        fh.write(_VIZ_TEMPLATE.format(name=name, framerate=60, **{
             k: p[k] for k in ("bar_width", "bar_spacing", "color", "smoothing")}))
     _run(["systemctl", "try-restart", VIZ_SERVICE])
     return True, T("viz_preset_set").format(label=T(p["label_key"]))
+
+
+def _viz_set_params(body):
+    """Custom cava parameters from the panel editor. Returns (ok, message)."""
+    if not os.path.isfile(VIZ_CONF):
+        return False, T("viz_not_installed")
+
+    def clamp(key, lo, hi, default):
+        try:
+            v = int(body.get(key, default))
+        except (TypeError, ValueError):
+            v = default
+        return max(lo, min(hi, v))
+
+    framerate = clamp("framerate", 10, 120, 60)
+    bar_width = clamp("bar_width", 1, 20, 2)
+    bar_spacing = clamp("bar_spacing", 0, 10, 1)
+    noise = clamp("noise_reduction", 0, 100, 77)
+    color = str(body.get("color", "cyan"))
+    if color not in VIZ_COLORS:
+        color = "cyan"
+    smoothing = []
+    if body.get("monstercat"):
+        smoothing.append("monstercat = 1")
+    if body.get("waves"):
+        smoothing.append("waves = 1")
+    smoothing.append(f"noise_reduction = {noise}")
+    with open(VIZ_CONF, "w", encoding="utf-8") as fh:
+        fh.write(_VIZ_TEMPLATE.format(
+            name="custom", framerate=framerate, bar_width=bar_width,
+            bar_spacing=bar_spacing, color=color, smoothing="\n".join(smoothing)))
+    _run(["systemctl", "try-restart", VIZ_SERVICE])
+    return True, T("viz_params_set")
 
 
 def _viz_toggle():
@@ -1423,6 +1503,13 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
   code { background:#0b0e12; padding:1px 6px; border-radius:6px; font-size:.9em;}
   .lrow { display:flex; gap:10px; }
   .lrow .btn { margin-top: 0; }
+  .vlabel { display:block; margin:10px 0 2px; color:#c4cad3; font-size:.95rem; }
+  .vlabel input[type=range] { width:100%; margin:4px 0 0; }
+  select {
+    width: 100%; padding: 10px; margin: 4px 0 0; border-radius: 10px;
+    border: 1px solid #2b3440; background: #0b0e12; color: #e7ecf2;
+    font-size: 1rem;
+  }
 </style>
 </head>
 <body>
@@ -1461,6 +1548,22 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
     <h2>{{T:viz_head}}</h2>
     <p class="muted">{{T:viz_note}}</p>
     <div id="vizPresets"></div>
+    <button class="btn sec" onclick="vizEditToggle()">{{T:viz_edit_btn}}</button>
+    <div id="vizEdit" style="display:none;">
+      <label class="vlabel">{{T:viz_p_framerate}}: <b id="v_fr_v"></b>
+        <input type="range" id="v_fr" min="15" max="60" step="5"></label>
+      <label class="vlabel">{{T:viz_p_bar_width}}: <b id="v_bw_v"></b>
+        <input type="range" id="v_bw" min="1" max="12" step="1"></label>
+      <label class="vlabel">{{T:viz_p_bar_spacing}}: <b id="v_bs_v"></b>
+        <input type="range" id="v_bs" min="0" max="5" step="1"></label>
+      <label class="vlabel">{{T:viz_p_noise}}: <b id="v_nr_v"></b>
+        <input type="range" id="v_nr" min="0" max="100" step="5"></label>
+      <label class="vlabel">{{T:viz_p_color}}
+        <select id="v_color"></select></label>
+      <label class="vlabel"><input type="checkbox" id="v_mc"> {{T:viz_p_monstercat}}</label>
+      <label class="vlabel"><input type="checkbox" id="v_wv"> {{T:viz_p_waves}}</label>
+      <button class="btn" onclick="vizApply()">{{T:viz_apply}}</button>
+    </div>
     <button class="btn sec" id="vizToggle" onclick="vizToggle()">…</button>
     <p id="vizMsg" class="muted"></p>
   </div>
@@ -1588,7 +1691,46 @@ async function vizRefresh() {
     ).join('');
     document.getElementById('vizToggle').textContent =
       v.active ? '{{T:js_viz_stop}}' : '{{T:js_viz_start}}';
+    // fill the editor only while it is closed, so typing is not overwritten
+    if (v.params && document.getElementById('vizEdit').style.display === 'none')
+      vizFillEditor(v.params);
   } catch(e) {}
+}
+
+function vizFillEditor(p) {
+  for (const [id, val] of [['v_fr', p.framerate], ['v_bw', p.bar_width],
+                           ['v_bs', p.bar_spacing], ['v_nr', p.noise_reduction]]) {
+    document.getElementById(id).value = val;
+    document.getElementById(id + '_v').textContent = val;
+  }
+  document.getElementById('v_mc').checked = !!p.monstercat;
+  document.getElementById('v_wv').checked = !!p.waves;
+  const sel = document.getElementById('v_color');
+  sel.innerHTML = (p.colors||[]).map(c =>
+    '<option' + (c === p.color ? ' selected' : '') + '>' + c + '</option>').join('');
+}
+
+function vizEditToggle() {
+  const e = document.getElementById('vizEdit');
+  e.style.display = e.style.display === 'none' ? '' : 'none';
+}
+
+async function vizApply() {
+  const num = id => +document.getElementById(id).value;
+  try {
+    const r = await fetch('/api/viz/params', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        framerate: num('v_fr'), bar_width: num('v_bw'), bar_spacing: num('v_bs'),
+        noise_reduction: num('v_nr'),
+        monstercat: document.getElementById('v_mc').checked,
+        waves: document.getElementById('v_wv').checked,
+        color: document.getElementById('v_color').value })
+    });
+    const j = await r.json();
+    document.getElementById('vizMsg').textContent = j.message || '';
+  } catch(e) { document.getElementById('vizMsg').textContent = '{{T:js_conn_error}}'; }
+  vizRefresh();
 }
 
 async function vizPreset(name) {
@@ -1666,6 +1808,12 @@ function escapeHtml(s) {
   return (s||'').replace(/[&<>"']/g, c => (
     {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+// live value labels next to the editor sliders
+['v_fr','v_bw','v_bs','v_nr'].forEach(id => {
+  document.getElementById(id).oninput = e =>
+    document.getElementById(id + '_v').textContent = e.target.value;
+});
 
 // highlight the active language button
 document.querySelector('.LANGBTN_{{LANG}}').classList.add('active');
@@ -1754,6 +1902,10 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/viz/preset":
             body = self._json_body()
             ok, message = _viz_set_preset(str(body.get("name", "")))
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/viz/params":
+            ok, message = _viz_set_params(self._json_body())
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/viz/toggle":
