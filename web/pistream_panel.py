@@ -16,6 +16,7 @@ import glob
 import json
 import os
 import re
+import shutil
 import socket
 import subprocess
 import threading
@@ -154,6 +155,14 @@ STR = {
         "viz_p_waves": "Waves smoothing (ripple falloff)",
         "viz_p_color": "Bar color",
         "viz_apply": "Apply",
+        "viz_eng_cava": "📊 Bars (cava)",
+        "viz_eng_glsl": "🌈 Shaders (glslViewer)",
+        "viz_engine_set": "Visualizer switched to {engine}.",
+        "viz_engine_bad": "Unknown engine.",
+        "viz_glsl_missing": "glslViewer is not installed on the device (re-run the visualizer installer).",
+        "shader_plasma": "Plasma",
+        "shader_tunnel": "Tunnel",
+        "shader_copper": "Copper bars",
         "audio_head": "🔊 Audio output",
         "audio_note": "Where the sound goes: the DAC HAT or the monitor over HDMI. Switching rewrites the boot config and takes effect after a reboot.",
         "upd_head": "🔄 Updates",
@@ -175,6 +184,8 @@ STR = {
         "lang_note": "Panel language. The choice is saved on the device.",
         "how_head": "ℹ️ How it works",
         "how_note": "Networks go into the DietPi database (the same one <code>dietpi-config</code> uses) and the Wi-Fi configuration is reloaded on the fly — no reboot. Removing the network you are currently connected through is blocked so you cannot lock yourself out.",
+        "about_head": "💜 About",
+        "about_note": "Synchrofazotron is a thin layer of glue — the heavy lifting is done by these excellent open-source projects and the wonderful people behind them:",
         # settings JS
         "js_wifi_connected": "connected",
         "js_wifi_none": "not connected",
@@ -297,6 +308,14 @@ STR = {
         "viz_p_waves": "Wygładzanie Waves (falujące opadanie)",
         "viz_p_color": "Kolor słupków",
         "viz_apply": "Zastosuj",
+        "viz_eng_cava": "📊 Słupki (cava)",
+        "viz_eng_glsl": "🌈 Shadery (glslViewer)",
+        "viz_engine_set": "Wizualizer przełączony na {engine}.",
+        "viz_engine_bad": "Nieznany silnik.",
+        "viz_glsl_missing": "glslViewer nie jest zainstalowany na urządzeniu (odpal ponownie instalator wizualizera).",
+        "shader_plasma": "Plazma",
+        "shader_tunnel": "Tunel",
+        "shader_copper": "Paski copper",
         "audio_head": "🔊 Wyjście dźwięku",
         "audio_note": "Którędy wychodzi dźwięk: DAC (nakładka HAT) albo monitor po HDMI. Przełączenie przepisuje konfigurację startową i działa po restarcie urządzenia.",
         "upd_head": "🔄 Aktualizacje",
@@ -318,6 +337,8 @@ STR = {
         "lang_note": "Język panelu. Wybór zapisuje się na urządzeniu.",
         "how_head": "ℹ️ Jak to działa",
         "how_note": "Sieci trafiają do bazy DietPi (tej samej, którą widzi <code>dietpi-config</code>), a konfiguracja Wi-Fi jest przeładowywana w locie — bez restartu. Usunięcie sieci, przez którą aktualnie jesteś połączony, jest zablokowane, żeby nie odciąć sobie dostępu.",
+        "about_head": "💜 O projekcie",
+        "about_note": "Synchrofazotron to cienka warstwa kleju — całą ciężką robotę odwalają te świetne projekty open source i wspaniali ludzie, którzy za nimi stoją:",
         "js_wifi_connected": "połączony",
         "js_wifi_none": "brak połączenia",
         "js_lan_ip": "IP lokalne: ",
@@ -703,6 +724,9 @@ def _wifi_remove(slot):
 # ---------------------------------------------------------------------------
 VIZ_CONF = "/opt/pistream-visualizer/cava.conf"
 VIZ_SERVICE = "pistream-visualizer"
+# Second engine: glslViewer shaders (viz-run.sh dispatches on the engine file).
+VIZ_ENGINE_FILE = "/opt/pistream-visualizer/engine"
+VIZ_GLSL_DIR = "/opt/pistream-visualizer/glsl"
 
 _VIZ_TEMPLATE = """# preset: {name} (managed by the Synchrofazotron panel — /settings page)
 [general]
@@ -772,6 +796,31 @@ def _viz_params():
             "colors": list(VIZ_COLORS)}
 
 
+def _viz_glsl_bin():
+    return shutil.which("glslViewer") or shutil.which("glslviewer")
+
+
+def _viz_shaders():
+    return sorted(os.path.splitext(os.path.basename(f))[0]
+                  for f in glob.glob(os.path.join(VIZ_GLSL_DIR, "*.frag")))
+
+
+def _viz_engine():
+    """(engine, shader) from the engine file; defaults to ('cava', 'plasma')."""
+    try:
+        parts = open(VIZ_ENGINE_FILE, encoding="utf-8").read().split()
+    except OSError:
+        parts = []
+    engine = parts[0] if parts and parts[0] in ("cava", "glsl") else "cava"
+    shader = parts[1] if len(parts) > 1 else "plasma"
+    return engine, shader
+
+
+def _shader_label(sid):
+    label = T(f"shader_{sid}")
+    return sid.capitalize() if label == f"shader_{sid}" else label
+
+
 def _viz_state():
     installed = os.path.isfile(VIZ_CONF)
     preset = ""
@@ -783,11 +832,37 @@ def _viz_state():
             preset = _VIZ_LEGACY_IDS.get(preset, preset)
         except OSError:
             pass
+    engine, shader = _viz_engine()
     return {"installed": installed, "active": _service_active(VIZ_SERVICE),
             "preset": preset,
             "params": _viz_params() if installed else None,
             "presets": [{"id": k, "label": T(v["label_key"])}
-                        for k, v in VIZ_PRESETS.items()]}
+                        for k, v in VIZ_PRESETS.items()],
+            "engine": engine, "shader": shader,
+            "glsl_available": bool(_viz_glsl_bin() and _viz_shaders()),
+            "shaders": [{"id": s, "label": _shader_label(s)}
+                        for s in _viz_shaders()]}
+
+
+def _viz_set_engine(engine, shader=""):
+    """Switches cava <-> glslViewer (and picks the shader). (ok, message)."""
+    if not os.path.isfile(VIZ_CONF):
+        return False, T("viz_not_installed")
+    if engine not in ("cava", "glsl"):
+        return False, T("viz_engine_bad")
+    if engine == "glsl":
+        shaders = _viz_shaders()
+        if not shaders or not _viz_glsl_bin():
+            return False, T("viz_glsl_missing")
+        if shader not in shaders:
+            shader = "plasma" if "plasma" in shaders else shaders[0]
+        content = f"glsl {shader}\n"
+    else:
+        content = "cava\n"
+    _file_write(VIZ_ENGINE_FILE, content)
+    _run(["systemctl", "try-restart", VIZ_SERVICE])
+    return True, T("viz_engine_set").format(
+        engine=_shader_label(shader) + " (glslViewer)" if engine == "glsl" else "cava")
 
 
 def _viz_set_preset(name):
@@ -1654,6 +1729,7 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
   code { background:#0b0e12; padding:1px 6px; border-radius:6px; font-size:.9em;}
   .lrow { display:flex; gap:10px; }
   .lrow .btn { margin-top: 0; }
+  .credits div { padding: 3px 0; }
   .vlabel { display:block; margin:10px 0 2px; color:#c4cad3; font-size:.95rem; }
   .vlabel input[type=range] { width:100%; margin:4px 0 0; }
   select {
@@ -1705,6 +1781,12 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
   <div class="card" id="vizCard" style="display:none;">
     <h2>{{T:viz_head}}</h2>
     <p class="muted">{{T:viz_note}}</p>
+    <div class="lrow" id="vizEngineRow" style="display:none;">
+      <button class="btn sec" id="engCava" onclick="vizEngine('cava')">{{T:viz_eng_cava}}</button>
+      <button class="btn sec" id="engGlsl" onclick="vizEngine('glsl')">{{T:viz_eng_glsl}}</button>
+    </div>
+    <div id="vizShaders"></div>
+    <div id="vizCavaCtl">
     <div id="vizPresets"></div>
     <button class="btn sec" onclick="vizEditToggle()">{{T:viz_edit_btn}}</button>
     <div id="vizEdit" style="display:none;">
@@ -1721,6 +1803,7 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
       <label class="vlabel"><input type="checkbox" id="v_mc"> {{T:viz_p_monstercat}}</label>
       <label class="vlabel"><input type="checkbox" id="v_wv"> {{T:viz_p_waves}}</label>
       <button class="btn" onclick="vizApply()">{{T:viz_apply}}</button>
+    </div>
     </div>
     <button class="btn sec" id="vizToggle" onclick="vizToggle()">…</button>
     <p id="vizMsg" class="muted"></p>
@@ -1759,6 +1842,25 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
   <div class="card">
     <h2>{{T:how_head}}</h2>
     <p class="muted">{{T:how_note}}</p>
+  </div>
+
+  <div class="card">
+    <h2>{{T:about_head}}</h2>
+    <p class="muted">{{T:about_note}}</p>
+    <div class="credits muted">
+      <div>🎚️ <a href="https://github.com/karlstav/cava">cava</a> — <a href="https://github.com/karlstav">Karl Stavestrand</a></div>
+      <div>🌈 <a href="https://github.com/patriciogonzalezvivo/glslViewer">glslViewer</a> — <a href="https://github.com/patriciogonzalezvivo">Patricio Gonzalez Vivo</a></div>
+      <div>🎧 <a href="https://github.com/LMS-Community/slimserver">Lyrion Music Server</a> — <a href="https://github.com/LMS-Community">LMS Community</a></div>
+      <div>🎨 <a href="https://github.com/CDrummond/lms-material">Material Skin</a> — <a href="https://github.com/CDrummond">Craig Drummond</a></div>
+      <div>▶️ <a href="https://github.com/ralph-irving/squeezelite">squeezelite</a> — Adrian Smith, <a href="https://github.com/ralph-irving">Ralph Irving</a></div>
+      <div>🍎 <a href="https://github.com/mikebrady/shairport-sync">Shairport Sync</a> — <a href="https://github.com/mikebrady">Mike Brady</a></div>
+      <div>📶 <a href="https://github.com/arkq/bluez-alsa">BlueALSA</a> — <a href="https://github.com/arkq">Arkadiusz Bokowy</a></div>
+      <div>🤝 <a href="https://github.com/khvzak/bluez-tools">bluez-tools</a> — <a href="https://github.com/khvzak">Alexander Orlenko</a></div>
+      <div>🐧 <a href="https://github.com/MichaIng/DietPi">DietPi</a> — <a href="https://github.com/MichaIng">MichaIng</a> &amp; community</div>
+      <div>🔗 <a href="https://github.com/tailscale/tailscale">Tailscale</a></div>
+      <div>🧮 <a href="https://github.com/numpy/numpy">NumPy</a></div>
+      <div>💡 <a href="https://github.com/ErikOostveen/Slimshader">Slimshader</a> — <a href="https://github.com/ErikOostveen">Erik Oostveen</a></div>
+    </div>
   </div>
 </div>
 
@@ -1910,11 +2012,37 @@ async function vizRefresh() {
     ).join('');
     document.getElementById('vizToggle').textContent =
       v.active ? '{{T:js_viz_stop}}' : '{{T:js_viz_start}}';
+    // engine switch (shown only when glslViewer is actually usable)
+    const glsl = v.engine === 'glsl';
+    document.getElementById('vizEngineRow').style.display =
+      v.glsl_available ? '' : 'none';
+    document.getElementById('engCava').className = 'btn' + (glsl ? ' sec' : '');
+    document.getElementById('engGlsl').className = 'btn' + (glsl ? '' : ' sec');
+    document.getElementById('vizCavaCtl').style.display = glsl ? 'none' : '';
+    document.getElementById('vizShaders').innerHTML = (glsl ? (v.shaders||[]) : []).map(s =>
+      '<button class="btn ' + (s.id === v.shader ? '' : 'sec') + '" ' +
+      'onclick="vizShader(\\'' + s.id + '\\')">' + escapeHtml(s.label) +
+      (s.id === v.shader ? ' ✓' : '') + '</button>'
+    ).join('');
     // fill the editor only while it is closed, so typing is not overwritten
     if (v.params && document.getElementById('vizEdit').style.display === 'none')
       vizFillEditor(v.params);
   } catch(e) {}
 }
+
+async function vizEngine(engine, shader) {
+  try {
+    const r = await fetch('/api/viz/engine', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({engine, shader: shader || ''})
+    });
+    const j = await r.json();
+    document.getElementById('vizMsg').textContent = j.message || '';
+  } catch(e) {}
+  vizRefresh();
+}
+
+function vizShader(name) { vizEngine('glsl', name); }
 
 function vizFillEditor(p) {
   for (const [id, val] of [['v_fr', p.framerate], ['v_bw', p.bar_width],
@@ -2187,6 +2315,12 @@ class Handler(BaseHTTPRequestHandler):
                        "application/json")
         elif self.path == "/api/viz/params":
             ok, message = _viz_set_params(self._json_body())
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/viz/engine":
+            body = self._json_body()
+            ok, message = _viz_set_engine(str(body.get("engine", "")),
+                                          str(body.get("shader", "")))
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/viz/toggle":

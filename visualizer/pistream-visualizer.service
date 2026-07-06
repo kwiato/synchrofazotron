@@ -1,11 +1,12 @@
 [Unit]
-Description=Synchrofazotron audio visualizer (cava) on the HDMI console
+Description=Synchrofazotron audio visualizer (cava / glslViewer) on the HDMI console
 # We take over tty1 — the login console comes back with: systemctl start getty@tty1
 Conflicts=getty@tty1.service
 After=getty@tty1.service
 
 [Service]
-ExecStart=/usr/bin/cava -p /opt/pistream-visualizer/cava.conf
+# viz-run.sh picks the engine per /opt/pistream-visualizer/engine (panel-managed)
+ExecStart=/opt/pistream-visualizer/viz-run.sh
 StandardInput=tty
 StandardOutput=tty
 StandardError=journal

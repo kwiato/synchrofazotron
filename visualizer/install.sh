@@ -15,7 +15,8 @@ set -euo pipefail
 REPO="${PISTREAM_REPO:-kwiato/synchrofazotron}"
 BRANCH="${PISTREAM_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/$REPO/$BRANCH/visualizer"
-FILES=(asound-tee.conf cava.conf pistream-visualizer.service pistream-hdmi-watch.service hdmi-watch.sh)
+FILES=(asound-tee.conf cava.conf pistream-visualizer.service pistream-hdmi-watch.service hdmi-watch.sh
+       viz-run.sh glsl-audio-bridge.py glsl/plasma.frag glsl/tunnel.frag glsl/copper.frag)
 DEST=/opt/pistream-visualizer
 DAC_PCM="hw:CARD=BossDAC,DEV=0"   # what uninstall reverts to
 STAMP="$(date +%Y%m%d-%H%M%S)"
@@ -25,6 +26,7 @@ if [[ "$(basename -- "$0")" != "install.sh" || ! -f "$SRC_DIR/asound-tee.conf" ]
   echo "==> Downloading $REPO@$BRANCH from GitHub"
   SRC_DIR="$(mktemp -d)"
   trap 'rm -rf "$SRC_DIR"' EXIT
+  mkdir -p "$SRC_DIR/glsl"
   for f in "${FILES[@]}"; do
     curl -fsSL --retry 5 --retry-delay 2 "$RAW/$f" -o "$SRC_DIR/$f"
   done
@@ -74,10 +76,23 @@ ExecStart=
 ExecStart=/usr/bin/bluealsa-aplay -S -d pistream
 EOF
 
+echo "==> glslViewer engine (optional — keygen-style shader presets)"
+# numpy is needed by the audio->uniform bridge
+dpkg -s python3-numpy >/dev/null 2>&1 \
+  || DEBIAN_FRONTEND=noninteractive apt-get install -y python3-numpy || true
+if ! command -v glslViewer >/dev/null 2>&1 && ! command -v glslviewer >/dev/null 2>&1; then
+  DEBIAN_FRONTEND=noninteractive apt-get install -y glslviewer \
+    || echo "    glslviewer not available in APT — the shader engine stays hidden in the panel (cava works as usual)"
+fi
+
 echo "==> Visualizer files and services"
-install -d "$DEST"
+install -d "$DEST" "$DEST/glsl"
 install -m 0644 "$SRC_DIR/cava.conf" "$DEST/cava.conf"
 install -m 0755 "$SRC_DIR/hdmi-watch.sh" "$DEST/hdmi-watch.sh"
+install -m 0755 "$SRC_DIR/viz-run.sh" "$DEST/viz-run.sh"
+install -m 0755 "$SRC_DIR/glsl-audio-bridge.py" "$DEST/glsl-audio-bridge.py"
+install -m 0644 "$SRC_DIR"/glsl/*.frag "$DEST/glsl/"
+[[ -f $DEST/engine ]] || echo cava > "$DEST/engine"
 install -m 0644 "$SRC_DIR/pistream-visualizer.service" /etc/systemd/system/
 install -m 0644 "$SRC_DIR/pistream-hdmi-watch.service" /etc/systemd/system/
 
@@ -87,6 +102,8 @@ systemctl restart shairport-sync 2>/dev/null || true
 systemctl restart bluealsa-aplay 2>/dev/null || true
 systemctl enable --now pistream-hdmi-watch.service
 systemctl restart pistream-hdmi-watch.service
+# on update: pick up the new unit/engine while it is already running
+systemctl try-restart pistream-visualizer.service 2>/dev/null || true
 
 echo
 echo "==> Done. Config backups: *.bak.$STAMP"
