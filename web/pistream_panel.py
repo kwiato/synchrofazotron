@@ -28,6 +28,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 # ---------------------------------------------------------------------------
 PORT = int(os.environ.get("PISTREAM_PANEL_PORT", "8787"))
 BIND = os.environ.get("PISTREAM_PANEL_BIND", "0.0.0.0")
+REPO = os.environ.get("PISTREAM_REPO", "kwiato/synchrofazotron")
+BRANCH = os.environ.get("PISTREAM_BRANCH", "main")
 
 _HOSTNAME = socket.gethostname() or "Synchrofazotron"
 DEVICE_NAME = os.environ.get("PISTREAM_NAME", _HOSTNAME)   # BT / AirPlay name
@@ -145,6 +147,21 @@ STR = {
         "viz_apply": "Apply",
         "audio_head": "🔊 Audio output",
         "audio_note": "Where the sound goes: the DAC HAT or the monitor over HDMI. Switching rewrites the boot config and takes effect after a reboot.",
+        "upd_head": "🔄 Updates",
+        "upd_note": "Fetches the latest Synchrofazotron from GitHub — the same as re-running setup.sh (safe, settings are kept). The check compares the installed panel with the repo.",
+        "upd_check_btn": "Check for updates",
+        "upd_run_btn": "⬇ Update now",
+        "upd_started": "Update started.",
+        "upd_already": "An update is already running.",
+        "upd_fail": "Could not start the update.",
+        "js_upd_checking": "Checking…",
+        "js_upd_available": "🔔 A new version is available.",
+        "js_upd_current": "✅ Up to date.",
+        "js_upd_checkfail": "Check failed (no network?).",
+        "js_upd_confirm": "Update now? Takes a minute or two; the panel restarts briefly and players may blip.",
+        "js_upd_running": "⏳ Updating… the panel may briefly disconnect — do not power off.",
+        "js_upd_done": "✅ Updated — reloading.",
+        "js_upd_failed": "❌ Update failed — check /var/log/synchrofazotron-setup.log on the device.",
         "lang_head": "🌐 Language",
         "lang_note": "Panel language. The choice is saved on the device.",
         "how_head": "ℹ️ How it works",
@@ -264,6 +281,21 @@ STR = {
         "viz_apply": "Zastosuj",
         "audio_head": "🔊 Wyjście dźwięku",
         "audio_note": "Którędy wychodzi dźwięk: DAC (nakładka HAT) albo monitor po HDMI. Przełączenie przepisuje konfigurację startową i działa po restarcie urządzenia.",
+        "upd_head": "🔄 Aktualizacje",
+        "upd_note": "Pobiera najnowszy Synchrofazotron z GitHuba — to samo co ponowne setup.sh (bezpieczne, ustawienia zostają). Sprawdzenie porównuje zainstalowany panel z repo.",
+        "upd_check_btn": "Sprawdź aktualizacje",
+        "upd_run_btn": "⬇ Aktualizuj",
+        "upd_started": "Aktualizacja wystartowała.",
+        "upd_already": "Aktualizacja już trwa.",
+        "upd_fail": "Nie udało się wystartować aktualizacji.",
+        "js_upd_checking": "Sprawdzam…",
+        "js_upd_available": "🔔 Jest nowsza wersja.",
+        "js_upd_current": "✅ Wersja aktualna.",
+        "js_upd_checkfail": "Nie udało się sprawdzić (brak sieci?).",
+        "js_upd_confirm": "Zaktualizować teraz? Potrwa minutę–dwie; panel na chwilę się zrestartuje, odtwarzacze mogą mrugnąć.",
+        "js_upd_running": "⏳ Aktualizuję… panel może na moment zniknąć — nie wyłączaj zasilania.",
+        "js_upd_done": "✅ Zaktualizowane — przeładowuję.",
+        "js_upd_failed": "❌ Aktualizacja nie wyszła — zajrzyj do /var/log/synchrofazotron-setup.log na urządzeniu.",
         "lang_head": "🌐 Język",
         "lang_note": "Język panelu. Wybór zapisuje się na urządzeniu.",
         "how_head": "ℹ️ Jak to działa",
@@ -910,6 +942,48 @@ def _audio_set(mode):
         _file_write(BOOT_CFG, txt)
         _audio_retarget_players(pcm, card)
     return True, T("audio_set").format(out=mode.upper())
+
+
+# ---------------------------------------------------------------------------
+# Updates — "check" compares the installed panel file against GitHub, "run"
+# re-executes setup.sh (idempotent, keeps settings) as a transient systemd
+# unit. The transient unit is essential: web/install.sh restarts
+# pistream-panel.service, and a child process of the panel would be killed by
+# its own restart mid-update.
+# ---------------------------------------------------------------------------
+UPDATE_UNIT = "synchrofazotron-update"
+_RAW_BASE = f"https://raw.githubusercontent.com/{REPO}/{BRANCH}"
+
+
+def _update_check():
+    try:
+        with urllib.request.urlopen(f"{_RAW_BASE}/web/pistream_panel.py",
+                                    timeout=15) as r:
+            remote = r.read()
+        local = open(os.path.abspath(__file__), "rb").read()
+        return {"ok": True, "update_available": remote != local}
+    except Exception:  # noqa: BLE001
+        return {"ok": False}
+
+
+def _update_status():
+    state = _run(["systemctl", "is-active", f"{UPDATE_UNIT}.service"])
+    return {"running": state in ("active", "activating"),
+            "failed": state == "failed"}
+
+
+def _update_run():
+    if _update_status()["running"]:
+        return False, T("upd_already")
+    _run(["systemctl", "reset-failed", f"{UPDATE_UNIT}.service"])
+    _run(["systemd-run", "--unit", UPDATE_UNIT, "bash", "-c",
+          f"curl -fsSL --retry 5 --retry-delay 2 {_RAW_BASE}/setup.sh | bash"],
+         timeout=15)
+    time.sleep(0.7)  # systemd-run reports no exit code through _run — verify
+    st = _update_status()
+    if not st["running"] and not st["failed"]:
+        return False, T("upd_fail")
+    return True, T("upd_started")
 
 
 # ---------------------------------------------------------------------------
@@ -1580,6 +1654,16 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
   </div>
 
   <div class="card">
+    <h2>{{T:upd_head}}</h2>
+    <p class="muted">{{T:upd_note}}</p>
+    <div class="lrow">
+      <button class="btn sec" id="updCheckBtn" onclick="updCheck()">{{T:upd_check_btn}}</button>
+      <button class="btn sec" id="updRunBtn" onclick="updRun()">{{T:upd_run_btn}}</button>
+    </div>
+    <p id="updMsg" class="muted"></p>
+  </div>
+
+  <div class="card">
     <h2>{{T:lang_head}}</h2>
     <p class="muted">{{T:lang_note}}</p>
     <div class="lrow">
@@ -1792,6 +1876,52 @@ async function doReboot() {
   document.getElementById('audioMsg').textContent = '{{T:js_rebooting}}';
 }
 
+function updMsg(t) { document.getElementById('updMsg').textContent = t; }
+
+async function updCheck() {
+  const b = document.getElementById('updCheckBtn');
+  b.disabled = true; updMsg('{{T:js_upd_checking}}');
+  try {
+    const r = await fetch('/api/update/check', {cache:'no-store'});
+    const j = await r.json();
+    updMsg(!j.ok ? '{{T:js_upd_checkfail}}'
+           : (j.update_available ? '{{T:js_upd_available}}' : '{{T:js_upd_current}}'));
+  } catch(e) { updMsg('{{T:js_conn_error}}'); }
+  b.disabled = false;
+}
+
+let updTimer = null;
+function updPoll() {
+  if (updTimer) return;
+  document.getElementById('updRunBtn').disabled = true;
+  updMsg('{{T:js_upd_running}}');
+  updTimer = setInterval(async () => {
+    try {
+      const r = await fetch('/api/update', {cache:'no-store'});
+      const j = await r.json();
+      if (j.running) return;
+      clearInterval(updTimer); updTimer = null;
+      document.getElementById('updRunBtn').disabled = false;
+      if (j.failed) { updMsg('{{T:js_upd_failed}}'); }
+      else { updMsg('{{T:js_upd_done}}'); setTimeout(() => location.reload(), 1500); }
+    } catch(e) { /* panel restarting mid-update — keep polling */ }
+  }, 3000);
+}
+
+async function updRun() {
+  if (!confirm('{{T:js_upd_confirm}}')) return;
+  try {
+    const r = await fetch('/api/update/run', {method:'POST'});
+    const j = await r.json();
+    if (!j.ok) { updMsg(j.message || '{{T:js_error}}'); return; }
+    updPoll();
+  } catch(e) { updMsg('{{T:js_conn_error}}'); }
+}
+
+// page opened (or reloaded) while an update is already running -> resume the poll
+fetch('/api/update', {cache:'no-store'}).then(r => r.json())
+  .then(j => { if (j.running) updPoll(); }).catch(() => {});
+
 async function setLang(lang) {
   try {
     await fetch('/api/lang', {
@@ -1868,6 +1998,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps(_viz_state()), "application/json")
         elif self.path == "/api/audio":
             self._send(200, json.dumps(_audio_state()), "application/json")
+        elif self.path == "/api/update":
+            self._send(200, json.dumps(_update_status()), "application/json")
+        elif self.path == "/api/update/check":
+            self._send(200, json.dumps(_update_check()), "application/json")
         elif self.path == "/api/lang":
             self._send(200, json.dumps({"lang": _lang, "available": LANGS}),
                        "application/json")
@@ -1915,6 +2049,10 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/audio/set":
             body = self._json_body()
             ok, message = _audio_set(str(body.get("output", "")))
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/update/run":
+            ok, message = _update_run()
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/reboot":
