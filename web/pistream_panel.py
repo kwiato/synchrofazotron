@@ -134,6 +134,15 @@ STR = {
         "wifi_key_ph": "Password (empty = open network)",
         "wifi_save_btn": "Save network",
         "wifi_scan_btn": "🔍 Scan for networks",
+        "bts_head": "📶 Bluetooth — paired devices",
+        "bts_note": "Tap a device to connect it — no pairing mode needed. After boot the device also tries to reconnect to paired phones by itself.",
+        "js_bt_none": "Nothing paired yet — use the pairing button on the main panel.",
+        "js_bt_connecting": "Connecting…",
+        "js_bt_disconnect": "disconnect",
+        "bt_bad_mac": "Invalid device address.",
+        "bt_conn_ok": "Connected.",
+        "bt_conn_fail": "Could not connect (device off / out of range / Bluetooth disabled on the phone?).",
+        "bt_disc_ok": "Disconnected.",
         "viz_head": "📊 Visualizer (HDMI)",
         "viz_note": "Bar style on the monitor. Changing it restarts the visualizer (music keeps playing).",
         "viz_edit_btn": "🎛 Fine-tune (custom settings)",
@@ -268,6 +277,15 @@ STR = {
         "wifi_key_ph": "Hasło (puste = sieć otwarta)",
         "wifi_save_btn": "Zapisz sieć",
         "wifi_scan_btn": "🔍 Skanuj otoczenie",
+        "bts_head": "📶 Bluetooth — sparowane urządzenia",
+        "bts_note": "Kliknij urządzenie, żeby je połączyć — bez trybu parowania. Po starcie urządzenie samo próbuje też wznowić połączenie ze sparowanymi telefonami.",
+        "js_bt_none": "Nic jeszcze nie sparowano — użyj przycisku parowania na głównym panelu.",
+        "js_bt_connecting": "Łączę…",
+        "js_bt_disconnect": "rozłącz",
+        "bt_bad_mac": "Nieprawidłowy adres urządzenia.",
+        "bt_conn_ok": "Połączono.",
+        "bt_conn_fail": "Nie udało się połączyć (urządzenie wyłączone / poza zasięgiem / Bluetooth w telefonie wyłączony?).",
+        "bt_disc_ok": "Rozłączono.",
         "viz_head": "📊 Wizualizer (HDMI)",
         "viz_note": "Styl słupków na monitorze. Zmiana restartuje wizualizer (muzyka gra dalej).",
         "viz_edit_btn": "🎛 Dostrój (własne ustawienia)",
@@ -372,15 +390,51 @@ def _bt_show():
     return _run(["bluetoothctl", "show"])
 
 
-def _connected_devices():
-    """Returns a list [(mac, name)] of connected BT devices."""
-    out = _run(["bluetoothctl", "devices", "Connected"])
+def _parse_devices(out):
     devices = []
     for line in out.splitlines():
         parts = line.split(" ", 2)
         if len(parts) >= 3 and parts[0] == "Device":
             devices.append((parts[1], parts[2]))
     return devices
+
+
+def _connected_devices():
+    """Returns a list [(mac, name)] of connected BT devices."""
+    return _parse_devices(_run(["bluetoothctl", "devices", "Connected"]))
+
+
+def _paired_devices():
+    """[(mac, name)] of paired devices (old bluez spells the command differently)."""
+    devices = _parse_devices(_run(["bluetoothctl", "devices", "Paired"]))
+    return devices or _parse_devices(_run(["bluetoothctl", "paired-devices"]))
+
+
+def _bt_payload():
+    connected = {m for m, _ in _connected_devices()}
+    return {"paired": [{"mac": m, "name": n, "connected": m in connected}
+                       for m, n in _paired_devices()]}
+
+
+_MAC_RE = re.compile(r"[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}")
+
+
+def _bt_connect(mac):
+    """Connects an already-paired device (no pairing mode needed)."""
+    if not _MAC_RE.fullmatch(mac):
+        return False, T("bt_bad_mac")
+    _run(["bluetoothctl", "power", "on"])
+    out = _run(["bluetoothctl", "connect", mac], timeout=25)
+    if "Connection successful" in out:
+        return True, T("bt_conn_ok")
+    return False, T("bt_conn_fail")
+
+
+def _bt_disconnect(mac):
+    if not _MAC_RE.fullmatch(mac):
+        return False, T("bt_bad_mac")
+    out = _run(["bluetoothctl", "disconnect", mac], timeout=15)
+    return "__err__" not in out and "Failed" not in out, T("bt_disc_ok")
 
 
 def _start_pairing(window=PAIR_WINDOW_SEC):
@@ -421,6 +475,29 @@ def _auto_trust_loop():
         except Exception:  # noqa: BLE001
             pass
         time.sleep(5)
+
+
+# Reconnecting after boot: phones do not always reconnect to an A2DP sink on
+# their own, so while nothing is connected the Pi keeps the adapter powered
+# and periodically pages the paired devices itself (connectable, NOT
+# discoverable/pairable — pairing stays behind the panel button).
+BT_AUTOCONNECT = os.environ.get("PISTREAM_BT_AUTOCONNECT", "1") == "1"
+
+
+def _bt_autoconnect_loop():
+    while True:
+        try:
+            if _pair_seconds_left() == 0:  # keep out of an open pairing window
+                if "Powered: yes" not in _bt_show():
+                    _run(["bluetoothctl", "power", "on"])
+                if not _connected_devices():
+                    for mac, _name in _paired_devices():
+                        _run(["bluetoothctl", "connect", mac], timeout=15)
+                        if _connected_devices():
+                            break
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(45)
 
 
 def _pair_seconds_left():
@@ -685,13 +762,13 @@ def _viz_params():
         return int(m.group(1)) if m else default
 
     m = re.search(r"^foreground = (\S+)", txt, re.M)
-    return {"framerate": num("framerate", 60),
-            "bar_width": num("bar_width", 2),
-            "bar_spacing": num("bar_spacing", 1),
-            "noise_reduction": num("noise_reduction", 77),
+    return {"framerate": num("framerate", 45),
+            "bar_width": num("bar_width", 9),
+            "bar_spacing": num("bar_spacing", 2),
+            "noise_reduction": num("noise_reduction", 10),
             "monstercat": bool(re.search(r"^monstercat = 1", txt, re.M)),
             "waves": bool(re.search(r"^waves = 1", txt, re.M)),
-            "color": m.group(1) if m and m.group(1) in VIZ_COLORS else "cyan",
+            "color": m.group(1) if m and m.group(1) in VIZ_COLORS else "magenta",
             "colors": list(VIZ_COLORS)}
 
 
@@ -721,7 +798,7 @@ def _viz_set_preset(name):
     if not os.path.isfile(VIZ_CONF):
         return False, T("viz_not_installed")
     with open(VIZ_CONF, "w", encoding="utf-8") as fh:
-        fh.write(_VIZ_TEMPLATE.format(name=name, framerate=60, **{
+        fh.write(_VIZ_TEMPLATE.format(name=name, framerate=45, **{
             k: p[k] for k in ("bar_width", "bar_spacing", "color", "smoothing")}))
     _run(["systemctl", "try-restart", VIZ_SERVICE])
     return True, T("viz_preset_set").format(label=T(p["label_key"]))
@@ -739,13 +816,13 @@ def _viz_set_params(body):
             v = default
         return max(lo, min(hi, v))
 
-    framerate = clamp("framerate", 10, 120, 60)
-    bar_width = clamp("bar_width", 1, 20, 2)
-    bar_spacing = clamp("bar_spacing", 0, 10, 1)
-    noise = clamp("noise_reduction", 0, 100, 77)
-    color = str(body.get("color", "cyan"))
+    framerate = clamp("framerate", 10, 120, 45)
+    bar_width = clamp("bar_width", 1, 20, 9)
+    bar_spacing = clamp("bar_spacing", 0, 10, 2)
+    noise = clamp("noise_reduction", 0, 100, 10)
+    color = str(body.get("color", "magenta"))
     if color not in VIZ_COLORS:
-        color = "cyan"
+        color = "magenta"
     smoothing = []
     if body.get("monstercat"):
         smoothing.append("monstercat = 1")
@@ -1618,6 +1695,13 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
     <p id="msg" class="muted"></p>
   </div>
 
+  <div class="card">
+    <h2>{{T:bts_head}}</h2>
+    <p class="muted">{{T:bts_note}}</p>
+    <div id="btDevices"><p class="muted">…</p></div>
+    <p id="btMsg" class="muted"></p>
+  </div>
+
   <div class="card" id="vizCard" style="display:none;">
     <h2>{{T:viz_head}}</h2>
     <p class="muted">{{T:viz_note}}</p>
@@ -1760,6 +1844,57 @@ async function scan() {
 function pick(ssid) {
   document.getElementById('ssid').value = ssid;
   document.getElementById('key').focus();
+}
+
+let btBusy = false;
+
+async function btRefresh() {
+  if (btBusy) return;  // do not repaint the list mid-connect
+  try {
+    const r = await fetch('/api/bt', {cache:'no-store'});
+    const b = await r.json();
+    const list = b.paired || [];
+    document.getElementById('btDevices').innerHTML = list.length ? list.map(d =>
+      '<div class="row"><div class="info" style="cursor:pointer;" ' +
+      'onclick="btConnect(\\'' + d.mac + '\\')">' +
+      (d.connected ? '🟢 ' : '⚪ ') + '<b>' + escapeHtml(d.name) + '</b></div>' +
+      (d.connected
+        ? '<button class="xbtn" title="{{T:js_bt_disconnect}}" ' +
+          'onclick="btDisconnect(\\'' + d.mac + '\\')">✕</button>'
+        : '')
+      + '</div>'
+    ).join('') : '<p class="muted">{{T:js_bt_none}}</p>';
+  } catch(e) {}
+}
+
+async function btConnect(mac) {
+  if (btBusy) return;
+  btBusy = true;
+  document.getElementById('btMsg').textContent = '{{T:js_bt_connecting}}';
+  try {
+    const r = await fetch('/api/bt/connect', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({mac})
+    });
+    const j = await r.json();
+    document.getElementById('btMsg').textContent = j.message || '';
+  } catch(e) { document.getElementById('btMsg').textContent = '{{T:js_conn_error}}'; }
+  btBusy = false;
+  btRefresh();
+}
+
+async function btDisconnect(mac) {
+  btBusy = true;
+  try {
+    const r = await fetch('/api/bt/disconnect', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({mac})
+    });
+    const j = await r.json();
+    document.getElementById('btMsg').textContent = j.message || '';
+  } catch(e) {}
+  btBusy = false;
+  btRefresh();
 }
 
 async function vizRefresh() {
@@ -1952,9 +2087,11 @@ document.querySelectorAll('[class*="LANGBTN_"]').forEach(b => {
 });
 
 refresh();
+btRefresh();
 vizRefresh();
 audioRefresh();
 setInterval(refresh, 5000);
+setInterval(btRefresh, 5000);
 </script>
 </body>
 </html>
@@ -1998,6 +2135,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps(_viz_state()), "application/json")
         elif self.path == "/api/audio":
             self._send(200, json.dumps(_audio_state()), "application/json")
+        elif self.path == "/api/bt":
+            self._send(200, json.dumps(_bt_payload()), "application/json")
         elif self.path == "/api/update":
             self._send(200, json.dumps(_update_status()), "application/json")
         elif self.path == "/api/update/check":
@@ -2014,6 +2153,14 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/pair":
             _start_pairing()
             self._send(200, json.dumps({"ok": True, "seconds": _pair_seconds_left()}),
+                       "application/json")
+        elif self.path == "/api/bt/connect":
+            ok, message = _bt_connect(str(self._json_body().get("mac", "")))
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/bt/disconnect":
+            ok, message = _bt_disconnect(str(self._json_body().get("mac", "")))
+            self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/control":
             body = self._json_body()
@@ -2073,6 +2220,8 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     threading.Thread(target=_auto_trust_loop, daemon=True).start()
+    if BT_AUTOCONNECT:
+        threading.Thread(target=_bt_autoconnect_loop, daemon=True).start()
     if AUTOPAUSE:
         threading.Thread(target=_autopause_loop, daemon=True).start()
     srv = ThreadingHTTPServer((BIND, PORT), Handler)
