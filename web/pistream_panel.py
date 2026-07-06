@@ -151,6 +151,7 @@ STR = {
         "audio_test_fail": "Test sound FAILED on „{dev}”: {err}",
         "viz_head": "📊 Visualizer (HDMI)",
         "viz_note": "Bar style on the monitor. Changing it restarts the visualizer (music keeps playing).",
+        "viz_missing": "⚠ Not installed — re-run setup.sh (answer y to the visualizer question) or visualizer/install.sh; this card comes alive after that.",
         "viz_edit_btn": "🎛 Fine-tune (custom settings)",
         "viz_p_framerate": "Framerate (fps)",
         "viz_p_bar_width": "Bar width",
@@ -309,6 +310,7 @@ STR = {
         "audio_test_fail": "Test na „{dev}” NIE przeszedł: {err}",
         "viz_head": "📊 Wizualizer (HDMI)",
         "viz_note": "Styl słupków na monitorze. Zmiana restartuje wizualizer (muzyka gra dalej).",
+        "viz_missing": "⚠ Niezainstalowany — odpal ponownie setup.sh (odpowiedz y na pytanie o wizualizer) albo visualizer/install.sh; karta ożyje po instalacji.",
         "viz_edit_btn": "🎛 Dostrój (własne ustawienia)",
         "viz_p_framerate": "Klatki (fps)",
         "viz_p_bar_width": "Szerokość słupka",
@@ -1521,7 +1523,7 @@ def status_payload():
         "playing_count": sum(1 for s in sources if s.get("playing")),
         "services": {
             s: _service_active(s) for s in (
-                ("bluetooth", "bluealsa", "squeezelite",
+                ("bluetooth", "bluealsa", "bluealsa-aplay", "squeezelite",
                  "shairport-sync", "lyrionmusicserver")
                 + (("raspotify",) if SHOW_SPOTIFY else ())
             )
@@ -1898,10 +1900,12 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
     <pre id="btReport" style="display:none;"></pre>
   </div>
 
-  <div class="card" id="vizCard" style="display:none;">
+  <div class="card" id="vizCard">
     <h2>{{T:viz_head}}</h2>
     <p class="muted">{{T:viz_note}}</p>
-    <div class="lrow" id="vizEngineRow" style="display:none;">
+    <p id="vizNA" class="muted" style="display:none;">{{T:viz_missing}}</p>
+    <div id="vizBody">
+    <div class="lrow" id="vizEngineRow">
       <button class="btn sec" id="engCava" onclick="vizEngine('cava')">{{T:viz_eng_cava}}</button>
       <button class="btn sec" id="engGlsl" onclick="vizEngine('glsl')">{{T:viz_eng_glsl}}</button>
     </div>
@@ -1926,6 +1930,7 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
     </div>
     </div>
     <button class="btn sec" id="vizToggle" onclick="vizToggle()">…</button>
+    </div>
     <p id="vizMsg" class="muted"></p>
   </div>
 
@@ -2146,8 +2151,10 @@ async function vizRefresh() {
   try {
     const r = await fetch('/api/viz', {cache:'no-store'});
     const v = await r.json();
+    // not installed: keep the card visible, explain instead of hiding
+    document.getElementById('vizNA').style.display = v.installed ? 'none' : '';
+    document.getElementById('vizBody').style.display = v.installed ? '' : 'none';
     if (!v.installed) return;
-    document.getElementById('vizCard').style.display = '';
     document.getElementById('vizPresets').innerHTML = (v.presets||[]).map(p =>
       '<button class="btn ' + (p.id === v.preset ? '' : 'sec') + '" ' +
       'onclick="vizPreset(\\'' + p.id + '\\')">' + escapeHtml(p.label) +
@@ -2155,12 +2162,14 @@ async function vizRefresh() {
     ).join('');
     document.getElementById('vizToggle').textContent =
       v.active ? '{{T:js_viz_stop}}' : '{{T:js_viz_start}}';
-    // engine switch (shown only when glslViewer is actually usable)
+    // engine switch — the glsl button stays visible even when the engine is
+    // unusable: it gets a warning marker and the click explains what is missing
     const glsl = v.engine === 'glsl';
-    document.getElementById('vizEngineRow').style.display =
-      v.glsl_available ? '' : 'none';
     document.getElementById('engCava').className = 'btn' + (glsl ? ' sec' : '');
-    document.getElementById('engGlsl').className = 'btn' + (glsl ? '' : ' sec');
+    const g = document.getElementById('engGlsl');
+    g.className = 'btn' + (glsl ? '' : ' sec');
+    g.textContent = '{{T:viz_eng_glsl}}' + (v.glsl_available ? '' : ' ⚠');
+    g.title = v.glsl_available ? '' : '{{T:viz_glsl_missing}}';
     document.getElementById('vizCavaCtl').style.display = glsl ? 'none' : '';
     document.getElementById('vizShaders').innerHTML = (glsl ? (v.shaders||[]) : []).map(s =>
       '<button class="btn ' + (s.id === v.shader ? '' : 'sec') + '" ' +
