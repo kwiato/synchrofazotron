@@ -32,7 +32,14 @@ jobs:
               libncurses5-dev libncursesw5-dev libxcb-randr0-dev
             git clone --depth 1 --recursive \
               https://github.com/patriciogonzalezvivo/glslViewer.git /src
-            cmake -S /src -B /build -DCMAKE_BUILD_TYPE=Release -DFORCE_DRM=TRUE
+            # The vera commit pinned by glslViewer predates the FONS_NO_VAO
+            # guards fontstash needs on GLES2 (no VAO functions there) — use
+            # vera@main and define FONS_NO_VAO explicitly.
+            git -C /src/deps/vera fetch --depth 1 origin main
+            git -C /src/deps/vera checkout --force FETCH_HEAD
+            git -C /src/deps/vera submodule update --init --recursive --depth 1
+            cmake -S /src -B /build -DCMAKE_BUILD_TYPE=Release -DFORCE_DRM=TRUE \
+              -DCMAKE_CXX_FLAGS="-DFONS_NO_VAO"
             cmake --build /build -j"$(nproc)"
             BIN="$(find /build -name glslViewer -type f | head -n1)"
             test -n "$BIN"
