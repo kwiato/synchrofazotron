@@ -144,6 +144,11 @@ STR = {
         "bt_conn_ok": "Connected.",
         "bt_conn_fail": "Could not connect (device off / out of range / Bluetooth disabled on the phone?).",
         "bt_disc_ok": "Disconnected.",
+        "bts_debug_btn": "🔍 Audio/BT diagnostics",
+        "bts_test_btn": "🔔 Test sound",
+        "js_bt_testing": "Playing the test sound…",
+        "audio_test_ok": "Test sound played OK on „{dev}” — the output path works; if BT is still silent, run the diagnostics while the phone plays.",
+        "audio_test_fail": "Test sound FAILED on „{dev}”: {err}",
         "viz_head": "📊 Visualizer (HDMI)",
         "viz_note": "Bar style on the monitor. Changing it restarts the visualizer (music keeps playing).",
         "viz_edit_btn": "🎛 Fine-tune (custom settings)",
@@ -297,6 +302,11 @@ STR = {
         "bt_conn_ok": "Połączono.",
         "bt_conn_fail": "Nie udało się połączyć (urządzenie wyłączone / poza zasięgiem / Bluetooth w telefonie wyłączony?).",
         "bt_disc_ok": "Rozłączono.",
+        "bts_debug_btn": "🔍 Diagnostyka audio/BT",
+        "bts_test_btn": "🔔 Test dźwięku",
+        "js_bt_testing": "Gram dźwięk testowy…",
+        "audio_test_ok": "Dźwięk testowy zagrany OK na „{dev}” — tor wyjściowy działa; jeśli BT dalej milczy, odpal diagnostykę w trakcie grania z telefonu.",
+        "audio_test_fail": "Test na „{dev}” NIE przeszedł: {err}",
         "viz_head": "📊 Wizualizer (HDMI)",
         "viz_note": "Styl słupków na monitorze. Zmiana restartuje wizualizer (muzyka gra dalej).",
         "viz_edit_btn": "🎛 Dostrój (własne ustawienia)",
@@ -456,6 +466,85 @@ def _bt_disconnect(mac):
         return False, T("bt_bad_mac")
     out = _run(["bluetoothctl", "disconnect", mac], timeout=15)
     return "__err__" not in out and "Failed" not in out, T("bt_disc_ok")
+
+
+def _aplay_device():
+    """The ALSA device bluealsa-aplay is configured to play to."""
+    m = re.search(r"bluealsa-aplay .*?-d (\S+)", _file_read(BLUEALSA_OVERRIDE))
+    return m.group(1) if m else "default"
+
+
+def _bt_debug():
+    """Plain-text report answering 'BT is connected but silent — why?'."""
+    lines = []
+    dev = _aplay_device()
+    lines.append(f"bluealsa-aplay output device: {dev}")
+    lines.append("services: bluealsa=%s  bluealsa-aplay=%s  bluetooth=%s" % (
+        _run(["systemctl", "is-active", "bluealsa"]),
+        _run(["systemctl", "is-active", "bluealsa-aplay"]),
+        _run(["systemctl", "is-active", "bluetooth"])))
+
+    lines.append("")
+    lines.append("--- BlueALSA PCMs (BT audio transports) ---")
+    pcms = _run(["bluealsa-cli", "list-pcms"])
+    lines.append(pcms.strip() or "(none — is the phone connected?)")
+    for path in pcms.splitlines():
+        path = path.strip()
+        if "a2dp" in path:
+            info = _run(["bluealsa-cli", "info", path])
+            keep = [ln for ln in info.splitlines()
+                    if re.match(r"\s*(Transport|Running|Format|Sampling|Channels)", ln)]
+            lines.append(f"{path}:")
+            lines.extend("  " + ln.strip() for ln in keep)
+
+    lines.append("")
+    lines.append("--- sound cards (/proc/asound/cards) ---")
+    cards = _file_read("/proc/asound/cards")
+    lines.append(cards.strip() or "(empty!)")
+
+    lines.append("")
+    lines.append("--- open playback streams ---")
+    owners = _dac_owners()
+    if owners:
+        lines.extend(f"{o['label']}: " + ("PLAYING" if o["running"] else "open, silent (blocks a 1-substream device)")
+                     for o in owners)
+    else:
+        lines.append("(nothing holds the output)")
+
+    # visualizer tee sanity: a missing slave card silences EVERY source
+    # routed through 'pistream' (the multi device refuses to open at all)
+    m = re.search(r"pcm\.pistream_dac \{[^}]*card (\S+)", _file_read(ASOUND_CONF))
+    if m:
+        card = m.group(1)
+        present = (re.search(rf"^\s*{card}\s+\[", cards, re.M) if card.isdigit()
+                   else card in cards)
+        lines.append("")
+        lines.append(f"visualizer tee slave: card {card} "
+                     + ("(present, OK)" if present else
+                        "(MISSING!! -> 'pistream' cannot open, every source using it is silent; "
+                        "switch the audio output in the panel or reinstall the visualizer)"))
+
+    lines.append("")
+    lines.append("--- bluealsa-aplay journal (last 15 lines) ---")
+    lines.append(_run(["journalctl", "-u", "bluealsa-aplay", "-n", "15",
+                       "--no-pager", "-o", "cat"], timeout=10).strip() or "(empty)")
+    return {"report": "\n".join(lines), "device": dev}
+
+
+def _audio_test():
+    """Plays the standard ALSA test wav through bluealsa-aplay's device —
+    exercises exactly the path BT audio takes. Returns (ok, message)."""
+    dev = _aplay_device()
+    try:
+        r = subprocess.run(
+            ["aplay", "-D", dev, "/usr/share/sounds/alsa/Front_Center.wav"],
+            capture_output=True, text=True, timeout=15)
+    except Exception as e:  # noqa: BLE001
+        return False, T("audio_test_fail").format(dev=dev, err=str(e))
+    if r.returncode == 0:
+        return True, T("audio_test_ok").format(dev=dev)
+    return False, T("audio_test_fail").format(dev=dev,
+                                              err=(r.stderr or "").strip()[:300])
 
 
 def _start_pairing(window=PAIR_WINDOW_SEC):
@@ -1751,6 +1840,9 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
   .lrow { display:flex; gap:10px; }
   .lrow .btn { margin-top: 0; }
   .credits div { padding: 3px 0; }
+  pre { background:#0b0e12; border:1px solid #2b3440; border-radius:10px;
+    padding:10px; font-size:.78rem; overflow-x:auto; white-space:pre-wrap;
+    word-break:break-word; }
   .vlabel { display:block; margin:10px 0 2px; color:#c4cad3; font-size:.95rem; }
   .vlabel input[type=range] { width:100%; margin:4px 0 0; }
   select {
@@ -1797,6 +1889,11 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
     <p class="muted">{{T:bts_note}}</p>
     <div id="btDevices"><p class="muted">…</p></div>
     <p id="btMsg" class="muted"></p>
+    <div class="lrow">
+      <button class="btn sec" id="btTestBtn" onclick="btTest()">{{T:bts_test_btn}}</button>
+      <button class="btn sec" onclick="btDebug()">{{T:bts_debug_btn}}</button>
+    </div>
+    <pre id="btReport" style="display:none;"></pre>
   </div>
 
   <div class="card" id="vizCard" style="display:none;">
@@ -2018,6 +2115,29 @@ async function btDisconnect(mac) {
   } catch(e) {}
   btBusy = false;
   btRefresh();
+}
+
+async function btTest() {
+  const b = document.getElementById('btTestBtn');
+  b.disabled = true;
+  document.getElementById('btMsg').textContent = '{{T:js_bt_testing}}';
+  try {
+    const r = await fetch('/api/audio/test', {method:'POST'});
+    const j = await r.json();
+    document.getElementById('btMsg').textContent = j.message || '';
+  } catch(e) { document.getElementById('btMsg').textContent = '{{T:js_conn_error}}'; }
+  b.disabled = false;
+}
+
+async function btDebug() {
+  const el = document.getElementById('btReport');
+  el.style.display = '';
+  el.textContent = '…';
+  try {
+    const r = await fetch('/api/bt/debug', {cache:'no-store'});
+    const j = await r.json();
+    el.textContent = j.report || '';
+  } catch(e) { el.textContent = '{{T:js_conn_error}}'; }
 }
 
 async function vizRefresh() {
@@ -2286,6 +2406,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps(_audio_state()), "application/json")
         elif self.path == "/api/bt":
             self._send(200, json.dumps(_bt_payload()), "application/json")
+        elif self.path == "/api/bt/debug":
+            self._send(200, json.dumps(_bt_debug()), "application/json")
         elif self.path == "/api/update":
             self._send(200, json.dumps(_update_status()), "application/json")
         elif self.path == "/api/update/check":
@@ -2302,6 +2424,10 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/pair":
             _start_pairing()
             self._send(200, json.dumps({"ok": True, "seconds": _pair_seconds_left()}),
+                       "application/json")
+        elif self.path == "/api/audio/test":
+            ok, message = _audio_test()
+            self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/bt/connect":
             ok, message = _bt_connect(str(self._json_body().get("mac", "")))
