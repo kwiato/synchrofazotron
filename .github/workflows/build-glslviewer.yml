@@ -38,6 +38,13 @@ jobs:
             git -C /src/deps/vera fetch --depth 1 origin main
             git -C /src/deps/vera checkout --force FETCH_HEAD
             git -C /src/deps/vera submodule update --init --recursive --depth 1
+            # vera hardcodes GLES2 headers for DRM builds, but newer code
+            # (gsplat) needs the ES3 declarations. GLES3/gl3.h is a superset,
+            # Mesa exports the ES3 symbols in libGLESv2 either way, and the
+            # ES3-only paths are never hit at runtime on an ES2 GPU
+            # (no .splat files loaded, fonts run with FONS_NO_VAO).
+            sed -i 's|#include <GLES2/gl2.h>|#include <GLES3/gl3.h>|' \
+              /src/deps/vera/include/vera/gl/gl.h
             cmake -S /src -B /build -DCMAKE_BUILD_TYPE=Release -DFORCE_DRM=TRUE \
               -DCMAKE_CXX_FLAGS="-DFONS_NO_VAO"
             cmake --build /build -j"$(nproc)"
