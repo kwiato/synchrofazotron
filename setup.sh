@@ -10,7 +10,8 @@
 #   PISTREAM_DAC_OVERLAY=...    DAC device-tree overlay
 #                               (default: allo-boss-dac-pcm512x-audio; the other
 #                               candidate for the PCM5122 is hifiberry-dacplus)
-#   PISTREAM_VISUALIZER=1       also install the HDMI audio visualizer (default: 0)
+#   PISTREAM_VISUALIZER=1|0     also install the HDMI audio visualizer
+#                               (default: ask on a terminal; 0 when piped)
 #   PISTREAM_TAILSCALE=0        skip Tailscale install (default: 1 = install)
 #   PISTREAM_AP_FALLBACK=0      skip the setup-AP fallback (default: 1 = install)
 #   PISTREAM_REPO / PISTREAM_BRANCH   where the panel files are fetched from
@@ -45,8 +46,10 @@ export G_INTERACTIVE=0   # tell DietPi scripts to never prompt
 
 # ---- pretty output ---------------------------------------------------------
 # On a terminal: colored step headers, an animated spinner for slow commands
-# (their output goes to $LOG), ✔/✖ marks. Piped/non-UTF-8 output degrades to
-# plain ASCII / streamed command output automatically.
+# (their output goes to $LOG), ✔/✖ marks. While a step runs, SPACE toggles a
+# live view of the log on the terminal's alternate screen (press again to go
+# back to the summary). Piped/non-UTF-8 output degrades to plain ASCII /
+# streamed command output automatically.
 LOG=/var/log/synchrofazotron-setup.log
 TTY=0;  [[ -t 1 ]] && TTY=1
 UTF8=0; [[ "$(locale charmap 2>/dev/null || true)" == *UTF-8* ]] && UTF8=1
@@ -60,8 +63,39 @@ if ((UTF8)); then
 else
   M_OK='+' M_FAIL='x' M_WARN='!' M_DOT='*' SP_FRAMES='|/-\'
 fi
-SPIN_PID=''
-trap '[[ -n $SPIN_PID ]] && kill "$SPIN_PID" 2>/dev/null; ((TTY)) && printf "\e[?25h"' EXIT
+# Key input for the live-log toggle: read the controlling terminal directly —
+# under `curl | bash` stdin is the pipe, but /dev/tty still points at the user.
+KEY_IN=0
+((TTY)) && { : </dev/tty; } 2>/dev/null && KEY_IN=1
+STTY_SAVED=''
+((KEY_IN)) && { STTY_SAVED="$(stty -g </dev/tty 2>/dev/null || true)"; stty -echo </dev/tty 2>/dev/null || true; }
+
+VERBOSE=0; TAIL_PID=''; CMD_PID=''
+trap '[[ -n $TAIL_PID ]] && kill "$TAIL_PID" 2>/dev/null || true
+      [[ -n $STTY_SAVED ]] && stty "$STTY_SAVED" </dev/tty 2>/dev/null || true
+      ((TTY)) && printf "\e[?1049l\e[?25h" || true' EXIT
+
+log_show() {  # live-log view: switch to the terminal alternate screen + tail -f
+  printf '\e[?1049h\e[H\e[2J'
+  printf '%s--- live log (%s) --- space = back to the summary ---%s\n' "$DIM" "$LOG" "$RST"
+  tail -n 25 -f "$LOG" 2>/dev/null & TAIL_PID=$!
+  VERBOSE=1
+}
+log_hide() {  # stop the tail and return to the untouched main screen
+  [[ -n $TAIL_PID ]] && { kill "$TAIL_PID" 2>/dev/null || true; wait "$TAIL_PID" 2>/dev/null || true; }
+  TAIL_PID=''
+  printf '\e[?1049l'
+  VERBOSE=0
+}
+
+ask_yn() {  # ask_yn <question> — one key from /dev/tty; y/t = yes, anything
+            # else (or 60 s of silence, so unattended runs move on) = no
+  local key=''
+  printf '%s?%s %s [y/N] ' "$YELLOW" "$RST" "$1"
+  IFS= read -rsn1 -t 60 key </dev/tty 2>/dev/null || key=''
+  if [[ $key == [yYtT] ]]; then printf 'yes\n'; return 0; fi
+  printf 'no\n'; return 1
+}
 
 step() {  # step <n/m> <title>
   printf '\n%s[%s]%s %s%s%s\n' "$CYAN" "$1" "$RST" "$BOLD" "$2" "$RST"
@@ -70,21 +104,31 @@ ok()   { printf '  %s%s%s %s\n' "$GREEN"  "$M_OK"   "$RST" "$1"; }
 warn() { printf '  %s%s%s %s\n' "$YELLOW" "$M_WARN" "$RST" "$1"; }
 
 run() {  # run [-w] <label> <cmd…> — spinner while it runs, output to $LOG.
+         # While a command runs, SPACE toggles a live view of $LOG (alt screen).
          # On failure: exit with the log tail, or with -w just warn + return rc.
   local soft=0; [[ $1 == -w ]] && { soft=1; shift; }
   local label=$1 rc=0; shift
   echo "--- $(date '+%F %T') $label" >>"$LOG"
   if ((TTY)); then
+    local i=0 key hint=''
+    ((KEY_IN)) && hint=" ${DIM}[space: log]${RST}"
     printf '\e[?25l'
-    ( i=0
-      while :; do
-        printf '\r  %s%s%s %s\e[K' "$CYAN" "${SP_FRAMES:i++%${#SP_FRAMES}:1}" "$RST" "$label"
+    "$@" >>"$LOG" 2>&1 </dev/null & CMD_PID=$!
+    while kill -0 "$CMD_PID" 2>/dev/null; do
+      ((VERBOSE)) || printf '\r  %s%s%s %s%s\e[K' "$CYAN" "${SP_FRAMES:i++%${#SP_FRAMES}:1}" "$RST" "$label" "$hint"
+      key=''
+      if ((KEY_IN)); then
+        IFS= read -rsn1 -t 0.12 key </dev/tty 2>/dev/null || true
+      else
         sleep 0.12
-      done ) & SPIN_PID=$!
-    "$@" >>"$LOG" 2>&1 </dev/null || rc=$?
-    kill "$SPIN_PID" 2>/dev/null || true
-    wait "$SPIN_PID" 2>/dev/null || true
-    SPIN_PID=''
+      fi
+      if [[ $key == ' ' ]]; then
+        if ((VERBOSE)); then log_hide; else log_show; fi
+      fi
+    done
+    wait "$CMD_PID" || rc=$?
+    CMD_PID=''
+    ((VERBOSE)) && log_hide
     printf '\e[?25h'
     if ((rc == 0)); then
       printf '\r  %s%s%s %s\e[K\n' "$GREEN" "$M_OK" "$RST" "$label"
@@ -109,6 +153,7 @@ run() {  # run [-w] <label> <cmd…> — spinner while it runs, output to $LOG.
 
 echo "=== $(date '+%F %T') setup.sh run ===" >>"$LOG"
 ((TTY)) && printf '%sdetailed log: %s%s\n' "$DIM" "$LOG" "$RST"
+((KEY_IN)) && printf '%swhile a step runs: space = show/hide the live log%s\n' "$DIM" "$RST"
 
 # Local mode only when run as a file from a repo checkout; `curl | bash` always
 # fetches sub-installers from GitHub.
@@ -117,6 +162,20 @@ LOCAL=0
 [[ "$(basename -- "$0")" == "setup.sh" && -f "$SRC_DIR/web/install.sh" ]] && LOCAL=1
 
 REBOOT_NEEDED=0
+
+# Visualizer: env var wins; otherwise ask up front (so the answer is given
+# before the long installs start), defaulting to "no" without a keyboard.
+# An already-installed visualizer is just updated, no question asked.
+VIZ="${PISTREAM_VISUALIZER:-}"
+if [[ -z $VIZ ]]; then
+  if [[ -f /opt/pistream-visualizer/cava.conf ]]; then
+    VIZ=1
+  elif ((KEY_IN)) && { echo; ask_yn "install the HDMI visualizer (music bars on a monitor)?"; }; then
+    VIZ=1
+  else
+    VIZ=0
+  fi
+fi
 
 # --------------------------------------------------------------------------
 step 1/10 "Audio output: $AUDIO"
@@ -431,7 +490,7 @@ fi
 # --------------------------------------------------------------------------
 step 10/10 "HDMI visualizer"
 # --------------------------------------------------------------------------
-if [[ "${PISTREAM_VISUALIZER:-0}" == "1" ]]; then
+if [[ "$VIZ" == "1" ]]; then
   if [[ $LOCAL == 1 ]]; then
     run "visualizer/install.sh" bash "$SRC_DIR/visualizer/install.sh"
   else
@@ -439,7 +498,7 @@ if [[ "${PISTREAM_VISUALIZER:-0}" == "1" ]]; then
       bash -c "set -euo pipefail; curl -fsSL '$RAW/visualizer/install.sh' | bash"
   fi
 else
-  ok "skipped (set PISTREAM_VISUALIZER=1 to install; can be run any time later)"
+  ok "skipped (re-run setup.sh or use PISTREAM_VISUALIZER=1 to install it any time)"
 fi
 
 # --------------------------------------------------------------------------
