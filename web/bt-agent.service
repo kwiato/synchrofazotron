@@ -9,6 +9,10 @@ Type=simple
 ExecStart=/usr/bin/bt-agent -c NoInputNoOutput
 Restart=on-failure
 RestartSec=3
+# bt-agent ignores SIGTERM (bluez-tools quirk) — without this every restart/
+# shutdown waits the full 90 s stop timeout before SIGKILL. SIGINT works.
+KillSignal=SIGINT
+TimeoutStopSec=10
 
 [Install]
 WantedBy=bluetooth.target
