@@ -16,8 +16,8 @@
 #   PISTREAM_REPO / PISTREAM_BRANCH   where the panel files are fetched from
 #
 # What it does (see README.md for the full picture):
-#   1) audio output: DAC overlay via dietpi-set_hardware, or the HDMI-audio
-#      workaround (config.txt + snd_bcm2835)
+#   1) audio output: DAC overlay + I2C (for i2cdetect diagnostics) via
+#      dietpi-set_hardware, or the HDMI-audio workaround (config.txt + snd_bcm2835)
 #   2) zram (zstd, 50%) — headroom on the 512 MB Zero 2 W
 #   3) dietpi-software: Lyrion Music Server, Squeezelite, Shairport Sync, Avahi
 #   4) LMS auto-config: skips the first-run wizard, installs Material Skin +
@@ -139,6 +139,15 @@ if [[ $AUDIO == dac ]]; then
   else
     run "DAC overlay: $DAC_OVERLAY (dietpi-set_hardware)" \
       /boot/dietpi/func/dietpi-set_hardware soundcard "$DAC_OVERLAY"
+    REBOOT_NEEDED=1
+  fi
+  # I2C on — the PCM5122 sits on the I2C bus; userspace access (/dev/i2c-1 +
+  # i2c-tools) is what makes the `i2cdetect -y 1` check from dac-setup.md work
+  if grep -qE '^dtparam=i2c_arm=on' "$CFG" && command -v i2cdetect >/dev/null 2>&1; then
+    ok "I2C already enabled"
+  else
+    run "enabling I2C (dietpi-set_hardware)" \
+      /boot/dietpi/func/dietpi-set_hardware i2c enable
     REBOOT_NEEDED=1
   fi
   OUT_PCM="hw:CARD=BossDAC,DEV=0"
