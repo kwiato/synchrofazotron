@@ -109,6 +109,9 @@ STR = {
         "js_off": "off",
         "js_connected": "connected: ",
         "js_silence": "Silence — nothing is playing.",
+        "js_dac_owner": "🔒 Output held by: ",
+        "js_dac_hold": "(open, silent)",
+        "js_dac_free": "🔓 Output free — any source can grab it.",
         "js_ctrl_hint": "control from the source app",
         "js_pair_active_pre": "✅ Pairing active — look for \"{{DEVICE}}\" (",
         "js_pair_active_suf": "s)",
@@ -217,6 +220,9 @@ STR = {
         "js_off": "wyłączony",
         "js_connected": "połączone: ",
         "js_silence": "Cisza — nic nie gra.",
+        "js_dac_owner": "🔒 Wyjście zajęte przez: ",
+        "js_dac_hold": "(otwarte, nie gra)",
+        "js_dac_free": "🔓 Wyjście wolne — każde źródło może je przejąć.",
         "js_ctrl_hint": "steruj z apki źródła",
         "js_pair_active_pre": "✅ Parowanie aktywne — szukaj \"{{DEVICE}}\" (",
         "js_pair_active_suf": "s)",
@@ -571,7 +577,7 @@ VIZ_SERVICE = "pistream-visualizer"
 
 _VIZ_TEMPLATE = """# preset: {name} (managed by the Synchrofazotron panel — /settings page)
 [general]
-framerate = 30
+framerate = 60
 autosens = 1
 bars = 0
 bar_width = {bar_width}
@@ -921,6 +927,26 @@ def _alsa_active_units():
     return _alsa_playback_units(running_only=True)
 
 
+# Who holds the audio output right now. A stream that is open but silent
+# (e.g. a paused squeezelite before its -C 5 timeout closes the device) still
+# blocks the single-substream DAC — that is the classic reason Bluetooth or
+# AirPlay produce no sound, so the panel shows it explicitly.
+_UNIT_LABELS = {
+    "squeezelite.service": "LMS (squeezelite)",
+    "shairport-sync.service": "AirPlay (shairport-sync)",
+    "bluealsa-aplay.service": "Bluetooth (bluealsa-aplay)",
+    "raspotify.service": "Spotify (raspotify)",
+}
+
+
+def _dac_owners():
+    """[{'unit','label','running'}] for every unit holding a playback stream."""
+    holding = _alsa_playback_units(running_only=False)
+    running = _alsa_playback_units(running_only=True)
+    return [{"unit": u, "label": _UNIT_LABELS.get(u, u), "running": u in running}
+            for u in sorted(holding)]
+
+
 def _active_sources(connected):
     """Returns the list of sources with their playback state."""
     sources = []
@@ -1073,6 +1099,7 @@ def status_payload():
         "pair_seconds_left": _pair_seconds_left(),
         "connected": [{"mac": m, "name": n} for m, n in connected],
         "sources": sources,
+        "dac_owners": _dac_owners(),
         "playing_count": sum(1 for s in sources if s.get("playing")),
         "services": {
             s: _service_active(s) for s in (
@@ -1187,6 +1214,7 @@ PAGE_TEMPLATE = """<!DOCTYPE html>
       {{T:warn_multi}}
     </div>
     <div id="sources"><p class="muted">…</p></div>
+    <p id="dacline" class="muted" style="margin-top:8px;"></p>
     <p class="muted" style="margin-top:8px;">{{T:sources_note}}</p>
   </div>
 
@@ -1281,6 +1309,14 @@ async function refresh() {
     }
     document.getElementById('warn').style.display =
       (s.playing_count >= 2) ? 'block' : 'none';
+
+    // who holds the audio device (an open-but-silent stream still blocks the DAC)
+    const own = s.dac_owners || [];
+    document.getElementById('dacline').innerHTML = own.length
+      ? '{{T:js_dac_owner}}' + own.map(o =>
+          '<b>' + escapeHtml(o.label) + '</b>' +
+          (o.running ? '' : ' {{T:js_dac_hold}}')).join(', ')
+      : '{{T:js_dac_free}}';
 
     const svc = s.services || {};
     document.getElementById('svc').textContent =
