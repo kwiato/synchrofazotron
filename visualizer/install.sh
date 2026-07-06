@@ -26,7 +26,7 @@ if [[ "$(basename -- "$0")" != "install.sh" || ! -f "$SRC_DIR/asound-tee.conf" ]
   SRC_DIR="$(mktemp -d)"
   trap 'rm -rf "$SRC_DIR"' EXIT
   for f in "${FILES[@]}"; do
-    curl -fsSL "$RAW/$f" -o "$SRC_DIR/$f"
+    curl -fsSL --retry 5 --retry-delay 2 "$RAW/$f" -o "$SRC_DIR/$f"
   done
 fi
 

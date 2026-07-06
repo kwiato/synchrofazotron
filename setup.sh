@@ -70,9 +70,10 @@ KEY_IN=0
 STTY_SAVED=''
 ((KEY_IN)) && { STTY_SAVED="$(stty -g </dev/tty 2>/dev/null || true)"; stty -echo </dev/tty 2>/dev/null || true; }
 
-VERBOSE=0; TAIL_PID=''; CMD_PID=''
+VERBOSE=0; TAIL_PID=''; CMD_PID=''; FETCH_DIR=''
 trap '[[ -n $TAIL_PID ]] && kill "$TAIL_PID" 2>/dev/null || true
       [[ -n $STTY_SAVED ]] && stty "$STTY_SAVED" </dev/tty 2>/dev/null || true
+      [[ -n $FETCH_DIR ]] && rm -rf "$FETCH_DIR" || true
       ((TTY)) && printf "\e[?1049l\e[?25h" || true' EXIT
 
 log_show() {  # live-log view: switch to the terminal alternate screen + tail -f
@@ -155,11 +156,27 @@ echo "=== $(date '+%F %T') setup.sh run ===" >>"$LOG"
 ((TTY)) && printf '%sdetailed log: %s%s\n' "$DIM" "$LOG" "$RST"
 ((KEY_IN)) && printf '%swhile a step runs: space = show/hide the live log%s\n' "$DIM" "$RST"
 
-# Local mode only when run as a file from a repo checkout; `curl | bash` always
-# fetches sub-installers from GitHub.
+# Local mode only when run as a file from a repo checkout; `curl | bash`
+# downloads the repo once as a tarball (below) and continues locally.
 SRC_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo .)"
 LOCAL=0
 [[ "$(basename -- "$0")" == "setup.sh" && -f "$SRC_DIR/web/install.sh" ]] && LOCAL=1
+
+fetch_repo() {  # whole repo in one request — the burst of per-file fetches
+                # from raw.githubusercontent.com was getting HTTP 429
+  curl -fsSL --retry 5 --retry-delay 2 \
+    "https://codeload.github.com/$REPO/tar.gz/refs/heads/$BRANCH" \
+    | tar -xz -C "$FETCH_DIR" --strip-components=1
+}
+if ((!LOCAL)); then
+  FETCH_DIR="$(mktemp -d)"
+  if run -w "downloading $REPO@$BRANCH (single tarball)" fetch_repo; then
+    SRC_DIR="$FETCH_DIR"
+    LOCAL=1
+  else
+    warn "tarball download failed — falling back to per-file fetches"
+  fi
+fi
 
 REBOOT_NEEDED=0
 
@@ -450,7 +467,7 @@ if [[ $LOCAL == 1 ]]; then
   run "web/install.sh (panel on :8787 + bt-agent)" bash "$SRC_DIR/web/install.sh"
 else
   run "web/install.sh (panel on :8787 + bt-agent)" \
-    bash -c "set -euo pipefail; curl -fsSL '$RAW/web/install.sh' | bash"
+    bash -c "set -euo pipefail; curl -fsSL --retry 5 --retry-delay 2 '$RAW/web/install.sh' | bash"
 fi
 
 # --------------------------------------------------------------------------
@@ -459,7 +476,7 @@ step 8/10 "Tailscale"
 ts_install() {  # to a file first — `| sh </dev/null` starves sh of the script
   local f rc=0
   f="$(mktemp)"
-  curl -fsSL https://tailscale.com/install.sh -o "$f" && sh "$f" || rc=$?
+  curl -fsSL --retry 5 --retry-delay 2 https://tailscale.com/install.sh -o "$f" && sh "$f" || rc=$?
   rm -f "$f"
   return "$rc"
 }
@@ -481,7 +498,7 @@ if [[ "${PISTREAM_AP_FALLBACK:-1}" == "1" ]]; then
     run "ap-fallback/install.sh" bash "$SRC_DIR/ap-fallback/install.sh"
   else
     run "ap-fallback/install.sh" \
-      bash -c "set -euo pipefail; curl -fsSL '$RAW/ap-fallback/install.sh' | bash"
+      bash -c "set -euo pipefail; curl -fsSL --retry 5 --retry-delay 2 '$RAW/ap-fallback/install.sh' | bash"
   fi
 else
   ok "skipped (PISTREAM_AP_FALLBACK=0)"
@@ -495,7 +512,7 @@ if [[ "$VIZ" == "1" ]]; then
     run "visualizer/install.sh" bash "$SRC_DIR/visualizer/install.sh"
   else
     run "visualizer/install.sh" \
-      bash -c "set -euo pipefail; curl -fsSL '$RAW/visualizer/install.sh' | bash"
+      bash -c "set -euo pipefail; curl -fsSL --retry 5 --retry-delay 2 '$RAW/visualizer/install.sh' | bash"
   fi
 else
   ok "skipped (re-run setup.sh or use PISTREAM_VISUALIZER=1 to install it any time)"
