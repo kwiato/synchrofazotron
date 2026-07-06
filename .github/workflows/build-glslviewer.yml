@@ -43,7 +43,7 @@ jobs:
             # Mesa exports the ES3 symbols in libGLESv2 either way, and the
             # ES3-only paths are never hit at runtime on an ES2 GPU
             # (no .splat files loaded, fonts run with FONS_NO_VAO).
-            sed -i 's|#include <GLES2/gl2.h>|#include <GLES3/gl3.h>|' \
+            sed -i "s|#include <GLES2/gl2.h>|#include <GLES3/gl3.h>|" \
               /src/deps/vera/include/vera/gl/gl.h
             cmake -S /src -B /build -DCMAKE_BUILD_TYPE=Release -DFORCE_DRM=TRUE \
               -DCMAKE_CXX_FLAGS="-DFONS_NO_VAO"
