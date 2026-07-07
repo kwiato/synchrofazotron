@@ -60,6 +60,14 @@ jobs:
             # DRM like Broadcom so injected shader headers say version 100.
             sed -i "s,#elif defined(DRIVER_BROADCOM),#elif defined(DRIVER_BROADCOM) || defined(DRIVER_DRM)," \
               /src/deps/vera/include/vera/shaders/defaultShaders.h
+            # The page-flip wait in gbm_swap_buffers selects on stdin (a
+            # kmscube leftover) and bails out whenever a byte arrives,
+            # leaking the locked front buffer. Our audio bridge streams
+            # uniforms into stdin at 43 Hz, so the GBM surface runs out of
+            # buffers within a second and lock_front_buffer returns NULL ->
+            # segfault in gbm_bo_get_device. Commands still reach the app
+            # through the console thread, so just drop stdin from the set.
+            sed -i "/FD_SET(0, &drm_fds);/d" /src/deps/vera/src/window.cpp
             cmake -S /src -B /build -DCMAKE_BUILD_TYPE=Release -DFORCE_DRM=TRUE \
               -DCMAKE_CXX_FLAGS="-DFONS_NO_VAO"
             cmake --build /build -j"$(nproc)"
