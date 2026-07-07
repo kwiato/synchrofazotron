@@ -45,7 +45,7 @@ jobs:
             # (no .splat files loaded, fonts run with FONS_NO_VAO).
             sed -i "s|#include <GLES2/gl2.h>|#include <GLES3/gl3.h>|" \
               /src/deps/vera/include/vera/gl/gl.h
-            # vera's DRM path asks EGL for an ES3 config with alpha 8 and 4x
+            # The vera DRM path asks EGL for an ES3 config with alpha 8 and 4x
             # MSAA. VideoCore IV (Pi Zero 2 W) is ES2-only, and the alpha-8
             # ask matches only ARGB configs while vera scans out XRGB8888 —
             # its visual-id check then rejects every candidate. MSAA buys
