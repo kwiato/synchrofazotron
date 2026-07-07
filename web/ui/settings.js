@@ -28,10 +28,11 @@ async function refresh() {
     const saved = w.saved || [];
     box.innerHTML = saved.length ? saved.map(s =>
       '<div class="row"><div class="info">' +
-      (cur && cur.ssid === s.ssid ? '🟢 ' : '') + '<b>' + escapeHtml(s.ssid) + '</b>' +
+      (cur && cur.ssid === s.ssid ? '<i class="dot on"></i> ' : '') +
+      '<b>' + escapeHtml(s.ssid) + '</b>' +
       ' <span class="muted">{{T:js_slot}}' + s.slot + '</span></div>' +
       '<button class="xbtn" title="{{T:js_remove}}" onclick="removeNet(' + s.slot + ',\'' +
-      escapeHtml(s.ssid).replace(/'/g, "\\'") + '\')">🗑</button></div>'
+      escapeHtml(s.ssid).replace(/'/g, "\\'") + '\')"><i class="ico ico-trash"></i></button></div>'
     ).join('') : '<p class="muted">{{T:js_no_saved}}</p>';
   } catch(e) {}
 }
@@ -236,14 +237,15 @@ async function btRefresh() {
     document.getElementById('btDevices').innerHTML = list.length ? list.map(d =>
       '<div class="row"><div class="info" style="cursor:pointer;" ' +
       'onclick="btConnect(\'' + d.mac + '\')">' +
-      (d.connected ? '🟢 ' : '⚪ ') + '<b>' + escapeHtml(d.name) + '</b></div>' +
+      '<i class="dot' + (d.connected ? ' on' : '') + '"></i> ' +
+      '<b>' + escapeHtml(d.name) + '</b></div>' +
       (d.connected
         ? '<button class="xbtn" title="{{T:js_bt_disconnect}}" ' +
           'onclick="btDisconnect(\'' + d.mac + '\')">✕</button>'
         : '') +
       '<button class="xbtn" title="{{T:bt_forget_title}}" ' +
       'onclick="btForget(\'' + d.mac + '\',\'' +
-      escapeHtml(d.name).replace(/'/g, "\\'") + '\')">🗑</button>' +
+      escapeHtml(d.name).replace(/'/g, "\\'") + '\')"><i class="ico ico-trash"></i></button>' +
       '</div>'
     ).join('') : '<p class="muted">{{T:js_bt_none}}</p>';
   } catch(e) {}
@@ -356,7 +358,7 @@ async function vizRefresh() {
       (s.id === v.shader ? ' ✓' : '') + '</button>' +
       (s.id === v.shader ? '' :
         '<button class="ebtn" title="{{T:sdel_title}}" ' +
-        'onclick="shaderDel(\'' + s.id + '\')">🗑</button>') +
+        'onclick="shaderDel(\'' + s.id + '\')"><i class="ico ico-trash"></i></button>') +
       '</div>'
     ).join('');
     document.getElementById('shaderDrop').style.display = glsl ? '' : 'none';
@@ -531,8 +533,8 @@ async function audioRefresh() {
     const h = document.getElementById('audioHdmi');
     d.className = 'btn' + (a.output === 'dac' ? '' : ' sec');
     h.className = 'btn' + (a.output === 'hdmi' ? '' : ' sec');
-    d.textContent = '🎛 DAC' + (a.output === 'dac' ? ' ✓' : '');
-    h.textContent = '🖥 HDMI' + (a.output === 'hdmi' ? ' ✓' : '');
+    d.textContent = 'DAC' + (a.output === 'dac' ? ' ✓' : '');
+    h.textContent = 'HDMI' + (a.output === 'hdmi' ? ' ✓' : '');
     document.getElementById('rebootBtn').style.display =
       a.reboot_required ? '' : 'none';
     if (a.reboot_required)

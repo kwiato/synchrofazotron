@@ -37,13 +37,13 @@
         <div class="cardgrid">
 
           <div class="card">
-            <h2>{{T:wifi_now_head}}</h2>
+            <h2><i class="ico ico-wifi"></i> {{T:wifi_now_head}}</h2>
             <p id="wifiNow" class="muted">…</p>
             <p id="netInfo" class="muted"></p>
           </div>
 
           <div class="card">
-            <h2>{{T:wifi_saved_head}}</h2>
+            <h2><i class="ico ico-list"></i> {{T:wifi_saved_head}}</h2>
             <p class="muted">{{T:wifi_saved_note}}</p>
             <div id="saved"><p class="muted">…</p></div>
             <button class="btn sec" onclick="wifiModal(true)">{{T:wifi_add_btn}}</button>
@@ -56,7 +56,7 @@
 
           <div class="card">
             <div class="card-head">
-              <h2>{{T:ts_head}}</h2>
+              <h2><i class="ico ico-link"></i> {{T:ts_head}}</h2>
               <label class="switch">
                 <input type="checkbox" id="tsSwitch" disabled>
                 <span class="knob"></span>
@@ -68,18 +68,18 @@
           </div>
 
           <div class="card">
-            <h2>{{T:audio_head}}</h2>
+            <h2><i class="ico ico-volume"></i> {{T:audio_head}}</h2>
             <p class="muted">{{T:audio_note}}</p>
             <div class="lrow">
-              <button class="btn sec" id="audioDac" onclick="audioSet('dac')">🎛 DAC</button>
-              <button class="btn sec" id="audioHdmi" onclick="audioSet('hdmi')">🖥 HDMI</button>
+              <button class="btn sec" id="audioDac" onclick="audioSet('dac')">DAC</button>
+              <button class="btn sec" id="audioHdmi" onclick="audioSet('hdmi')">HDMI</button>
             </div>
             <button class="btn sec" id="rebootBtn" style="display:none;" onclick="doReboot()">{{T:js_reboot}}</button>
             <p id="audioMsg" class="muted"></p>
           </div>
 
           <div class="card">
-            <h2>{{T:lang_head}}</h2>
+            <h2><i class="ico ico-globe"></i> {{T:lang_head}}</h2>
             <p class="muted">{{T:lang_note}}</p>
             <select id="langSel">
               <option value="en">English</option>
@@ -88,7 +88,7 @@
           </div>
 
           <div class="card">
-            <h2>{{T:upd_head}}</h2>
+            <h2><i class="ico ico-refresh"></i> {{T:upd_head}}</h2>
             <p class="muted">{{T:upd_note}}</p>
             <div class="lrow">
               <button class="btn sec" id="updCheckBtn" onclick="updCheck()">{{T:upd_check_btn}}</button>
@@ -107,7 +107,7 @@
 
           <div class="card" id="card_bluetooth">
             <div class="card-head">
-              <h2>{{T:bt_head}}</h2>
+              <h2><i class="ico ico-bt"></i> {{T:bt_head}}</h2>
               <label class="switch">
                 <input type="checkbox" id="sw_bluetooth" disabled>
                 <span class="knob"></span>
@@ -131,7 +131,7 @@
 
           <div class="card" id="card_airplay">
             <div class="card-head">
-              <h2>{{T:airplay_head}}</h2>
+              <h2><i class="ico ico-airplay"></i> {{T:airplay_head}}</h2>
               <label class="switch">
                 <input type="checkbox" id="sw_airplay" disabled>
                 <span class="knob"></span>
@@ -146,7 +146,7 @@
 
           <div class="card" id="card_lms">
             <div class="card-head">
-              <h2>{{T:lms_head}}</h2>
+              <h2><i class="ico ico-music"></i> {{T:lms_head}}</h2>
               <label class="switch">
                 <input type="checkbox" id="sw_lms" disabled>
                 <span class="knob"></span>
@@ -163,7 +163,7 @@
           <!--SPOTIFY-->
           <div class="card" id="card_spotify">
             <div class="card-head">
-              <h2>{{T:spotify_head}}</h2>
+              <h2><i class="ico ico-music"></i> {{T:spotify_head}}</h2>
               <label class="switch">
                 <input type="checkbox" id="sw_spotify" disabled>
                 <span class="knob"></span>
@@ -179,7 +179,7 @@
           <!--/SPOTIFY-->
 
           <div class="card note">
-            <h2>{{T:audio_note_head}}</h2>
+            <h2><i class="ico ico-info"></i> {{T:audio_note_head}}</h2>
             <p class="muted">{{T:audio_note}}</p>
           </div>
 
@@ -192,7 +192,7 @@
         <div class="cardgrid">
 
           <div class="card" id="vizCard">
-            <h2>{{T:viz_head}}</h2>
+            <h2><i class="ico ico-chart"></i> {{T:viz_head}}</h2>
             <p class="muted">{{T:viz_note}}</p>
             <p id="vizNA" class="muted" style="display:none;">{{T:viz_missing}}</p>
             <div id="vizBody">
@@ -236,7 +236,7 @@
           </div>
 
           <div class="card">
-            <h2>{{T:viz_studio_head}}</h2>
+            <h2><i class="ico ico-brush"></i> {{T:viz_studio_head}}</h2>
             <p class="muted">{{T:viz_studio_note}}</p>
             <a class="btn sec" href="/studio" target="_blank"
                style="text-align:center; text-decoration:none;">{{T:viz_studio_btn}}</a>
@@ -288,7 +288,7 @@
 <!-- "Add a network" modal -->
 <div class="overlay" id="wifiOverlay">
   <div class="modal">
-    <h2>{{T:wifi_add_head}}</h2>
+    <h2><i class="ico ico-plus"></i> {{T:wifi_add_head}}</h2>
     <p class="muted">{{T:wifi_add_note}}</p>
     <input id="ssid" placeholder="{{T:wifi_ssid_ph}}" autocomplete="off">
     <input id="key" type="password" placeholder="{{T:wifi_key_ph}}"
@@ -318,9 +318,15 @@
         <div id="pbTitle" class="pb-title">…</div>
         <div id="pbSub" class="pb-sub muted"></div>
       </div>
+      <button id="pbPrev" class="pbskip" disabled aria-label="prev">
+        <i class="ico ico-prev" aria-hidden="true"></i>
+      </button>
       <button id="pbPlay" class="playbtn" disabled>
         <i id="pbIconPlay" class="ico ico-play ico-lg" aria-hidden="true"></i>
         <i id="pbIconPause" class="ico ico-pause ico-lg" style="display:none;" aria-hidden="true"></i>
+      </button>
+      <button id="pbNext" class="pbskip" disabled aria-label="next">
+        <i class="ico ico-next" aria-hidden="true"></i>
       </button>
     </div>
   </div>

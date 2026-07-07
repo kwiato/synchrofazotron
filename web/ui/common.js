@@ -75,20 +75,28 @@ function renderBar() {
     $('pbSub').textContent = srcSub(p);
   }
   const btn = $('pbPlay');
-  btn.disabled = !(p && p.controllable && p.id);
-  btn.title = btn.disabled ? '{{T:js_ctrl_hint}}' : '';
+  const off = !(p && p.controllable && p.id);
+  btn.disabled = off;
+  btn.title = off ? '{{T:js_ctrl_hint}}' : '';
+  $('pbPrev').disabled = off;
+  $('pbNext').disabled = off;
   $('pbIconPlay').style.display = (p && p.playing) ? 'none' : '';
   $('pbIconPause').style.display = (p && p.playing) ? '' : 'none';
 }
 
-async function ctrl(id) {
+async function ctrl(id, action) {
   try {
     await fetch('/api/control', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({source: id, action: 'toggle'})
+      body: JSON.stringify({source: id, action: action || 'toggle'})
     });
   } catch (e) {}
   setTimeout(statusRefresh, 500);
+}
+
+function ctrlPrimary(action) {
+  const p = primary();
+  if (p && p.controllable && p.id) ctrl(p.id, action);
 }
 
 /* ---- source sheet (arrow on the bar) ------------------------------------------ */
@@ -138,10 +146,9 @@ function renderSheet() {
 
 if ($('pairBtn')) $('pairBtn').onclick = pair;
 if ($('srcArrow')) $('srcArrow').onclick = () => $('pbwrap').classList.toggle('open');
-if ($('pbPlay')) $('pbPlay').onclick = () => {
-  const p = primary();
-  if (p && p.controllable && p.id) ctrl(p.id);
-};
+if ($('pbPlay')) $('pbPlay').onclick = () => ctrlPrimary('toggle');
+if ($('pbPrev')) $('pbPrev').onclick = () => ctrlPrimary('prev');
+if ($('pbNext')) $('pbNext').onclick = () => ctrlPrimary('next');
 
 statusRefresh();
 setInterval(statusRefresh, 3000);
