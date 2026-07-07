@@ -33,9 +33,17 @@ REPO = os.environ.get("PISTREAM_REPO", "kwiato/synchrofazotron")
 BRANCH = os.environ.get("PISTREAM_BRANCH", "main")
 
 _HOSTNAME = socket.gethostname() or "Synchrofazotron"
-DEVICE_NAME = os.environ.get("PISTREAM_NAME", _HOSTNAME)   # BT / AirPlay name
+# Runtime-changeable device identity. A name set from /settings is persisted to
+# NAME_FILE (next to the script, survives updates) and wins over the env
+# default, the same way the language choice does.
+NAME_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "name")
+try:
+    _saved_name = open(NAME_FILE, encoding="utf-8").read().strip() or None
+except OSError:
+    _saved_name = None
+DEVICE_NAME = _saved_name or os.environ.get("PISTREAM_NAME") or _HOSTNAME  # BT / AirPlay name
 LMS_PORT = 9000                    # Lyrion Music Server web UI port
-SQUEEZELITE_PLAYER = os.environ.get("PISTREAM_LMS_PLAYER", _HOSTNAME)
+SQUEEZELITE_PLAYER = _saved_name or os.environ.get("PISTREAM_LMS_PLAYER") or _HOSTNAME
 PAIR_WINDOW_SEC = 180             # how long the Pi stays visible while pairing
 SHOW_SPOTIFY = os.environ.get("PISTREAM_SPOTIFY", "0") == "1"  # raspotify not installed
 WIFI_IFACE = os.environ.get("PISTREAM_WIFI_IFACE", "wlan0")
@@ -245,6 +253,12 @@ STR = {
         "js_upd_running": "⏳ Updating… the panel may briefly disconnect — do not power off.",
         "js_upd_done": "✅ Updated — reloading.",
         "js_upd_failed": "❌ Update failed — check /var/log/synchrofazotron-setup.log on the device.",
+        "name_head": "Device name",
+        "name_note": "The name shown here, seen while pairing Bluetooth, and used for AirPlay / LMS. The hostname follows a simplified version (spaces become dashes).",
+        "name_ph": "Device name",
+        "name_save": "Save name",
+        "name_bad": "The name must be 1-32 characters (no quotes or backslashes).",
+        "name_set": "Renamed to {name}. The hostname and network address may change; some names refresh after a reboot.",
         "lang_head": "Language",
         "lang_note": "Panel language. The choice is saved on the device.",
         "how_head": "How it works",
@@ -269,6 +283,7 @@ STR = {
         "js_scan_fail": "Scan failed — try again.",
         "js_viz_stop": "⏻ Stop visualizer",
         "js_viz_start": "⏻ Start visualizer",
+        "js_name_confirm": "Rename the device? The Bluetooth name changes and the network address (hostname) may change too — you might have to reconnect to reach the panel.",
         "js_audio_confirm": "Switch the audio output? The change needs a reboot.",
         "js_audio_reboot": "Config changed — reboot to apply.",
         "js_reboot": "Reboot the device",
@@ -462,6 +477,12 @@ STR = {
         "js_upd_running": "⏳ Aktualizuję… panel może na moment zniknąć — nie wyłączaj zasilania.",
         "js_upd_done": "✅ Zaktualizowane — przeładowuję.",
         "js_upd_failed": "❌ Aktualizacja nie wyszła — zajrzyj do /var/log/synchrofazotron-setup.log na urządzeniu.",
+        "name_head": "Nazwa urządzenia",
+        "name_note": "Nazwa pokazywana tutaj, widoczna przy parowaniu Bluetooth oraz używana dla AirPlay / LMS. Hostname przyjmuje uproszczoną wersję (spacje zamieniane na myślniki).",
+        "name_ph": "Nazwa urządzenia",
+        "name_save": "Zapisz nazwę",
+        "name_bad": "Nazwa musi mieć 1-32 znaki (bez cudzysłowów i backslashy).",
+        "name_set": "Zmieniono nazwę na {name}. Hostname i adres w sieci mogą się zmienić; część nazw odświeży się po restarcie.",
         "lang_head": "Język",
         "lang_note": "Język panelu. Wybór zapisuje się na urządzeniu.",
         "how_head": "Jak to działa",
@@ -485,6 +506,7 @@ STR = {
         "js_scan_fail": "Skan nie wyszedł — spróbuj ponownie.",
         "js_viz_stop": "⏻ Zatrzymaj wizualizer",
         "js_viz_start": "⏻ Uruchom wizualizer",
+        "js_name_confirm": "Zmienić nazwę urządzenia? Zmieni się nazwa Bluetooth, a adres w sieci (hostname) też może się zmienić — może być trzeba połączyć się ponownie, żeby wejść do panelu.",
         "js_audio_confirm": "Przełączyć wyjście dźwięku? Zmiana wymaga restartu.",
         "js_audio_reboot": "Konfiguracja zmieniona — zrestartuj, żeby zadziałało.",
         "js_reboot": "Zrestartuj urządzenie",
@@ -1534,6 +1556,122 @@ def _audio_set(mode):
 
 
 # ---------------------------------------------------------------------------
+# Device name — one rename that follows through into the system:
+#   * panel display + the persisted NAME_FILE (survives updates),
+#   * Bluetooth adapter alias (what phones see while pairing),
+#   * AirPlay name (shairport-sync) + LMS player name (squeezelite -n),
+#   * hostname (sanitized to a valid label — drives MagicDNS and the default
+#     LMS/AirPlay names for anything not overridden above).
+# Every step is best-effort: off a Pi (or without a given service) it simply
+# does nothing, and the panel display + NAME_FILE still take effect.
+# ---------------------------------------------------------------------------
+def _name_valid(name):
+    name = " ".join(name.split())          # collapse/trim whitespace
+    if not 1 <= len(name) <= 32:
+        return None
+    if any(ord(c) < 32 for c in name) or '"' in name or "\\" in name:
+        return None
+    return name
+
+
+def _hostname_from(name):
+    """A valid DNS label from a friendly name (spaces -> dashes, ASCII only)."""
+    host = re.sub(r"[^A-Za-z0-9-]+", "-", name).strip("-")
+    host = re.sub(r"-{2,}", "-", host)
+    return host[:63] or "synchrofazotron"
+
+
+def _set_hostname(host):
+    _run(["hostnamectl", "set-hostname", host], timeout=10)
+    hosts = _file_read("/etc/hosts")
+    if hosts:
+        if re.search(r"^127\.0\.1\.1\b", hosts, re.M):
+            hosts = re.sub(r"^127\.0\.1\.1\b.*$", f"127.0.1.1\t{host}",
+                           hosts, flags=re.M)
+        else:
+            hosts = hosts.rstrip("\n") + f"\n127.0.1.1\t{host}\n"
+        try:
+            _file_write("/etc/hosts", hosts)
+        except OSError:
+            pass
+    # keep Tailscale's MagicDNS name in step where the CLI supports it
+    _run(["tailscale", "set", "--hostname", host], timeout=10)
+    return _run(["hostname"]).strip() == host
+
+
+def _set_bt_alias(name):
+    out = _run(["bluetoothctl", "system-alias", name], timeout=8)
+    return "__err__" not in out and "Failed" not in out
+
+
+def _set_airplay_name(name):
+    """Sets general.name in shairport-sync.conf (edit only; caller restarts)."""
+    for sp in SHAIRPORT_CONFS:
+        txt = _file_read(sp)
+        if not txt:
+            continue
+        gm = re.search(r"general\s*=\s*\{([^}]*)\}", txt, re.S)
+        if not gm:
+            return False
+        block = gm.group(1)
+        if re.search(r'(//\s*)?name\s*=\s*"[^"]*"\s*;', block):
+            new_block = re.sub(r'(//\s*)?name\s*=\s*"[^"]*"\s*;',
+                               f'name = "{name}";', block, count=1)
+        else:
+            new_block = f'\n\tname = "{name}";' + block
+        new = txt[:gm.start(1)] + new_block + txt[gm.end(1):]
+        if new != txt:
+            _file_write(sp, new)
+            return True
+        return False
+    return False
+
+
+def _set_lms_name(name):
+    """Sets the squeezelite player name via -n (edit only; caller restarts)."""
+    sl = _file_read(SQUEEZELITE_DEFAULT)
+    if not sl:
+        return False
+    if re.search(r"-n\s", sl):                          # replace existing -n
+        new = re.sub(r'-n\s+("[^"]*"|\S+)', f'-n "{name}"', sl, count=1)
+    elif re.search(r"^ARGS=", sl, re.M):                # DietPi single ARGS line
+        new = re.sub(r"^ARGS=(['\"])(.*)\1",
+                     rf'ARGS=\g<1>\g<2> -n "{name}"\g<1>', sl, flags=re.M, count=1)
+    elif re.search(r'^SB_EXTRA_ARGS="', sl, re.M):      # Debian package vars
+        new = re.sub(r'^SB_EXTRA_ARGS="',
+                     f'SB_EXTRA_ARGS="-n \\"{name}\\" ', sl, flags=re.M, count=1)
+    elif re.search(r"^#?SB_EXTRA_ARGS=", sl, re.M):
+        new = re.sub(r"^#?SB_EXTRA_ARGS=.*$",
+                     f'SB_EXTRA_ARGS="-n \\"{name}\\""', sl, flags=re.M, count=1)
+    else:
+        return False
+    if new != sl:
+        _file_write(SQUEEZELITE_DEFAULT, new)
+        return True
+    return False
+
+
+def _set_device_name(name):
+    """Renames the device across the system. Returns (ok, message)."""
+    name = _name_valid(str(name))
+    if not name:
+        return False, T("name_bad")
+    global DEVICE_NAME, SQUEEZELITE_PLAYER
+    _file_write(NAME_FILE, name + "\n")
+    DEVICE_NAME = SQUEEZELITE_PLAYER = name
+
+    _set_hostname(_hostname_from(name))
+    _set_bt_alias(name)
+    # AirPlay/LMS: edit configs, then restart (the restart also lets anything
+    # left on the hostname default pick up the new hostname)
+    _set_airplay_name(name)
+    _run(["systemctl", "try-restart", "shairport-sync"])
+    _set_lms_name(name)
+    _run(["systemctl", "try-restart", "squeezelite"])
+    return True, T("name_set").format(name=name)
+
+
+# ---------------------------------------------------------------------------
 # Updates — "check" compares the installed panel file against GitHub, "run"
 # re-executes setup.sh (idempotent, keeps settings) as a transient systemd
 # unit. The transient unit is essential: web/install.sh restarts
@@ -2044,6 +2182,10 @@ class Handler(BaseHTTPRequestHandler):
             body = self._json_body()
             ok, message = _source_toggle(str(body.get("source", "")),
                                          bool(body.get("enable")))
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/name":
+            ok, message = _set_device_name(self._json_body().get("name", ""))
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/control":

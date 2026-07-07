@@ -37,6 +37,15 @@
         <div class="cardgrid">
 
           <div class="card">
+            <h2><i class="ico ico-cog"></i> {{T:name_head}}</h2>
+            <p class="muted">{{T:name_note}}</p>
+            <input id="devName" value="{{DEVICE}}" maxlength="32"
+                   placeholder="{{T:name_ph}}" autocomplete="off">
+            <button class="btn sec" id="nameBtn" onclick="saveName()">{{T:name_save}}</button>
+            <p id="nameMsg" class="muted"></p>
+          </div>
+
+          <div class="card">
             <h2><i class="ico ico-wifi"></i> {{T:wifi_now_head}}</h2>
             <p id="wifiNow" class="muted">…</p>
             <p id="netInfo" class="muted"></p>

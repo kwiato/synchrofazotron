@@ -80,8 +80,9 @@ fine for working on layout/CSS/JS. Notes:
   (strings live in the `STR` dict in `pistream_panel.py`), plus `{{DEVICE}}`,
   `{{LANG}}`, `{{LMS_URL}}`, `{{LMS_PORT}}`, `{{PAIR_WIN}}`, `{{PLAYER}}`.
   CSS is served raw.
-- Switching the language in `/settings` works and writes a `lang` file next
-  to the script — don't commit it.
+- Switching the language or the device name in `/settings` writes a `lang` /
+  `name` file next to the script (both gitignored — they hold the runtime
+  choice and survive updates).
 - Buttons that talk to the system (reboot, Wi-Fi save, pairing) are safe to
   click locally: the underlying commands just fail and the UI shows an error.
 
@@ -113,6 +114,7 @@ with sensible defaults:
 | GET | `/api/sources` | JSON: source groups (installed/enabled + per-service state) |
 | POST | `/api/source/toggle` | `{"source":"bluetooth\|airplay\|lms\|spotify","enable":bool}` |
 | POST | `/api/bt/forget` | `{"mac":"..."}` — removes the pairing |
+| POST | `/api/name` | `{"name":"..."}` — renames the device (hostname, BT alias, AirPlay/LMS) |
 | GET | `/api/status` | JSON: BT state, connected devices, active sources, services |
 | GET | `/api/wifi` | JSON: current connection + saved networks (no passwords) |
 | GET | `/api/wifi/scan` | JSON: networks in range |

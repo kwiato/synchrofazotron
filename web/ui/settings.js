@@ -149,6 +149,28 @@ document.getElementById('tsSwitch').onchange = async () => {
   tsRefresh();
 };
 
+/* ---- config: device name ------------------------------------------------------ */
+
+async function saveName() {
+  const v = document.getElementById('devName').value.trim();
+  if (!v) return;
+  if (!confirm('{{T:js_name_confirm}}')) return;
+  const b = document.getElementById('nameBtn');
+  b.disabled = true;
+  document.getElementById('nameMsg').textContent = '{{T:js_saving}}';
+  try {
+    const r = await fetch('/api/name', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name: v})
+    });
+    const j = await r.json();
+    document.getElementById('nameMsg').textContent = j.message || '';
+    // hostname/URL may have changed — reload so the panel shows the new name
+    if (j.ok) setTimeout(() => location.reload(), 2500);
+  } catch(e) { document.getElementById('nameMsg').textContent = '{{T:js_conn_error}}'; }
+  b.disabled = false;
+}
+
 /* ---- config: language -------------------------------------------------------- */
 
 const langSel = document.getElementById('langSel');
