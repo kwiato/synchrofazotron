@@ -85,6 +85,21 @@ for pkg in python3-numpy python3-pygame python3-opengl; do
     || DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg" \
     || echo "    $pkg not installable — the shader engine may stay hidden in the panel"
 done
+# viz-glsl: our own minimal DRM/GLES2 shader runner (visualizer/viz-glsl.c,
+# built by CI) — the primary engine. glslViewer below stays as a fallback
+# only; its vera backend renders but never displays on VC4 (Pi Zero 2 W).
+if ! command -v viz-glsl >/dev/null 2>&1 && [[ "$(uname -m)" == aarch64 ]]; then
+  if curl -fsSL --retry 5 --retry-delay 2 \
+       "https://github.com/$REPO/releases/download/viz-glsl-arm64/viz-glsl" \
+       -o /usr/local/bin/viz-glsl 2>/dev/null; then
+    chmod 0755 /usr/local/bin/viz-glsl
+    DEBIAN_FRONTEND=noninteractive apt-get install -y libgbm1 libdrm2 libegl1 libgles2 2>/dev/null || true
+    echo "    viz-glsl: installed the prebuilt binary from GitHub Releases"
+  else
+    rm -f /usr/local/bin/viz-glsl
+    echo "    viz-glsl release not available — will rely on glslViewer/pygame"
+  fi
+fi
 if ! command -v glslViewer >/dev/null 2>&1 && ! command -v glslviewer >/dev/null 2>&1; then
   if ! DEBIAN_FRONTEND=noninteractive apt-get install -y glslviewer 2>/dev/null; then
     # no APT package -> the prebuilt DRM binary from our GitHub Actions release

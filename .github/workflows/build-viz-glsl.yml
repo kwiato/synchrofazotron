@@ -1,0 +1,58 @@
+# Builds viz-glsl (visualizer/viz-glsl.c) for arm64 and publishes the binary
+# as a GitHub Release asset. This is the primary GLSL visualizer engine —
+# a ~300-line DRM/GBM/GLES2 runner written for the Pi Zero 2 W after
+# glslViewer/vera proved unable to display on VC4 (see history 2026-07-07).
+# visualizer/install.sh downloads it during provisioning.
+#
+# NOTE for editors: the container script below is wrapped in SINGLE quotes.
+# Never put an apostrophe inside it (not even in a comment) — it ends the
+# quote and the rest of the script runs on the runner host instead.
+name: Build viz-glsl (arm64)
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'visualizer/viz-glsl.c'
+      - '.github/workflows/build-viz-glsl.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU (arm64 emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Compile in an arm64 Debian bookworm container
+        run: |
+          docker run --rm --platform linux/arm64 -v "$PWD:/src" debian:bookworm bash -euc '
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y \
+              gcc libc6-dev libdrm-dev libgbm-dev libegl1-mesa-dev libgles2-mesa-dev
+            gcc -O2 -o /src/viz-glsl /src/visualizer/viz-glsl.c \
+              -I/usr/include/libdrm -ldrm -lgbm -lEGL -lGLESv2
+            strip /src/viz-glsl
+          '
+
+      - name: Smoke-check the binary
+        run: |
+          file viz-glsl | grep -q "aarch64"
+          ls -lh viz-glsl
+
+      - name: Publish / update the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: viz-glsl-arm64
+          name: viz-glsl arm64 (DRM/GLES2 shader runner)
+          body: |
+            Minimal audio-reactive fragment-shader runner for DRM/GBM/GLES2,
+            compiled for arm64 / Debian bookworm (DietPi). Source:
+            visualizer/viz-glsl.c. Installed automatically by
+            visualizer/install.sh; used by viz-run.sh as the primary
+            GLSL engine on the Pi.
+          files: viz-glsl
