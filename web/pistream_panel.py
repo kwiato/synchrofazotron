@@ -150,9 +150,19 @@ STR = {
         "audio_test_ok": "Test sound played OK on „{dev}” — the output path works; if BT is still silent, run the diagnostics while the phone plays.",
         "audio_test_fail": "Test sound FAILED on „{dev}”: {err}",
         "viz_head": "📊 Visualizer (HDMI)",
-        "viz_note": "Bar style on the monitor. Changing it restarts the visualizer (music keeps playing).",
+        "viz_note": "Bar style on the monitor. Changing it restarts the visualizer (music keeps playing). Tap ✎ to edit a preset (name + parameters), ➕ adds a new one.",
         "viz_missing": "⚠ Not installed — re-run setup.sh (answer y to the visualizer question) or visualizer/install.sh; this card comes alive after that.",
-        "viz_edit_btn": "🎛 Fine-tune (custom settings)",
+        "viz_new_preset": "➕ New preset",
+        "viz_name_ph": "Preset name",
+        "viz_save": "💾 Save preset",
+        "viz_delete": "🗑 Delete preset",
+        "viz_edit_title": "Edit preset",
+        "viz_name_bad": "The preset name must be 1-24 characters.",
+        "viz_saved": "Preset „{label}” saved.",
+        "viz_deleted": "Preset „{label}” deleted.",
+        "viz_last": "Cannot delete the last preset.",
+        "js_vdel_pre": "Delete preset \"",
+        "js_vdel_suf": "\"?",
         "viz_p_framerate": "Framerate (fps)",
         "viz_p_bar_width": "Bar width",
         "viz_p_bar_spacing": "Bar spacing",
@@ -170,6 +180,16 @@ STR = {
         "shader_plasma": "Plasma",
         "shader_tunnel": "Tunnel",
         "shader_copper": "Copper bars",
+        "shader_drop": "➕ Drop a .frag file here (or tap to pick one). Uploading the same name updates the shader.",
+        "shader_uploaded": "Shader „{name}” installed.",
+        "shader_bad_name": "Bad shader file name — letters/digits/dashes plus .frag.",
+        "shader_bad_src": "This does not look like a fragment shader (no void main / gl_FragColor).",
+        "shader_too_big": "Shader too big (max 64 kB).",
+        "shader_deleted": "Shader „{name}” removed.",
+        "shader_del_active": "This shader is on screen right now — switch to another one first.",
+        "sdel_title": "Remove shader",
+        "js_sdel_pre": "Remove shader \"",
+        "js_sdel_suf": "\"?",
         "audio_head": "🔊 Audio output",
         "audio_note": "Where the sound goes: the DAC HAT or the monitor over HDMI. Switching rewrites the boot config and takes effect after a reboot.",
         "upd_head": "🔄 Updates",
@@ -310,9 +330,19 @@ STR = {
         "audio_test_ok": "Dźwięk testowy zagrany OK na „{dev}” — tor wyjściowy działa; jeśli BT dalej milczy, odpal diagnostykę w trakcie grania z telefonu.",
         "audio_test_fail": "Test na „{dev}” NIE przeszedł: {err}",
         "viz_head": "📊 Wizualizer (HDMI)",
-        "viz_note": "Styl słupków na monitorze. Zmiana restartuje wizualizer (muzyka gra dalej).",
+        "viz_note": "Styl słupków na monitorze. Zmiana restartuje wizualizer (muzyka gra dalej). Kliknij ✎, żeby edytować preset (nazwa + parametry); ➕ dodaje nowy.",
         "viz_missing": "⚠ Niezainstalowany — odpal ponownie setup.sh (odpowiedz y na pytanie o wizualizer) albo visualizer/install.sh; karta ożyje po instalacji.",
-        "viz_edit_btn": "🎛 Dostrój (własne ustawienia)",
+        "viz_new_preset": "➕ Nowy preset",
+        "viz_name_ph": "Nazwa presetu",
+        "viz_save": "💾 Zapisz preset",
+        "viz_delete": "🗑 Usuń preset",
+        "viz_edit_title": "Edycja presetu",
+        "viz_name_bad": "Nazwa presetu: 1-24 znaki.",
+        "viz_saved": "Preset „{label}” zapisany.",
+        "viz_deleted": "Preset „{label}” usunięty.",
+        "viz_last": "Nie można usunąć ostatniego presetu.",
+        "js_vdel_pre": "Usunąć preset „",
+        "js_vdel_suf": "”?",
         "viz_p_framerate": "Klatki (fps)",
         "viz_p_bar_width": "Szerokość słupka",
         "viz_p_bar_spacing": "Odstęp słupków",
@@ -330,6 +360,16 @@ STR = {
         "shader_plasma": "Plazma",
         "shader_tunnel": "Tunel",
         "shader_copper": "Paski copper",
+        "shader_drop": "➕ Upuść tu plik .frag (albo kliknij i wybierz). Ta sama nazwa = aktualizacja shadera.",
+        "shader_uploaded": "Shader „{name}” zainstalowany.",
+        "shader_bad_name": "Zła nazwa pliku — litery/cyfry/myślniki plus .frag.",
+        "shader_bad_src": "To nie wygląda na fragment shader (brak void main / gl_FragColor).",
+        "shader_too_big": "Shader za duży (maks. 64 kB).",
+        "shader_deleted": "Shader „{name}” usunięty.",
+        "shader_del_active": "Ten shader właśnie gra na ekranie — najpierw przełącz na inny.",
+        "sdel_title": "Usuń shader",
+        "js_sdel_pre": "Usunąć shader „",
+        "js_sdel_suf": "”?",
         "audio_head": "🔊 Wyjście dźwięku",
         "audio_note": "Którędy wychodzi dźwięk: DAC (nakładka HAT) albo monitor po HDMI. Przełączenie przepisuje konfigurację startową i działa po restarcie urządzenia.",
         "upd_head": "🔄 Aktualizacje",
@@ -848,18 +888,27 @@ foreground = {color}
 {smoothing}
 """
 
-# Preset ids are stable; display labels are translated (preset_* keys).
+# Built-in preset defaults. Ids are stable; display labels are translated
+# (preset_* keys) until the user customizes presets — from then on the whole
+# set (with plain-string labels) lives in presets.json and this dict is only
+# the fallback for a missing/corrupt file.
+_VIZ_PARAM_KEYS = ("framerate", "bar_width", "bar_spacing",
+                   "noise_reduction", "monstercat", "waves", "color")
 VIZ_PRESETS = {
-    "classic": {"label_key": "preset_classic", "bar_width": 2, "bar_spacing": 1,
-                "color": "cyan", "smoothing": "noise_reduction = 77"},
-    "dense": {"label_key": "preset_dense", "bar_width": 1, "bar_spacing": 0,
-              "color": "green",
-              "smoothing": "monstercat = 1\nnoise_reduction = 70"},
-    "waves": {"label_key": "preset_waves", "bar_width": 3, "bar_spacing": 1,
-              "color": "blue", "smoothing": "waves = 1\nnoise_reduction = 80"},
-    "massive": {"label_key": "preset_massive", "bar_width": 10, "bar_spacing": 2,
-                "color": "magenta", "smoothing": "noise_reduction = 85"},
+    "classic": {"label_key": "preset_classic", "framerate": 45, "bar_width": 2,
+                "bar_spacing": 1, "noise_reduction": 77, "monstercat": False,
+                "waves": False, "color": "cyan"},
+    "dense": {"label_key": "preset_dense", "framerate": 45, "bar_width": 1,
+              "bar_spacing": 0, "noise_reduction": 70, "monstercat": True,
+              "waves": False, "color": "green"},
+    "waves": {"label_key": "preset_waves", "framerate": 45, "bar_width": 3,
+              "bar_spacing": 1, "noise_reduction": 80, "monstercat": False,
+              "waves": True, "color": "blue"},
+    "massive": {"label_key": "preset_massive", "framerate": 45, "bar_width": 10,
+                "bar_spacing": 2, "noise_reduction": 85, "monstercat": False,
+                "waves": False, "color": "magenta"},
 }
+VIZ_USER_PRESETS = "/opt/pistream-visualizer/presets.json"
 # Pre-rename ids (Polish) still found in configs written by older panels.
 _VIZ_LEGACY_IDS = {"klasyk": "classic", "gesty": "dense",
                    "fale": "waves", "masyw": "massive"}
@@ -937,28 +986,168 @@ def _shader_label(sid):
     return sid.capitalize() if label == f"shader_{sid}" else label
 
 
+def _viz_clamp_params(body):
+    """Sanitized cava parameters from a JSON body (editor and presets)."""
+    def clamp(key, lo, hi, default):
+        try:
+            v = int(body.get(key, default))
+        except (TypeError, ValueError):
+            v = default
+        return max(lo, min(hi, v))
+
+    color = str(body.get("color", "magenta"))
+    return {"framerate": clamp("framerate", 10, 120, 45),
+            "bar_width": clamp("bar_width", 1, 20, 9),
+            "bar_spacing": clamp("bar_spacing", 0, 10, 2),
+            "noise_reduction": clamp("noise_reduction", 0, 100, 10),
+            "monstercat": bool(body.get("monstercat")),
+            "waves": bool(body.get("waves")),
+            "color": color if color in VIZ_COLORS else "magenta"}
+
+
+def _viz_write_conf(name, params):
+    """Writes cava.conf for the given params and restarts the visualizer."""
+    smoothing = []
+    if params.get("monstercat"):
+        smoothing.append("monstercat = 1")
+    if params.get("waves"):
+        smoothing.append("waves = 1")
+    smoothing.append(f"noise_reduction = {params['noise_reduction']}")
+    with open(VIZ_CONF, "w", encoding="utf-8") as fh:
+        fh.write(_VIZ_TEMPLATE.format(
+            name=name, framerate=params["framerate"],
+            bar_width=params["bar_width"], bar_spacing=params["bar_spacing"],
+            color=params["color"], smoothing="\n".join(smoothing)))
+    _run(["systemctl", "try-restart", VIZ_SERVICE])
+
+
+def _viz_presets_list():
+    """User presets from presets.json; built-in defaults (translated labels)
+    until the user customizes something."""
+    try:
+        lst = json.load(open(VIZ_USER_PRESETS, encoding="utf-8")).get("presets", [])
+        lst = [p for p in lst if p.get("id") and p.get("label")]
+        if lst:
+            return [{"id": str(p["id"]), "label": str(p["label"])[:24],
+                     "params": _viz_clamp_params(p.get("params", {}))}
+                    for p in lst]
+    except Exception:  # noqa: BLE001
+        pass
+    return [{"id": k, "label": T(v["label_key"]),
+             "params": {key: v[key] for key in _VIZ_PARAM_KEYS}}
+            for k, v in VIZ_PRESETS.items()]
+
+
+def _viz_presets_store(lst):
+    _file_write(VIZ_USER_PRESETS,
+                json.dumps({"presets": lst}, ensure_ascii=False, indent=1) + "\n")
+
+
+def _viz_current_preset():
+    """Preset id from the cava.conf header ('custom' = hand-tuned params)."""
+    try:
+        first = open(VIZ_CONF, encoding="utf-8").readline()
+    except OSError:
+        return ""
+    m = re.search(r"# preset: ([\w-]+)", first)
+    if not m:
+        return "custom"
+    return _VIZ_LEGACY_IDS.get(m.group(1), m.group(1))
+
+
+def _viz_preset_save(body):
+    """Creates or updates a user preset. Returns (ok, message)."""
+    if not os.path.isfile(VIZ_CONF):
+        return False, T("viz_not_installed")
+    label = str(body.get("label", "")).strip()[:24]
+    if not label:
+        return False, T("viz_name_bad")
+    params = _viz_clamp_params(body)
+    lst = _viz_presets_list()
+    pid = str(body.get("id", ""))
+    hit = next((p for p in lst if p["id"] == pid), None) if pid else None
+    if hit:
+        hit["label"], hit["params"] = label, params
+        pid = hit["id"]
+    else:
+        base = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-") or "preset"
+        pid, i = base, 2
+        while any(p["id"] == pid for p in lst):
+            pid, i = f"{base}-{i}", i + 1
+        lst.append({"id": pid, "label": label, "params": params})
+    _viz_presets_store(lst)
+    if _viz_current_preset() == pid:
+        _viz_write_conf(pid, params)   # live-update the running look
+    return True, T("viz_saved").format(label=label)
+
+
+def _viz_preset_delete(body):
+    lst = _viz_presets_list()
+    if len(lst) <= 1:
+        return False, T("viz_last")
+    pid = str(body.get("id", ""))
+    hit = next((p for p in lst if p["id"] == pid), None)
+    if not hit:
+        return False, T("viz_unknown")
+    lst.remove(hit)
+    _viz_presets_store(lst)
+    return True, T("viz_deleted").format(label=hit["label"])
+
+
 def _viz_state():
     installed = os.path.isfile(VIZ_CONF)
-    preset = ""
-    if installed:
-        try:
-            first = open(VIZ_CONF, encoding="utf-8").readline()
-            m = re.search(r"# preset: (\w+)", first)
-            preset = m.group(1) if m else "custom"
-            preset = _VIZ_LEGACY_IDS.get(preset, preset)
-        except OSError:
-            pass
     engine, shader = _viz_engine()
     return {"installed": installed, "active": _service_active(VIZ_SERVICE),
-            "preset": preset,
+            "preset": _viz_current_preset() if installed else "",
             "params": _viz_params() if installed else None,
-            "presets": [{"id": k, "label": T(v["label_key"])}
-                        for k, v in VIZ_PRESETS.items()],
+            "presets": [{"id": p["id"], "label": p["label"], "params": p["params"]}
+                        for p in _viz_presets_list()],
             "engine": engine, "shader": shader,
             "glsl_error": _file_read(VIZ_GLSL_ERR).strip(),
             "glsl_available": bool(_viz_glsl_ok() and _viz_shaders()),
             "shaders": [{"id": s, "label": _shader_label(s)}
                         for s in _viz_shaders()]}
+
+
+# Uploaded shaders land next to the repo ones in VIZ_GLSL_DIR — the shader
+# list is a glob, so they show up (and survive updates: install.sh copies,
+# never wipes). Name is a strict slug: it becomes a filename as root.
+_SHADER_NAME_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}")
+_SHADER_MAX_BYTES = 64000          # viz-glsl reads the source into a 64 KiB buffer
+
+
+def _viz_shader_upload(body):
+    """Installs (or updates) a .frag from the panel. Returns (ok, message)."""
+    if not os.path.isdir(VIZ_GLSL_DIR):
+        return False, T("viz_not_installed")
+    name = str(body.get("name", "")).strip().lower()
+    name = re.sub(r"\.(frag|glsl|fs)$", "", name)
+    if not _SHADER_NAME_RE.fullmatch(name):
+        return False, T("shader_bad_name")
+    src = str(body.get("source", ""))
+    if len(src.encode()) > _SHADER_MAX_BYTES:
+        return False, T("shader_too_big")
+    if "void main" not in src or "gl_FragColor" not in src:
+        return False, T("shader_bad_src")
+    _file_write(os.path.join(VIZ_GLSL_DIR, name + ".frag"), src)
+    engine, shader = _viz_engine()
+    if engine == "glsl" and shader == name:   # updated the one on screen
+        _run(["systemctl", "try-restart", VIZ_SERVICE])
+    return True, T("shader_uploaded").format(name=name)
+
+
+def _viz_shader_delete(body):
+    name = str(body.get("id", ""))
+    if not _SHADER_NAME_RE.fullmatch(name):
+        return False, T("shader_bad_name")
+    engine, shader = _viz_engine()
+    if engine == "glsl" and shader == name:
+        return False, T("shader_del_active")
+    path = os.path.join(VIZ_GLSL_DIR, name + ".frag")
+    if not os.path.isfile(path):
+        return False, T("viz_unknown")
+    os.remove(path)
+    return True, T("shader_deleted").format(name=name)
 
 
 def _viz_set_engine(engine, shader=""):
@@ -984,48 +1173,20 @@ def _viz_set_engine(engine, shader=""):
 
 def _viz_set_preset(name):
     name = _VIZ_LEGACY_IDS.get(name, name)
-    p = VIZ_PRESETS.get(name)
-    if not p:
-        return False, T("viz_unknown")
     if not os.path.isfile(VIZ_CONF):
         return False, T("viz_not_installed")
-    with open(VIZ_CONF, "w", encoding="utf-8") as fh:
-        fh.write(_VIZ_TEMPLATE.format(name=name, framerate=45, **{
-            k: p[k] for k in ("bar_width", "bar_spacing", "color", "smoothing")}))
-    _run(["systemctl", "try-restart", VIZ_SERVICE])
-    return True, T("viz_preset_set").format(label=T(p["label_key"]))
+    for p in _viz_presets_list():
+        if p["id"] == name:
+            _viz_write_conf(name, p["params"])
+            return True, T("viz_preset_set").format(label=p["label"])
+    return False, T("viz_unknown")
 
 
 def _viz_set_params(body):
-    """Custom cava parameters from the panel editor. Returns (ok, message)."""
+    """Custom cava parameters from the panel editor (apply without saving)."""
     if not os.path.isfile(VIZ_CONF):
         return False, T("viz_not_installed")
-
-    def clamp(key, lo, hi, default):
-        try:
-            v = int(body.get(key, default))
-        except (TypeError, ValueError):
-            v = default
-        return max(lo, min(hi, v))
-
-    framerate = clamp("framerate", 10, 120, 45)
-    bar_width = clamp("bar_width", 1, 20, 9)
-    bar_spacing = clamp("bar_spacing", 0, 10, 2)
-    noise = clamp("noise_reduction", 0, 100, 10)
-    color = str(body.get("color", "magenta"))
-    if color not in VIZ_COLORS:
-        color = "magenta"
-    smoothing = []
-    if body.get("monstercat"):
-        smoothing.append("monstercat = 1")
-    if body.get("waves"):
-        smoothing.append("waves = 1")
-    smoothing.append(f"noise_reduction = {noise}")
-    with open(VIZ_CONF, "w", encoding="utf-8") as fh:
-        fh.write(_VIZ_TEMPLATE.format(
-            name="custom", framerate=framerate, bar_width=bar_width,
-            bar_spacing=bar_spacing, color=color, smoothing="\n".join(smoothing)))
-    _run(["systemctl", "try-restart", VIZ_SERVICE])
+    _viz_write_conf("custom", _viz_clamp_params(body))
     return True, T("viz_params_set")
 
 
@@ -1847,6 +2008,15 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
   code { background:#0b0e12; padding:1px 6px; border-radius:6px; font-size:.9em;}
   .lrow { display:flex; gap:10px; }
   .lrow .btn { margin-top: 0; }
+  .prow { display:flex; gap:8px; }
+  .prow .btn { flex:1; }
+  .ebtn { flex:none; width:52px; border:0; border-radius:12px; margin-top:8px;
+    background:#2b3440; color:#cfd6dd; font-size:1rem; cursor:pointer; }
+  .ebtn:hover { background:#374151; }
+  #shaderDrop { border:2px dashed #2b3440; border-radius:12px; padding:14px;
+    text-align:center; color:#8b97a6; font-size:.9rem; cursor:pointer;
+    margin-top:8px; }
+  #shaderDrop.over { border-color:#6db3ff; color:#bfe1ff; background:#1a2634; }
   .credits div { padding: 3px 0; }
   pre { background:#0b0e12; border:1px solid #2b3440; border-radius:10px;
     padding:10px; font-size:.78rem; overflow-x:auto; white-space:pre-wrap;
@@ -1915,10 +2085,15 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
     </div>
     <p id="vizErr" class="muted"></p>
     <div id="vizShaders"></div>
+    <div id="shaderDrop" style="display:none;">{{T:shader_drop}}</div>
+    <input type="file" id="shaderFile" accept=".frag,.glsl,.fs" multiple
+           style="display:none;">
     <div id="vizCavaCtl">
     <div id="vizPresets"></div>
-    <button class="btn sec" onclick="vizEditToggle()">{{T:viz_edit_btn}}</button>
+    <button class="btn sec" onclick="vizEdit(null)">{{T:viz_new_preset}}</button>
     <div id="vizEdit" style="display:none;">
+      <input id="v_name" placeholder="{{T:viz_name_ph}}" maxlength="24"
+             autocomplete="off">
       <label class="vlabel">{{T:viz_p_framerate}}: <b id="v_fr_v"></b>
         <input type="range" id="v_fr" min="15" max="60" step="5"></label>
       <label class="vlabel">{{T:viz_p_bar_width}}: <b id="v_bw_v"></b>
@@ -1931,7 +2106,11 @@ SETTINGS_TEMPLATE = """<!DOCTYPE html>
         <select id="v_color"></select></label>
       <label class="vlabel"><input type="checkbox" id="v_mc"> {{T:viz_p_monstercat}}</label>
       <label class="vlabel"><input type="checkbox" id="v_wv"> {{T:viz_p_waves}}</label>
-      <button class="btn" onclick="vizApply()">{{T:viz_apply}}</button>
+      <div class="lrow">
+        <button class="btn sec" onclick="vizApply()">{{T:viz_apply}}</button>
+        <button class="btn" onclick="vizSavePreset()">{{T:viz_save}}</button>
+      </div>
+      <button class="btn sec" id="vizDelBtn" onclick="vizDelPreset()">{{T:viz_delete}}</button>
     </div>
     </div>
     <button class="btn sec" id="vizToggle" onclick="vizToggle()">…</button>
@@ -2152,18 +2331,23 @@ async function btDebug() {
   } catch(e) { el.textContent = '{{T:js_conn_error}}'; }
 }
 
+let VIZ = null, vizEditing = null;
+
 async function vizRefresh() {
   try {
     const r = await fetch('/api/viz', {cache:'no-store'});
     const v = await r.json();
+    VIZ = v;
     // not installed: keep the card visible, explain instead of hiding
     document.getElementById('vizNA').style.display = v.installed ? 'none' : '';
     document.getElementById('vizBody').style.display = v.installed ? '' : 'none';
     if (!v.installed) return;
     document.getElementById('vizPresets').innerHTML = (v.presets||[]).map(p =>
-      '<button class="btn ' + (p.id === v.preset ? '' : 'sec') + '" ' +
+      '<div class="prow"><button class="btn ' + (p.id === v.preset ? '' : 'sec') + '" ' +
       'onclick="vizPreset(\\'' + p.id + '\\')">' + escapeHtml(p.label) +
-      (p.id === v.preset ? ' ✓' : '') + '</button>'
+      (p.id === v.preset ? ' ✓' : '') + '</button>' +
+      '<button class="ebtn" title="{{T:viz_edit_title}}" ' +
+      'onclick="vizEdit(\\'' + p.id + '\\')">✎</button></div>'
     ).join('');
     document.getElementById('vizToggle').textContent =
       v.active ? '{{T:js_viz_stop}}' : '{{T:js_viz_start}}';
@@ -2179,13 +2363,15 @@ async function vizRefresh() {
     document.getElementById('vizErr').textContent =
       (glsl && v.glsl_error) ? '{{T:js_glsl_err}}' + v.glsl_error : '';
     document.getElementById('vizShaders').innerHTML = (glsl ? (v.shaders||[]) : []).map(s =>
-      '<button class="btn ' + (s.id === v.shader ? '' : 'sec') + '" ' +
+      '<div class="prow"><button class="btn ' + (s.id === v.shader ? '' : 'sec') + '" ' +
       'onclick="vizShader(\\'' + s.id + '\\')">' + escapeHtml(s.label) +
-      (s.id === v.shader ? ' ✓' : '') + '</button>'
+      (s.id === v.shader ? ' ✓' : '') + '</button>' +
+      (s.id === v.shader ? '' :
+        '<button class="ebtn" title="{{T:sdel_title}}" ' +
+        'onclick="shaderDel(\\'' + s.id + '\\')">🗑</button>') +
+      '</div>'
     ).join('');
-    // fill the editor only while it is closed, so typing is not overwritten
-    if (v.params && document.getElementById('vizEdit').style.display === 'none')
-      vizFillEditor(v.params);
+    document.getElementById('shaderDrop').style.display = glsl ? '' : 'none';
   } catch(e) {}
 }
 
@@ -2203,6 +2389,50 @@ async function vizEngine(engine, shader) {
 
 function vizShader(name) { vizEngine('glsl', name); }
 
+// --- shader upload (drag & drop / file picker) ---
+async function shaderFiles(files) {
+  for (const f of files) {
+    let src = '';
+    try { src = await f.text(); } catch(e) { continue; }
+    try {
+      const r = await fetch('/api/viz/shader/upload', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({name: f.name, source: src})
+      });
+      const j = await r.json();
+      document.getElementById('vizMsg').textContent = j.message || '';
+    } catch(e) { document.getElementById('vizMsg').textContent = '{{T:js_conn_error}}'; }
+  }
+  document.getElementById('shaderFile').value = '';
+  vizRefresh();
+}
+
+async function shaderDel(id) {
+  const s = VIZ && (VIZ.shaders||[]).find(x => x.id === id);
+  if (!s || !confirm('{{T:js_sdel_pre}}' + s.label + '{{T:js_sdel_suf}}')) return;
+  try {
+    const r = await fetch('/api/viz/shader/delete', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id})
+    });
+    const j = await r.json();
+    document.getElementById('vizMsg').textContent = j.message || '';
+  } catch(e) { document.getElementById('vizMsg').textContent = '{{T:js_conn_error}}'; }
+  vizRefresh();
+}
+
+(function wireShaderDrop() {
+  const drop = document.getElementById('shaderDrop');
+  drop.onclick = () => document.getElementById('shaderFile').click();
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = e => {
+    e.preventDefault(); drop.classList.remove('over');
+    shaderFiles(e.dataTransfer.files);
+  };
+  document.getElementById('shaderFile').onchange = e => shaderFiles(e.target.files);
+})();
+
 function vizFillEditor(p) {
   for (const [id, val] of [['v_fr', p.framerate], ['v_bw', p.bar_width],
                            ['v_bs', p.bar_spacing], ['v_nr', p.noise_reduction]]) {
@@ -2216,25 +2446,68 @@ function vizFillEditor(p) {
     '<option' + (c === p.color ? ' selected' : '') + '>' + c + '</option>').join('');
 }
 
-function vizEditToggle() {
-  const e = document.getElementById('vizEdit');
-  e.style.display = e.style.display === 'none' ? '' : 'none';
+// opens the editor for a preset (id) or for a brand-new one (null)
+function vizEdit(id) {
+  if (!VIZ) return;
+  vizEditing = id || '';
+  const p = id ? (VIZ.presets||[]).find(x => x.id === id) : null;
+  document.getElementById('v_name').value = p ? p.label : '';
+  const params = Object.assign({}, p ? p.params : (VIZ.params || {}));
+  params.colors = (VIZ.params || {}).colors || [];
+  vizFillEditor(params);
+  document.getElementById('vizDelBtn').style.display = p ? '' : 'none';
+  document.getElementById('vizEdit').style.display = '';
+  document.getElementById('v_name').focus();
+}
+
+function vizEditorBody() {
+  const num = id => +document.getElementById(id).value;
+  return { framerate: num('v_fr'), bar_width: num('v_bw'), bar_spacing: num('v_bs'),
+           noise_reduction: num('v_nr'),
+           monstercat: document.getElementById('v_mc').checked,
+           waves: document.getElementById('v_wv').checked,
+           color: document.getElementById('v_color').value };
 }
 
 async function vizApply() {
-  const num = id => +document.getElementById(id).value;
   try {
     const r = await fetch('/api/viz/params', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        framerate: num('v_fr'), bar_width: num('v_bw'), bar_spacing: num('v_bs'),
-        noise_reduction: num('v_nr'),
-        monstercat: document.getElementById('v_mc').checked,
-        waves: document.getElementById('v_wv').checked,
-        color: document.getElementById('v_color').value })
+      body: JSON.stringify(vizEditorBody())
     });
     const j = await r.json();
     document.getElementById('vizMsg').textContent = j.message || '';
+  } catch(e) { document.getElementById('vizMsg').textContent = '{{T:js_conn_error}}'; }
+  vizRefresh();
+}
+
+async function vizSavePreset() {
+  const body = vizEditorBody();
+  body.id = vizEditing || '';
+  body.label = document.getElementById('v_name').value;
+  try {
+    const r = await fetch('/api/viz/preset/save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const j = await r.json();
+    document.getElementById('vizMsg').textContent = j.message || '';
+    if (j.ok) document.getElementById('vizEdit').style.display = 'none';
+  } catch(e) { document.getElementById('vizMsg').textContent = '{{T:js_conn_error}}'; }
+  vizRefresh();
+}
+
+async function vizDelPreset() {
+  const p = VIZ && (VIZ.presets||[]).find(x => x.id === vizEditing);
+  if (!p || !confirm('{{T:js_vdel_pre}}' + p.label + '{{T:js_vdel_suf}}')) return;
+  try {
+    const r = await fetch('/api/viz/preset/delete', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: vizEditing})
+    });
+    const j = await r.json();
+    document.getElementById('vizMsg').textContent = j.message || '';
+    if (j.ok) document.getElementById('vizEdit').style.display = 'none';
   } catch(e) { document.getElementById('vizMsg').textContent = '{{T:js_conn_error}}'; }
   vizRefresh();
 }
@@ -2476,6 +2749,22 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/viz/preset":
             body = self._json_body()
             ok, message = _viz_set_preset(str(body.get("name", "")))
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/viz/preset/save":
+            ok, message = _viz_preset_save(self._json_body())
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/viz/preset/delete":
+            ok, message = _viz_preset_delete(self._json_body())
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/viz/shader/upload":
+            ok, message = _viz_shader_upload(self._json_body())
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/viz/shader/delete":
+            ok, message = _viz_shader_delete(self._json_body())
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/viz/params":
