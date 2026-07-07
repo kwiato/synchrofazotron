@@ -255,6 +255,22 @@ else
   echo "Unknown PISTREAM_AUDIO='$AUDIO' (expected dac or hdmi)"; exit 1
 fi
 
+# KMS/GPU driver — DietPi ships the vc4-kms-v3d overlay commented out, so
+# there is no /dev/dri and glslViewer cannot initialize DRM (found the hard
+# way on unit #2, 2026-07-07). `noaudio` keeps HDMI audio off the vc4 driver
+# so the DAC/bcm2835 routes above stay untouched.
+if grep -qE '^dtoverlay=vc4-kms-v3d' "$CFG"; then
+  ok "KMS (vc4-kms-v3d) already enabled"
+else
+  if grep -qE '^#dtoverlay=vc4-kms-v3d' "$CFG"; then
+    sed -i -E 's|^#(dtoverlay=vc4-kms-v3d.*)|\1|' "$CFG"
+  else
+    echo "dtoverlay=vc4-kms-v3d,noaudio" >> "$CFG"
+  fi
+  ok "KMS (vc4-kms-v3d) enabled — needed by the GLSL visualizer"
+  REBOOT_NEEDED=1
+fi
+
 # --------------------------------------------------------------------------
 step 2/10 "zram (zstd, 50% RAM)"
 # --------------------------------------------------------------------------
