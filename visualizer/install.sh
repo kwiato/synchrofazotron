@@ -16,7 +16,9 @@ REPO="${PISTREAM_REPO:-kwiato/synchrofazotron}"
 BRANCH="${PISTREAM_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/$REPO/$BRANCH/visualizer"
 FILES=(asound-tee.conf cava.conf pistream-visualizer.service pistream-hdmi-watch.service hdmi-watch.sh
-       viz-run.sh glsl-audio-bridge.py glsl-run.py glsl/plasma.frag glsl/tunnel.frag glsl/copper.frag
+       viz-run.sh glsl-audio-bridge.py glsl-run.py
+       glsl/plasma.frag glsl/tunnel.frag glsl/copper.frag
+       glsl/cube.frag glsl/scope.frag glsl/grid.frag
        visualizer-studio.html)
 DEST=/opt/pistream-visualizer
 DAC_PCM="hw:CARD=BossDAC,DEV=0"   # what uninstall reverts to

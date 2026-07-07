@@ -88,7 +88,8 @@ interrupted. Two engines are available, switchable from the panel's
 `/settings` page:
 
 - **cava** — classic spectrum bars on the console (default)
-- **GLSL shaders** — audio-reactive fragment shaders (plasma, tunnel, copper…)
+- **GLSL shaders** — audio-reactive fragment shaders (plasma, tunnel, copper,
+  cube, oscilloscope, grid…)
   rendered by viz-glsl, our minimal DRM/GLES2 runner, fed with levels
   (`u_level`, `u_bass`, `u_mid`, `u_treble`) by a small audio bridge
 
