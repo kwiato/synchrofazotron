@@ -45,6 +45,15 @@ jobs:
             # (no .splat files loaded, fonts run with FONS_NO_VAO).
             sed -i "s|#include <GLES2/gl2.h>|#include <GLES3/gl3.h>|" \
               /src/deps/vera/include/vera/gl/gl.h
+            # vera's DRM path asks EGL for an ES3 config with alpha 8 and 4x
+            # MSAA. VideoCore IV (Pi Zero 2 W) is ES2-only, and the alpha-8
+            # ask matches only ARGB configs while vera scans out XRGB8888 —
+            # its visual-id check then rejects every candidate. MSAA buys
+            # nothing for a fullscreen quad and costs tile memory on VC4.
+            sed -i -e "s|EGL_OPENGL_ES3_BIT_KHR|EGL_OPENGL_ES2_BIT|" \
+                   -e "s|EGL_ALPHA_SIZE, 8,|EGL_ALPHA_SIZE, 0,|" \
+                   -e "s|EGL_SAMPLE_BUFFERS, 1, EGL_SAMPLES, 4,||" \
+              /src/deps/vera/src/window.cpp
             cmake -S /src -B /build -DCMAKE_BUILD_TYPE=Release -DFORCE_DRM=TRUE \
               -DCMAKE_CXX_FLAGS="-DFONS_NO_VAO"
             cmake --build /build -j"$(nproc)"
