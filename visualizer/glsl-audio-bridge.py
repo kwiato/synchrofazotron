@@ -27,6 +27,15 @@ BANDS = ((20, 250), (250, 2000), (2000, 8000))   # bass / mid / treble, Hz
 GAINS = (3.0, 40.0, 60.0, 120.0)                 # level + per-band make-up gain
 NAMES = ("u_level", "u_bass", "u_mid", "u_treble")
 DECAY = 0.85
+# AGC: the players apply software volume (squeezelite -W / LMS) BEFORE the
+# tee, so the loopback copy is as quiet as the speakers — at LMS volume ~25
+# the raw peak is under 0.01 and fixed gains starve the shaders (cava gets
+# away with it thanks to autosens). Normalize by a running peak of the gained
+# level: quiet playback is boosted up to AGC_MAX_BOOST, loud playback is
+# gently normalized toward AGC_TARGET.
+AGC_TARGET = 0.9
+AGC_MAX_BOOST = 45.0
+AGC_DECAY = 0.999                 # per chunk (~43 Hz): env halves in ~16 s
 
 
 def main():
@@ -38,6 +47,7 @@ def main():
     freqs = np.fft.rfftfreq(CHUNK, 1.0 / RATE)
     masks = [(freqs >= lo) & (freqs < hi) for lo, hi in BANDS]
     state = [0.0] * len(NAMES)
+    env = 0.0                     # running peak of the gained level (AGC)
     while True:
         raw = rec.stdout.read(CHUNK * 4)          # 2 ch * 2 bytes
         if len(raw) < CHUNK * 4:
@@ -47,9 +57,12 @@ def main():
         spec = np.abs(np.fft.rfft(mono * window)) / CHUNK
         vals = [float(np.sqrt(np.mean(mono ** 2)))]
         vals += [float(np.sqrt(np.mean(spec[m] ** 2))) for m in masks]
+        gained = [v * g for v, g in zip(vals, GAINS)]
+        env = max(env * AGC_DECAY, gained[0])
+        scale = AGC_TARGET / max(env, AGC_TARGET / AGC_MAX_BOOST)
         lines = []
-        for i, v in enumerate(vals):
-            v = min(v * GAINS[i], 1.0)
+        for i, v in enumerate(gained):
+            v = min(v * scale, 1.0)
             state[i] = v if v > state[i] else state[i] * DECAY + v * (1 - DECAY)
             lines.append(f"{NAMES[i]},{state[i]:.4f}")
         sys.stdout.write("\n".join(lines) + "\n")
