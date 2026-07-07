@@ -28,12 +28,12 @@ sources (squeezelite / shairport / bluealsa-aplay)
 
 `glsl/*.frag` are audio-reactive fragment shaders run on the Pi by viz-glsl
 (fed by `glsl-audio-bridge.py`: `u_level`, `u_bass`, `u_mid`, `u_treble`).
-To iterate on shaders without the Pi, open **`preview.html`** in a browser —
-WebGL 1 compiles the same GLSL ES 1.00 dialect the Pi's VC4 GPU enforces, so
-what compiles there compiles here. It is a small studio: repo presets +
-browser-saved drafts, a live-recompiling editor with Mesa-style error lines,
-bridge-uniform emulation (fake beat / microphone / sliders) and `.frag`
-export. Works straight from `file://` (repo shaders are embedded as
+To iterate on shaders without the Pi, open **`visualizer-studio.html`** in a
+browser — WebGL 1 compiles the same GLSL ES 1.00 dialect the Pi's VC4 GPU
+enforces, so what compiles there compiles here. It is a small studio: repo
+presets + browser-saved drafts, a live-recompiling editor with Mesa-style
+error lines, bridge-uniform emulation (fake beat / microphone / sliders),
+`.frag` upload ("Load .frag") and `.frag` export. Works straight from `file://` (repo shaders are embedded as
 fallback); serve the repo (`python -m http.server`) to preview the current
 `glsl/*.frag` files, or use "Watch .frag" (Chrome/Edge) to edit in your own
 editor and recompile on every save.

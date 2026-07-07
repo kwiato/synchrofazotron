@@ -16,8 +16,9 @@
   Shader sources are embedded as a fallback so the page works from file://
   (and as a claude.ai artifact); served over http from the repo root or the
   visualizer/ dir it fetches the fresh glsl/*.frag files instead.
-  Drafts are saved in the browser (localStorage). "Watch .frag" (Chrome/Edge)
-  reloads a local file on every save, so you can edit in your editor.
+  Drafts are saved in the browser (localStorage). "Load .frag" imports local
+  .frag files as drafts. "Watch .frag" (Chrome/Edge) reloads a local file on
+  every save, so you can edit in your editor.
 
   This file is generated from studio_template.html + glsl sources; editing it
   directly is fine too - the embedded sources are only a fallback.
@@ -154,6 +155,8 @@
     <span id="curName"></span>
     <span id="curStatus"></span>
     <span class="actions">
+      <button id="loadBtn" title="Loads local .frag files as drafts">Load .frag</button>
+      <input type="file" id="fileIn" accept=".frag,.glsl,.fs" multiple hidden>
       <button id="saveBtn" class="primary" title="Saves the current code as a draft in this browser">Save as draft</button>
       <button id="resetSrcBtn" title="Restores the repo version">Restore original</button>
       <button id="delBtn" title="Removes the draft from this browser">Delete draft</button>
@@ -404,9 +407,24 @@ setInterval(async () => {            // recompile on save: poll mtime at 2 Hz
 
 // --- actions -------------------------------------------------------------
 function sanitizeName(s) {
-  return (s || "").toLowerCase().trim().replace(/\.frag$/, "")
+  return (s || "").toLowerCase().trim().replace(/\.(frag|glsl|fs)$/, "")
     .replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 32);
 }
+$("loadBtn").onclick = () => $("fileIn").click();
+$("fileIn").onchange = async e => {
+  let last = null;
+  for (const f of e.target.files) {
+    let name = sanitizeName(f.name) || "upload";
+    while (name in BUILTINS) name += "-2";     // repo names are reserved
+    if (name in drafts && !confirm("Draft „" + name + "” exists. Overwrite?")) continue;
+    drafts[name] = { src: await f.text() };
+    last = name;
+  }
+  e.target.value = "";                         // allow re-picking the same file
+  if (!last) return;
+  persist();
+  select(last);
+};
 $("saveBtn").onclick = () => {
   let name = sanitizeName(prompt("Draft name (the .frag file name):", isDraft(cur) ? cur : cur + "-v2"));
   if (!name) return;

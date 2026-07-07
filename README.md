@@ -97,10 +97,11 @@ Install with `PISTREAM_VISUALIZER=1` during setup, or later with
 
 ### Editing the visualizations
 
-- **Shader studio** — open `visualizer/preview.html` in a browser (works
-  straight from `file://`). It is a live-recompiling GLSL editor with the
-  repo presets, browser-saved drafts, Mesa-style error lines, emulated bridge
-  uniforms (fake beat / microphone / sliders) and `.frag` export. WebGL 1
+- **Shader studio** — open `visualizer/visualizer-studio.html` in a browser
+  (works straight from `file://`). It is a live-recompiling GLSL editor with
+  the repo presets, browser-saved drafts, `.frag` upload ("Load .frag"),
+  Mesa-style error lines, emulated bridge uniforms (fake beat / microphone /
+  sliders) and `.frag` export. WebGL 1
   compiles the same GLSL ES 1.00 dialect as the Pi's VC4 GPU, so what compiles
   in the studio compiles on the device. To preview the current `glsl/*.frag`
   files serve the repo first (`python -m http.server`), or use "Watch .frag"
