@@ -79,6 +79,36 @@ raises its own **setup AP** (`Synchrofazotron-Setup`, password
 network there and the device switches over on its own. Details in
 [ap-fallback/README.md](ap-fallback/README.md).
 
+## Visualizer
+
+With a monitor plugged into the Pi's HDMI port, Synchrofazotron turns into a
+music visualizer: an HDMI hotplug watcher starts the show automatically when
+the cable goes in and stops it when it goes out — the music itself is never
+interrupted. Two engines are available, switchable from the panel's
+`/settings` page:
+
+- **cava** — classic spectrum bars on the console (default)
+- **GLSL shaders** — audio-reactive fragment shaders (plasma, tunnel, copper…)
+  rendered by viz-glsl, our minimal DRM/GLES2 runner, fed with levels
+  (`u_level`, `u_bass`, `u_mid`, `u_treble`) by a small audio bridge
+
+Install with `PISTREAM_VISUALIZER=1` during setup, or later with
+`visualizer/install.sh`. Details in [visualizer/README.md](visualizer/README.md).
+
+### Editing the visualizations
+
+- **Shader studio** — open `visualizer/preview.html` in a browser (works
+  straight from `file://`). It is a live-recompiling GLSL editor with the
+  repo presets, browser-saved drafts, Mesa-style error lines, emulated bridge
+  uniforms (fake beat / microphone / sliders) and `.frag` export. WebGL 1
+  compiles the same GLSL ES 1.00 dialect as the Pi's VC4 GPU, so what compiles
+  in the studio compiles on the device. To preview the current `glsl/*.frag`
+  files serve the repo first (`python -m http.server`), or use "Watch .frag"
+  (Chrome/Edge) to edit in your own editor and recompile on every save.
+- **Panel** — `http://<pi>:8787/settings` lets you switch engines, edit the
+  cava color presets and upload `.frag` files exported from the studio
+  (drag & drop) directly to the device.
+
 ## Repo layout
 
 | Path | What it is |
