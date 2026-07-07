@@ -16,7 +16,8 @@ REPO="${PISTREAM_REPO:-kwiato/synchrofazotron}"
 BRANCH="${PISTREAM_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/$REPO/$BRANCH/visualizer"
 FILES=(asound-tee.conf cava.conf pistream-visualizer.service pistream-hdmi-watch.service hdmi-watch.sh
-       viz-run.sh glsl-audio-bridge.py glsl-run.py glsl/plasma.frag glsl/tunnel.frag glsl/copper.frag)
+       viz-run.sh glsl-audio-bridge.py glsl-run.py glsl/plasma.frag glsl/tunnel.frag glsl/copper.frag
+       visualizer-studio.html)
 DEST=/opt/pistream-visualizer
 DAC_PCM="hw:CARD=BossDAC,DEV=0"   # what uninstall reverts to
 STAMP="$(date +%Y%m%d-%H%M%S)"
@@ -124,6 +125,8 @@ install -m 0755 "$SRC_DIR/viz-run.sh" "$DEST/viz-run.sh"
 install -m 0755 "$SRC_DIR/glsl-audio-bridge.py" "$DEST/glsl-audio-bridge.py"
 install -m 0755 "$SRC_DIR/glsl-run.py" "$DEST/glsl-run.py"
 install -m 0644 "$SRC_DIR"/glsl/*.frag "$DEST/glsl/"
+# shader studio — the panel serves it at /studio
+install -m 0644 "$SRC_DIR/visualizer-studio.html" "$DEST/visualizer-studio.html"
 [[ -f $DEST/engine ]] || echo cava > "$DEST/engine"
 install -m 0644 "$SRC_DIR/pistream-visualizer.service" /etc/systemd/system/
 install -m 0644 "$SRC_DIR/pistream-hdmi-watch.service" /etc/systemd/system/
