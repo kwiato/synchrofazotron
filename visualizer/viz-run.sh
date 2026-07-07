@@ -23,7 +23,9 @@ if [[ $ENGINE == glsl ]]; then
     # no exec: if the binary dies right away (e.g. DRM init failure), fall
     # back to cava instead of letting systemd crash-loop a black screen
     START=$SECONDS
-    bash -c "python3 '$DIR/glsl-audio-bridge.py' | '$GLSL_BIN' '$DIR/glsl/$SHADER.frag' --fullscreen"
+    # --noncurses: the service has no TERM, so the ncurses console cannot
+    # start anyway and only spews escape codes into the journal
+    bash -c "python3 '$DIR/glsl-audio-bridge.py' | '$GLSL_BIN' '$DIR/glsl/$SHADER.frag' --fullscreen --noncurses --nocursor"
     RC=$?
     if (( SECONDS - START < 10 )); then
       echo "glslViewer exited immediately (rc=$RC) — details: journalctl -u pistream-visualizer" > "$DIR/glsl-error"

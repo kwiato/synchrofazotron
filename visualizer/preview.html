@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Synchrofazotron shader preview</title>
+<!--
+  Dev harness for the glsl visualizer presets. WebGL 1 compiles the same
+  GLSL ES 1.00 dialect that Mesa enforces on the Pi Zero 2 W (VC4), so a
+  shader that compiles here compiles there, and vice versa.
+
+  Uniform contract (same as glsl-audio-bridge.py):
+    u_resolution  vec2   canvas size in px
+    u_time        float  seconds since load
+    u_level, u_bass, u_mid, u_treble  float 0..1, fast attack / slow decay
+
+  Usage:
+    - open this file directly (file://) - starts with the embedded plasma, or
+    - serve the repo (python -m http.server) to get the preset buttons, or
+    - "Open .frag (watch)" picks a local file and recompiles on every save.
+-->
+<style>
+  :root { color-scheme: dark; }
+  * { margin: 0; box-sizing: border-box; }
+  body { background: #0b0d10; color: #cfd6dd; font: 13px/1.5 ui-monospace, Consolas, monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; background: #14181d; border-bottom: 1px solid #232a31; }
+  header b { color: #7fd0ff; font-weight: 600; margin-right: 4px; }
+  button, select { background: #1d242b; color: #cfd6dd; border: 1px solid #2e3843; border-radius: 4px; padding: 4px 10px; font: inherit; cursor: pointer; }
+  button:hover, select:hover { border-color: #4a5a6a; }
+  button.on { background: #235; border-color: #47a3ff; color: #bfe1ff; }
+  #stage { flex: 1; position: relative; min-height: 0; }
+  canvas { width: 100%; height: 100%; display: block; }
+  #err { position: absolute; inset: auto 0 0 0; max-height: 45%; overflow: auto; background: #2a1114ee; color: #ff9aa2; padding: 10px 14px; white-space: pre-wrap; display: none; border-top: 2px solid #a33; }
+  #hud { position: absolute; top: 8px; right: 10px; background: #0009; padding: 2px 8px; border-radius: 4px; color: #9fb; }
+  #drop { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: #47a3ff22; border: 3px dashed #47a3ff; font-size: 20px; color: #bfe1ff; pointer-events: none; }
+  footer { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 6px 12px; background: #14181d; border-top: 1px solid #232a31; }
+  footer label { display: flex; align-items: center; gap: 6px; }
+  input[type=range] { width: 90px; accent-color: #47a3ff; }
+  .val { display: inline-block; width: 4ch; color: #9fb; text-align: right; }
+  .bar { display: inline-block; width: 60px; height: 8px; background: #1d242b; border-radius: 2px; overflow: hidden; vertical-align: middle; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, #2d8, #fd4); width: 0; }
+</style>
+</head>
+<body>
+<header>
+  <b>synchrofazotron preview</b>
+  <span id="presets"></span>
+  <button id="openBtn" title="Pick a .frag and recompile on every save">Open .frag (watch)</button>
+  <select id="audioMode">
+    <option value="beat">audio: fake beat</option>
+    <option value="mic">audio: microphone</option>
+    <option value="manual">audio: sliders</option>
+  </select>
+  <select id="resScale" title="Render scale (the Pi renders 1080p; smaller is faster)">
+    <option value="1">scale 1x</option>
+    <option value="0.5" selected>scale 0.5x</option>
+    <option value="0.25">scale 0.25x</option>
+  </select>
+  <button id="pauseBtn">pause</button>
+  <button id="resetBtn" title="restart u_time">t=0</button>
+  <span id="shaderName" style="color:#8a939c"></span>
+</header>
+<div id="stage">
+  <canvas id="gl"></canvas>
+  <div id="hud">-- fps</div>
+  <div id="err"></div>
+  <div id="drop">drop a .frag here</div>
+</div>
+<footer>
+  <span style="color:#8a939c">uniforms:</span>
+  <label>u_level <span class="bar"><i id="b0"></i></span> <input type="range" id="s0" min="0" max="1" step="0.01" value="0.6"><span class="val" id="v0"></span></label>
+  <label>u_bass <span class="bar"><i id="b1"></i></span> <input type="range" id="s1" min="0" max="1" step="0.01" value="0.5"><span class="val" id="v1"></span></label>
+  <label>u_mid <span class="bar"><i id="b2"></i></span> <input type="range" id="s2" min="0" max="1" step="0.01" value="0.4"><span class="val" id="v2"></span></label>
+  <label>u_treble <span class="bar"><i id="b3"></i></span> <input type="range" id="s3" min="0" max="1" step="0.01" value="0.3"><span class="val" id="v3"></span></label>
+</footer>
+<script>
+"use strict";
+
+// Embedded fallback so the page works from file:// with no server.
+const PLASMA = `// Synchrofazotron glsl preset: plasma - classic demoscene sine plasma.
+#ifdef GL_ES
+precision mediump float;
+#endif
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform float u_level;
+uniform float u_bass;
+uniform float u_mid;
+uniform float u_treble;
+void main() {
+    vec2 p = (2.0 * gl_FragCoord.xy - u_resolution) / min(u_resolution.x, u_resolution.y);
+    float t = u_time * 0.7 + u_bass * 3.0;
+    float v = sin(p.x * 3.0 + t)
+            + sin(p.y * 4.0 - t * 1.3)
+            + sin((p.x + p.y) * 2.5 + t * 0.7)
+            + sin(length(p) * (5.0 + 3.0 * u_mid) - t * 2.0);
+    vec3 col = 0.5 + 0.5 * cos(3.14159 * v + vec3(0.0, 2.094, 4.188) + u_time * 0.3);
+    col *= 0.4 + 0.9 * u_level;
+    gl_FragColor = vec4(col, 1.0);
+}`;
+
+const VERT = "attribute vec2 a_pos; void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }";
+const PRESETS = ["plasma", "tunnel", "copper"];
+
+const canvas = document.getElementById("gl");
+const gl = canvas.getContext("webgl", { antialias: false });
+const errBox = document.getElementById("err");
+const hud = document.getElementById("hud");
+
+let program = null, uniformLoc = {};
+let startTime = performance.now(), pausedAt = null;
+let frames = 0, fpsStamp = performance.now();
+let watchHandle = null, watchStamp = 0;
+
+// --- shader compilation ------------------------------------------------
+
+function compile(src, name) {
+  const mk = (type, s) => {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, s);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(sh);
+    return sh;
+  };
+  try {
+    const p = gl.createProgram();
+    gl.attachShader(p, mk(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(p, mk(gl.FRAGMENT_SHADER, src));
+    gl.bindAttribLocation(p, 0, "a_pos");
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw gl.getProgramInfoLog(p);
+    if (program) gl.deleteProgram(program);
+    program = p;
+    gl.useProgram(p);
+    uniformLoc = {};
+    for (const u of ["u_resolution", "u_time", "u_level", "u_bass", "u_mid", "u_treble"])
+      uniformLoc[u] = gl.getUniformLocation(p, u);
+    errBox.style.display = "none";
+    document.getElementById("shaderName").textContent = name;
+  } catch (e) {
+    errBox.textContent = "" + e;   // Mesa on the Pi reports the same 0:LINE(col) positions
+    errBox.style.display = "block";
+  }
+}
+
+const quad = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// --- shader sources: presets, file open, drag & drop --------------------
+
+const presetSpan = document.getElementById("presets");
+for (const n of PRESETS) {
+  const b = document.createElement("button");
+  b.textContent = n;
+  b.onclick = () => fetch("glsl/" + n + ".frag")
+    .then(r => { if (!r.ok) throw 0; return r.text(); })
+    .then(t => { watchHandle = null; compile(t, n + ".frag"); })
+    .catch(() => { errBox.textContent = "Cannot fetch glsl/" + n + ".frag - serve the repo over http (python -m http.server) or use Open/drop."; errBox.style.display = "block"; });
+  presetSpan.appendChild(b);
+}
+
+document.getElementById("openBtn").onclick = async () => {
+  if (!window.showOpenFilePicker) { alert("File watching needs Chrome/Edge. Use drag & drop instead."); return; }
+  const [h] = await window.showOpenFilePicker({ types: [{ description: "fragment shader", accept: { "text/plain": [".frag", ".glsl", ".fs"] } }] });
+  watchHandle = h; watchStamp = 0;   // the poll loop below picks it up
+};
+
+setInterval(async () => {           // recompile on save: poll mtime at 2 Hz
+  if (!watchHandle) return;
+  const f = await watchHandle.getFile();
+  if (f.lastModified !== watchStamp) {
+    watchStamp = f.lastModified;
+    compile(await f.text(), f.name + " (watching)");
+  }
+}, 500);
+
+const drop = document.getElementById("drop");
+addEventListener("dragover", e => { e.preventDefault(); drop.style.display = "flex"; });
+addEventListener("dragleave", () => drop.style.display = "none");
+addEventListener("drop", async e => {
+  e.preventDefault(); drop.style.display = "none";
+  const f = e.dataTransfer.files[0];
+  if (f) { watchHandle = null; compile(await f.text(), f.name); }
+});
+
+// --- audio emulation -----------------------------------------------------
+// Mirrors glsl-audio-bridge.py: bands 20-250 / 250-2000 / 2000-8000 Hz,
+// gains (3, 40, 60, 120), fast attack / DECAY=0.85 smoothing at ~43 Hz.
+
+const DECAY = 0.85, GAINS = [3, 40, 60, 120], BANDS = [[20, 250], [250, 2000], [2000, 8000]];
+const state = [0, 0, 0, 0];        // u_level, u_bass, u_mid, u_treble
+let analyser = null, fftBuf = null, audioCtx = null;
+
+function beatSample(t) {           // synthetic 120 BPM groove
+  const beat = t * 2.0;
+  const kick = Math.exp(-6 * (beat % 1));
+  const mid = 0.3 + 0.25 * Math.sin(t * 2.1) + 0.15 * Math.sin(t * 6.7);
+  const hat = ((beat + 0.5) % 1 < 0.12 ? 0.8 : 0.1) + 0.1 * Math.sin(t * 31);
+  return [0.35 + 0.5 * kick, kick, Math.max(0, mid), Math.max(0, hat)];
+}
+
+async function enableMic() {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  audioCtx = new AudioContext();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0;
+  audioCtx.createMediaStreamSource(stream).connect(analyser);
+  fftBuf = new Float32Array(analyser.frequencyBinCount);
+}
+
+function micSample() {
+  analyser.getFloatFrequencyData(fftBuf);
+  const hzPerBin = audioCtx.sampleRate / analyser.fftSize;
+  const vals = [0, 0, 0, 0];
+  let total = 0;
+  BANDS.forEach(([lo, hi], i) => {
+    let sum = 0, n = 0;
+    for (let b = Math.ceil(lo / hzPerBin); b < hi / hzPerBin && b < fftBuf.length; b++, n++)
+      sum += Math.pow(10, fftBuf[b] / 20) ** 2;           // dB -> linear power
+    vals[i + 1] = n ? Math.sqrt(sum / n) * 4 : 0;
+    total += sum;
+  });
+  vals[0] = Math.sqrt(total / 300);
+  return vals;
+}
+
+let lastAudioTick = 0;
+function updateAudio(now, t) {
+  if (now - lastAudioTick < 1000 / 43) return;            // bridge cadence
+  lastAudioTick = now;
+  const mode = document.getElementById("audioMode").value;
+  let vals;
+  if (mode === "manual") {
+    for (let i = 0; i < 4; i++) state[i] = +document.getElementById("s" + i).value;
+    return;
+  } else if (mode === "mic" && analyser) {
+    vals = micSample();
+  } else {
+    vals = beatSample(t);
+  }
+  for (let i = 0; i < 4; i++) {
+    const v = Math.min(vals[i] * GAINS[i] * 0.34, 1);     // 0.34 ~ normalize synthetic range
+    state[i] = v > state[i] ? v : state[i] * DECAY + v * (1 - DECAY);
+  }
+}
+
+document.getElementById("audioMode").onchange = e => {
+  if (e.target.value === "mic" && !analyser)
+    enableMic().catch(() => { alert("Microphone unavailable"); e.target.value = "beat"; });
+};
+
+// --- main loop -----------------------------------------------------------
+
+document.getElementById("pauseBtn").onclick = e => {
+  if (pausedAt === null) { pausedAt = performance.now(); e.target.textContent = "run"; e.target.classList.add("on"); }
+  else { startTime += performance.now() - pausedAt; pausedAt = null; e.target.textContent = "pause"; e.target.classList.remove("on"); }
+};
+document.getElementById("resetBtn").onclick = () => { startTime = performance.now(); if (pausedAt !== null) pausedAt = startTime; };
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (!program || pausedAt !== null) return;
+
+  const scale = +document.getElementById("resScale").value;
+  const w = Math.round(canvas.clientWidth * devicePixelRatio * scale);
+  const h = Math.round(canvas.clientHeight * devicePixelRatio * scale);
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h); }
+
+  const t = (now - startTime) / 1000;
+  updateAudio(now, t);
+
+  gl.uniform2f(uniformLoc.u_resolution, w, h);
+  gl.uniform1f(uniformLoc.u_time, t);
+  ["u_level", "u_bass", "u_mid", "u_treble"].forEach((u, i) => {
+    gl.uniform1f(uniformLoc[u], state[i]);
+    document.getElementById("b" + i).style.width = (state[i] * 100) + "%";
+    document.getElementById("v" + i).textContent = state[i].toFixed(2);
+  });
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  frames++;
+  if (now - fpsStamp > 500) {
+    hud.textContent = Math.round(frames * 1000 / (now - fpsStamp)) + " fps @ " + w + "x" + h;
+    frames = 0; fpsStamp = now;
+  }
+}
+
+compile(PLASMA, "plasma (embedded)");
+fetch("glsl/plasma.frag").then(r => r.ok ? r.text() : null).then(t => { if (t) compile(t, "plasma.frag"); }).catch(() => {});
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

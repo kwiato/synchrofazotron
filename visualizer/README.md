@@ -24,6 +24,17 @@ sources (squeezelite / shairport / bluealsa-aplay)
 - Fixed cost: negligible CPU for copying samples; the path goes through `plug`,
   so it formally stops being bit-perfect (inaudible in practice).
 
+## GLSL presets & preview harness
+
+`glsl/*.frag` are audio-reactive fragment shaders run on the Pi by glslViewer
+(fed by `glsl-audio-bridge.py`: `u_level`, `u_bass`, `u_mid`, `u_treble`).
+To iterate on shaders without the Pi, open **`preview.html`** in a browser —
+WebGL 1 compiles the same GLSL ES 1.00 dialect the Pi's VC4 GPU enforces, so
+what compiles there compiles here. It emulates the bridge uniforms (fake beat
+/ microphone / sliders) and, in Chrome/Edge, recompiles a watched `.frag` on
+every save. Serve the repo (`python -m http.server`) to get the preset
+buttons, or just drag & drop a shader file onto the page.
+
 ## Install / update
 
 ```bash
