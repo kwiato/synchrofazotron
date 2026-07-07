@@ -66,8 +66,14 @@ python web/pistream_panel.py
 # then open http://127.0.0.1:8787  (panel) and /settings
 ```
 
-Off the Pi all the system commands (`bluetoothctl`, `systemctl`, `iw`, …)
-fail silently, so the pages render with empty/degraded data — services show
+Anything launched from outside `/opt/pistream-panel` (i.e. a repo checkout,
+on any OS) starts in **sandbox mode**: every system command is a no-op, so
+previewing the UI can never change the host — no hostname, tailscale,
+`systemctl`, bluetooth or reboot/update actions run. The startup line says
+`sandbox mode` when it is on. Force it either way with `PISTREAM_DEV=1`/`0`
+(the installed service runs from `/opt/...`, so it defaults to real mode).
+
+In sandbox mode the pages render with empty/degraded data — services show
 red, sources are silent, the visualizer card says "not installed". That is
 fine for working on layout/CSS/JS. Notes:
 
@@ -101,6 +107,7 @@ with sensible defaults:
 | `PISTREAM_AUTOPAUSE` | `1` | `0` = do not auto-pause the previous source when a new one starts |
 | `PISTREAM_PANEL_PORT` | `8787` | HTTP port |
 | `PISTREAM_PANEL_BIND` | `0.0.0.0` | bind address |
+| `PISTREAM_DEV` | auto | `1` = sandbox (no system commands run); `0` = run for real. Default: real only when launched from `/opt/pistream-panel`, sandbox otherwise |
 
 ## Endpoints
 

@@ -19,6 +19,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import threading
 import time
 import urllib.request
@@ -50,6 +51,16 @@ WIFI_IFACE = os.environ.get("PISTREAM_WIFI_IFACE", "wlan0")
 # Auto-pause: when a new source starts playing, pause the previous one.
 # Essential on a hardware DAC (single substream — sources cannot mix there).
 AUTOPAUSE = os.environ.get("PISTREAM_AUTOPAUSE", "1") == "1"
+
+# Sandbox / dev mode. When on, no host-mutating command runs — every _run()
+# is a no-op, so previewing the UI on a laptop can never touch the real system
+# (no tailscale/hostname/systemctl/bluetoothctl/reboot/update). The panel still
+# renders; status just reads back empty. The real deployment always runs from
+# /opt/pistream-panel (installed there by web/install.sh and launched by the
+# systemd unit), so anything running from elsewhere — a repo checkout on any
+# OS — defaults to the safe sandbox. Force either way with PISTREAM_DEV=1/0.
+_ON_DEVICE = os.path.abspath(__file__).startswith("/opt/pistream-panel")
+DEV_MODE = os.environ.get("PISTREAM_DEV", "0" if _ON_DEVICE else "1") == "1"
 
 # ---------------------------------------------------------------------------
 # Language (UI translations). Default from env, runtime choice persisted to a
@@ -557,6 +568,8 @@ _trusted = set()                   # cache: MACs already marked as trusted
 
 
 def _run(cmd, timeout=8):
+    if DEV_MODE:
+        return ""   # sandbox: never touch the host while previewing locally
     try:
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         return out.stdout.strip()
@@ -691,6 +704,8 @@ def _bt_debug():
 def _audio_test():
     """Plays the standard ALSA test wav through bluealsa-aplay's device —
     exercises exactly the path BT audio takes. Returns (ok, message)."""
+    if DEV_MODE:
+        return False, "sandbox mode — audio test disabled"
     dev = _aplay_device()
     try:
         r = subprocess.run(
@@ -2273,15 +2288,20 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    threading.Thread(target=_auto_trust_loop, daemon=True).start()
-    if BT_AUTOCONNECT:
-        threading.Thread(target=_bt_autoconnect_loop, daemon=True).start()
-    if AUTOPAUSE:
-        threading.Thread(target=_autopause_loop, daemon=True).start()
+    if not DEV_MODE:   # the background loops only poke real system services
+        threading.Thread(target=_auto_trust_loop, daemon=True).start()
+        if BT_AUTOCONNECT:
+            threading.Thread(target=_bt_autoconnect_loop, daemon=True).start()
+        if AUTOPAUSE:
+            threading.Thread(target=_autopause_loop, daemon=True).start()
     srv = ThreadingHTTPServer((BIND, PORT), Handler)
     # 0.0.0.0 means "every interface" — print an address a browser can open
     host = "127.0.0.1" if BIND in ("0.0.0.0", "::") else BIND
     print(f"Synchrofazotron panel at http://{host}:{PORT}")
+    if DEV_MODE:
+        print("  sandbox mode: system commands are disabled (no hostname / "
+              "tailscale / systemctl / bluetooth changes).")
+        print("  set PISTREAM_DEV=0 to run for real on the device.")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
