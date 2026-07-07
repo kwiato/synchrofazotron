@@ -10,17 +10,21 @@ set -euo pipefail
 REPO="${PISTREAM_REPO:-kwiato/synchrofazotron}"
 BRANCH="${PISTREAM_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/$REPO/$BRANCH/web"
-FILES=(pistream_panel.py pistream-panel.service bt-agent.service)
+FILES=(pistream_panel.py pistream-panel.service bt-agent.service
+       ui/panel.html ui/settings.html ui/style.css ui/common.js ui/panel.js
+       ui/settings.js)
 DEST=/opt/pistream-panel
 
 # Local mode ONLY when the script was run as a file (bash install.sh).
 # With `curl | bash` $0 is "bash" — then we always download from GitHub, even
 # if (stale) panel files happen to be lying around in the current directory.
 SRC_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo .)"
-if [[ "$(basename -- "$0")" != "install.sh" || ! -f "$SRC_DIR/pistream_panel.py" ]]; then
+if [[ "$(basename -- "$0")" != "install.sh" || ! -f "$SRC_DIR/pistream_panel.py" \
+      || ! -f "$SRC_DIR/ui/panel.html" ]]; then
   echo "==> Downloading $REPO@$BRANCH from GitHub"
   SRC_DIR="$(mktemp -d)"
   trap 'rm -rf "$SRC_DIR"' EXIT
+  mkdir -p "$SRC_DIR/ui"
   for f in "${FILES[@]}"; do
     curl -fsSL --retry 5 --retry-delay 2 "$RAW/$f" -o "$SRC_DIR/$f"
   done
@@ -33,8 +37,11 @@ fi
 install -m 0644 "$SRC_DIR/bt-agent.service" /etc/systemd/system/bt-agent.service
 
 echo "==> Copying the panel to $DEST"
-install -d "$DEST"
+install -d "$DEST" "$DEST/ui"
 install -m 0755 "$SRC_DIR/pistream_panel.py" "$DEST/pistream_panel.py"
+install -m 0644 "$SRC_DIR"/ui/panel.html "$SRC_DIR"/ui/settings.html \
+                "$SRC_DIR"/ui/style.css "$SRC_DIR"/ui/common.js \
+                "$SRC_DIR"/ui/panel.js "$SRC_DIR"/ui/settings.js "$DEST/ui/"
 
 echo "==> Installing systemd services"
 install -m 0644 "$SRC_DIR/pistream-panel.service" /etc/systemd/system/pistream-panel.service

@@ -56,6 +56,35 @@ Access:
 - Tailscale: `http://<tailscale-ip>:8787` or `http://pistream:8787` (MagicDNS)
 - LAN: `http://<lan-ip>:8787`
 
+## Local UI preview (development)
+
+The panel is stdlib-only Python, so it runs on any machine (Windows/macOS/
+Linux) without a Pi:
+
+```bash
+python web/pistream_panel.py
+# then open http://127.0.0.1:8787  (panel) and /settings
+```
+
+Off the Pi all the system commands (`bluetoothctl`, `systemctl`, `iw`, …)
+fail silently, so the pages render with empty/degraded data — services show
+red, sources are silent, the visualizer card says "not installed". That is
+fine for working on layout/CSS/JS. Notes:
+
+- The UI lives in **`web/ui/`** and is read from disk on every request:
+  edit a file, refresh the browser — no server restart needed.
+  - `ui/panel.html` + `ui/panel.js` — main page (tabs, player bar)
+  - `ui/settings.html` + `ui/settings.js` — settings page
+  - `ui/style.css` — shared stylesheet (both pages)
+- HTML and JS are served through the i18n filler: `{{T:key}}` placeholders
+  (strings live in the `STR` dict in `pistream_panel.py`), plus `{{DEVICE}}`,
+  `{{LANG}}`, `{{LMS_URL}}`, `{{LMS_PORT}}`, `{{PAIR_WIN}}`, `{{PLAYER}}`.
+  CSS is served raw.
+- Switching the language in `/settings` works and writes a `lang` file next
+  to the script — don't commit it.
+- Buttons that talk to the system (reboot, Wi-Fi save, pairing) are safe to
+  click locally: the underlying commands just fail and the UI shows an error.
+
 ## Configuration
 
 Everything via environment variables (set in `pistream-panel.service`),
@@ -76,8 +105,14 @@ with sensible defaults:
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/` | panel page |
-| GET | `/settings` | settings page (Wi-Fi, visualizer, language) |
+| GET | `/` | panel page (tabs: now playing / visualizer, player bar) |
+| GET | `/settings` | settings page (config, sources, visualizer, about) |
+| GET | `/studio` | shader studio (when `visualizer-studio.html` is installed) |
+| GET | `/api/tailscale` | JSON: tailscale installed/active/ip |
+| POST | `/api/tailscale/set` | `{"up":true\|false}` — tailscale up / down |
+| GET | `/api/sources` | JSON: source groups (installed/enabled + per-service state) |
+| POST | `/api/source/toggle` | `{"source":"bluetooth\|airplay\|lms\|spotify","enable":bool}` |
+| POST | `/api/bt/forget` | `{"mac":"..."}` — removes the pairing |
 | GET | `/api/status` | JSON: BT state, connected devices, active sources, services |
 | GET | `/api/wifi` | JSON: current connection + saved networks (no passwords) |
 | GET | `/api/wifi/scan` | JSON: networks in range |

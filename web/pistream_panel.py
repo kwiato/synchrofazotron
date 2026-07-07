@@ -83,6 +83,44 @@ STR = {
         "title_settings": "settings",
         "sub_panel": "Audio player control panel",
         "settings_link_title": "Settings",
+        "tab_now": "Now playing",
+        "tab_viz": "Visualizer",
+        "pair_short": "Pair",
+        "sheet_sources": "Sources",
+        "viz_more": "Preset editing and shader upload live in settings.",
+        "how_connect_head": "🎵 How to connect sources",
+        # settings v2 (sections / tailscale / source switches)
+        "nav_config": "Config",
+        "nav_sources": "Sources",
+        "nav_viz": "Visualizer",
+        "nav_about": "About",
+        "wifi_add_btn": "➕ Add a network",
+        "modal_cancel": "Cancel",
+        "ts_head": "🔗 Tailscale",
+        "ts_note": "Connect to Tailscale for secure remote management — the panel works from anywhere, no ports to open.",
+        "ts_missing": "Tailscale is not installed on the device.",
+        "ts_up_ok": "Tailscale connected.",
+        "ts_down_ok": "Tailscale disconnected.",
+        "ts_login": "Tailscale needs a one-time login — run tailscale up on the device.",
+        "ts_fail": "The tailscale command failed.",
+        "src_not_installed": "not installed",
+        "src_on_msg": "{name} enabled.",
+        "src_off_msg": "{name} disabled.",
+        "src_fail_msg": "Could not switch {name} — check the service dots.",
+        "src_disabled_hint": "Disabled — flip the switch to use this source.",
+        "src_unknown": "Unknown source.",
+        "js_src_off_pre": "Disable ",
+        "js_src_off_suf": "? Playback from this source will stop.",
+        "bt_forget_title": "Forget device",
+        "js_bt_forget_pre": "Forget \"",
+        "js_bt_forget_suf": "\"? The phone will have to pair again.",
+        "bt_forgot": "Device forgotten.",
+        "viz_studio_head": "🎨 Shader studio",
+        "viz_studio_note": "Design your own shader in the browser studio, then drop the downloaded .frag file onto the shaders card.",
+        "viz_studio_btn": "Open the studio",
+        "about_desc": "Synchrofazotron turns a Raspberry Pi into a multi-source audio player: Bluetooth, AirPlay, Spotify Connect and TIDAL/radio/library via Lyrion Music Server, plus a music visualizer on HDMI.",
+        "about_repo": "Source code, docs and issues:",
+        "about_license": "Free software, licensed under GPL-3.0.",
         "now_playing": "🎚️ Now playing",
         "warn_multi": "⚠️ Multiple sources are playing at once — the first one owns the DAC, the rest play into the void. Stop the ones you do not need.",
         "sources_note": "Starting a new source automatically pauses the previous one (exception: Spotify — pause it in its own app).",
@@ -266,6 +304,43 @@ STR = {
         "title_settings": "ustawienia",
         "sub_panel": "Panel sterowania odtwarzaczem audio",
         "settings_link_title": "Ustawienia",
+        "tab_now": "Teraz gra",
+        "tab_viz": "Wizualizer",
+        "pair_short": "Paruj",
+        "sheet_sources": "Źródła",
+        "viz_more": "Edycja presetów i wgrywanie shaderów są w ustawieniach.",
+        "how_connect_head": "🎵 Jak podłączyć źródła",
+        "nav_config": "Konfiguracja",
+        "nav_sources": "Źródła",
+        "nav_viz": "Wizualizer",
+        "nav_about": "O projekcie",
+        "wifi_add_btn": "➕ Dodaj sieć",
+        "modal_cancel": "Anuluj",
+        "ts_head": "🔗 Tailscale",
+        "ts_note": "Połącz z Tailscale, żeby bezpiecznie zarządzać urządzeniem z dowolnego miejsca — panel działa bez otwierania portów.",
+        "ts_missing": "Tailscale nie jest zainstalowany na urządzeniu.",
+        "ts_up_ok": "Tailscale połączony.",
+        "ts_down_ok": "Tailscale rozłączony.",
+        "ts_login": "Tailscale wymaga jednorazowego logowania — odpal tailscale up na urządzeniu.",
+        "ts_fail": "Polecenie tailscale nie powiodło się.",
+        "src_not_installed": "niezainstalowane",
+        "src_on_msg": "{name} włączone.",
+        "src_off_msg": "{name} wyłączone.",
+        "src_fail_msg": "Nie udało się przełączyć {name} — sprawdź kropki usług.",
+        "src_disabled_hint": "Wyłączone — przełącz, żeby używać tego źródła.",
+        "src_unknown": "Nieznane źródło.",
+        "js_src_off_pre": "Wyłączyć ",
+        "js_src_off_suf": "? Odtwarzanie z tego źródła się zatrzyma.",
+        "bt_forget_title": "Zapomnij urządzenie",
+        "js_bt_forget_pre": "Zapomnieć „",
+        "js_bt_forget_suf": "”? Telefon będzie musiał sparować się od nowa.",
+        "bt_forgot": "Urządzenie zapomniane.",
+        "viz_studio_head": "🎨 Studio shaderów",
+        "viz_studio_note": "Zaprojektuj własny shader w studiu w przeglądarce, a pobrany plik .frag upuść na kartę shaderów.",
+        "viz_studio_btn": "Otwórz studio",
+        "about_desc": "Synchrofazotron zamienia Raspberry Pi w odtwarzacz audio z wieloma źródłami: Bluetooth, AirPlay, Spotify Connect oraz TIDAL/radio/biblioteka przez Lyrion Music Server, do tego wizualizer muzyki na HDMI.",
+        "about_repo": "Kod źródłowy, dokumentacja i zgłoszenia:",
+        "about_license": "Wolne oprogramowanie na licencji GPL-3.0.",
         "now_playing": "🎚️ Teraz gra",
         "warn_multi": "⚠️ Kilka źródeł gra jednocześnie — pierwsze zajmuje DAC, reszta gra w próżnię. Zatrzymaj niepotrzebne.",
         "sources_note": "Start nowego źródła automatycznie pauzuje poprzednie (wyjątek: Spotify — pauzuj w jego apce).",
@@ -512,6 +587,15 @@ def _bt_disconnect(mac):
     return "__err__" not in out and "Failed" not in out, T("bt_disc_ok")
 
 
+def _bt_forget(mac):
+    """Removes the pairing entirely (the phone must pair again)."""
+    if not _MAC_RE.fullmatch(mac):
+        return False, T("bt_bad_mac")
+    out = _run(["bluetoothctl", "remove", mac], timeout=10)
+    _trusted.discard(mac)
+    return "__err__" not in out and "Failed" not in out, T("bt_forgot")
+
+
 def _aplay_device():
     """The ALSA device bluealsa-aplay is configured to play to."""
     m = re.search(r"bluealsa-aplay .*?(?:--pcm=|-d +)(\S+)",
@@ -665,6 +749,54 @@ def _service_active(name):
 
 
 # ---------------------------------------------------------------------------
+# Source features (settings page) — each source is a group of systemd units
+# that can be switched off entirely (now AND at boot: disable --now) when
+# somebody does not want e.g. AirPlay or Bluetooth on their device.
+# ---------------------------------------------------------------------------
+SOURCE_GROUPS = (
+    {"id": "bluetooth", "label": "Bluetooth",
+     "services": ("bluetooth", "bluealsa", "bluealsa-aplay")},
+    {"id": "airplay", "label": "AirPlay", "services": ("shairport-sync",)},
+    {"id": "lms", "label": "LMS", "services": ("lyrionmusicserver", "squeezelite")},
+    {"id": "spotify", "label": "Spotify", "services": ("raspotify",)},
+)
+
+
+def _unit_state(name):
+    enabled = _run(["systemctl", "is-enabled", name])
+    return {"name": name,
+            "installed": bool(enabled) and "__err__" not in enabled
+            and "not-found" not in enabled,
+            "enabled": enabled == "enabled",
+            "active": _service_active(name)}
+
+
+def _sources_payload():
+    groups = []
+    for g in SOURCE_GROUPS:
+        if g["id"] == "spotify" and not SHOW_SPOTIFY:
+            continue
+        svcs = [_unit_state(s) for s in g["services"]]
+        installed = all(s["installed"] for s in svcs)
+        groups.append({"id": g["id"], "label": g["label"], "installed": installed,
+                       "enabled": installed and all(s["active"] for s in svcs),
+                       "services": svcs})
+    return {"sources": groups}
+
+
+def _source_toggle(sid, enable):
+    g = next((x for x in SOURCE_GROUPS if x["id"] == sid), None)
+    if not g:
+        return False, T("src_unknown")
+    verb = "enable" if enable else "disable"
+    for s in g["services"]:
+        _run(["systemctl", verb, "--now", s], timeout=25)
+    if not all(_service_active(s) == enable for s in g["services"]):
+        return False, T("src_fail_msg").format(name=g["label"])
+    return True, T("src_on_msg" if enable else "src_off_msg").format(name=g["label"])
+
+
+# ---------------------------------------------------------------------------
 # Wi-Fi — managed through the DietPi network database (up to 5 slots).
 #
 # DietPi keeps known networks in /var/lib/dietpi/dietpi-wifi.db (bash format:
@@ -775,6 +907,32 @@ def _tailscale_ip():
     out = _run(["tailscale", "ip", "-4"], timeout=5)
     first = out.splitlines()[0].strip() if out else ""
     return first if re.fullmatch(r"[\d.]+", first) else ""
+
+
+def _tailscale_state():
+    """Presence + backend state for the settings toggle."""
+    if not shutil.which("tailscale"):
+        return {"installed": False, "active": False, "ip": ""}
+    out = _run(["tailscale", "status", "--json"], timeout=8)
+    active = re.search(r'"BackendState":\s*"Running"', out) is not None
+    return {"installed": True, "active": active,
+            "ip": _tailscale_ip() if active else ""}
+
+
+def _tailscale_set(up):
+    """(ok, message) — tailscale up/down. Going up may need a one-time
+    login done on the device itself; the panel just reports that."""
+    if not shutil.which("tailscale"):
+        return False, T("ts_missing")
+    if up:
+        _run(["tailscale", "up", "--timeout=15s"], timeout=25)
+        if _tailscale_state()["active"]:
+            return True, T("ts_up_ok")
+        return False, T("ts_login")
+    out = _run(["tailscale", "down"], timeout=15)
+    if "__err__" in out:
+        return False, T("ts_fail")
+    return True, T("ts_down_ok")
 
 
 # Setup-AP integration (ap-fallback/): while the device runs its fallback
@@ -1386,13 +1544,26 @@ UPDATE_UNIT = "synchrofazotron-update"
 _RAW_BASE = f"https://raw.githubusercontent.com/{REPO}/{BRANCH}"
 
 
+# Files compared against the repo by the update check — the panel code plus
+# the UI files (a restyle ships without touching the .py).
+_UPDATE_CHECK_FILES = ("pistream_panel.py", "ui/panel.html", "ui/settings.html",
+                       "ui/style.css", "ui/common.js", "ui/panel.js",
+                       "ui/settings.js")
+
+
 def _update_check():
+    base = os.path.dirname(os.path.abspath(__file__))
     try:
-        with urllib.request.urlopen(f"{_RAW_BASE}/web/pistream_panel.py",
-                                    timeout=15) as r:
-            remote = r.read()
-        local = open(os.path.abspath(__file__), "rb").read()
-        return {"ok": True, "update_available": remote != local}
+        for rel in _UPDATE_CHECK_FILES:
+            with urllib.request.urlopen(f"{_RAW_BASE}/web/{rel}", timeout=15) as r:
+                remote = r.read()
+            try:
+                local = open(os.path.join(base, *rel.split("/")), "rb").read()
+            except OSError:
+                local = b""
+            if remote != local:
+                return {"ok": True, "update_available": True}
+        return {"ok": True, "update_available": False}
     except Exception:  # noqa: BLE001
         return {"ok": False}
 
@@ -1450,14 +1621,11 @@ def _lms_state():
         if not _lms_playerid:
             return None
         res = _lms_request([_lms_playerid, ["status", "-", 1, "tags:aN"]])
-        title = ""
         rm = res.get("remoteMeta") or {}
-        title = rm.get("title") or ""
-        if not title:
-            loop = res.get("playlist_loop") or []
-            if loop:
-                title = loop[0].get("title", "")
-        return {"mode": res.get("mode", "stop"), "title": title}
+        loop = res.get("playlist_loop") or []
+        title = rm.get("title") or (loop[0].get("title", "") if loop else "")
+        artist = rm.get("artist") or (loop[0].get("artist", "") if loop else "")
+        return {"mode": res.get("mode", "stop"), "title": title, "artist": artist}
     except Exception:  # noqa: BLE001
         return None
 
@@ -1540,7 +1708,8 @@ def _active_sources(connected):
         state = {"play": T("state_playing"),
                  "pause": T("state_paused")}.get(lms["mode"], T("state_idle"))
         sources.append({"name": "LMS (radio/TIDAL)", "playing": lms["mode"] == "play",
-                        "state": state, "detail": lms.get("title", "")})
+                        "state": state, "detail": lms.get("title", ""),
+                        "artist": lms.get("artist", "")})
 
     conn = dict(connected)
     bt_playing, bt_detail = False, ""
@@ -1683,6 +1852,7 @@ def status_payload():
         "bt_discoverable": "Discoverable: yes" in show,
         "pair_seconds_left": _pair_seconds_left(),
         "connected": [{"mac": m, "name": n} for m, n in connected],
+        "lms_playerid": _lms_playerid or "",
         "sources": sources,
         "dac_owners": _dac_owners(),
         "playing_count": sum(1 for s in sources if s.get("playing")),
@@ -1715,947 +1885,60 @@ def _fill(template, host_header):
     html = html.replace("{{LMS_URL}}", lms_url)
     html = html.replace("{{PLAYER}}", SQUEEZELITE_PLAYER)
     html = html.replace("{{PAIR_WIN}}", str(PAIR_WINDOW_SEC))
+    html = html.replace("{{LMS_PORT}}", str(LMS_PORT))
+    html = html.replace("{{REPO}}", REPO)
     return html
 
 
+UI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui")
+
+
+def _ui_read(name):
+    """UI files are read from disk on every request — edit + refresh, no
+    service restart needed (they are small; the Pi does not notice)."""
+    return _file_read(os.path.join(UI_DIR, name))
+
+
 def render_page(host_header):
-    return _fill(PAGE_TEMPLATE, host_header)
+    return _fill(_ui_read("panel.html"), host_header)
 
 
 def render_settings(host_header):
-    return _fill(SETTINGS_TEMPLATE, host_header)
-
-
-PAGE_TEMPLATE = """<!DOCTYPE html>
-<html lang="{{LANG}}">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{DEVICE}} — {{T:title_panel}}</title>
-<style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; font-family: -apple-system, system-ui, Segoe UI, Roboto, sans-serif;
-    background: #0f1216; color: #e7ecf2; line-height: 1.5;
-    padding: 20px 16px 48px;
-  }
-  .wrap { max-width: 620px; margin: 0 auto; }
-  h1 { font-size: 1.7rem; margin: 4px 0 2px; }
-  .sub { color: #8b97a6; margin: 0 0 20px; font-size: .95rem; }
-  .card {
-    background: #171c23; border: 1px solid #232b35; border-radius: 14px;
-    padding: 16px 18px; margin: 12px 0;
-  }
-  .card h2 { font-size: 1.05rem; margin: 0 0 8px; display:flex; align-items:center; gap:8px;}
-  .card p { margin: 6px 0; color: #c4cad3; }
-  .muted { color: #8b97a6; font-size: .9rem; }
-  a { color: #6db3ff; }
-  .btn {
-    display: block; width: 100%; border: 0; border-radius: 12px;
-    padding: 18px; font-size: 1.1rem; font-weight: 600; cursor: pointer;
-    background: #2563eb; color: #fff; transition: background .15s;
-  }
-  .btn:hover { background: #1d4ed8; }
-  .btn.active { background: #059669; }
-  .btn:disabled { opacity: .8; cursor: default; }
-  .pill {
-    display:inline-block; padding: 2px 10px; border-radius: 999px;
-    font-size: .8rem; font-weight: 600;
-  }
-  .on  { background:#0c3; color:#04210f; }
-  .off { background:#333b46; color:#9aa6b3; }
-  .status-line { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px;}
-  .step { margin: 4px 0 4px 2px; }
-  .num { display:inline-block; width:22px; height:22px; border-radius:50%;
-    background:#2563eb; color:#fff; text-align:center; font-size:.8rem;
-    line-height:22px; margin-right:8px; font-weight:700;}
-  code { background:#0b0e12; padding:1px 6px; border-radius:6px; font-size:.9em;}
-  .note { border-left:3px solid #b8860b; padding-left:12px; }
-  .srow { display:flex; align-items:center; gap:10px; padding:8px 0;
-    border-bottom:1px solid #232b35; }
-  .srow:last-child { border-bottom:0; }
-  .srow .info { flex:1; min-width:0; }
-  .srow .info .det { color:#8b97a6; font-size:.85rem;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .tbtn { flex:none; width:52px; height:44px; border:0; border-radius:10px;
-    background:#2b3440; color:#fff; font-size:1.2rem; cursor:pointer; }
-  .tbtn:hover { background:#374151; }
-  .tbtn.playing { background:#059669; }
-  .tbtn:disabled { opacity:.35; cursor:default; }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div style="display:flex; align-items:baseline; justify-content:space-between;">
-    <h1>🎵 {{DEVICE}}</h1>
-    <a href="/settings" style="text-decoration:none; font-size:1.3rem;" title="{{T:settings_link_title}}">⚙️</a>
-  </div>
-  <p class="sub">{{T:sub_panel}}</p>
-
-  <div class="card">
-    <h2>{{T:now_playing}}</h2>
-    <div id="warn" class="note" style="display:none; margin:0 0 10px;">
-      {{T:warn_multi}}
-    </div>
-    <div id="sources"><p class="muted">…</p></div>
-    <p id="dacline" class="muted" style="margin-top:8px;"></p>
-    <p class="muted" style="margin-top:8px;">{{T:sources_note}}</p>
-  </div>
-
-  <div class="card">
-    <h2>{{T:bt_head}}</h2>
-    <p>{{T:bt_intro}}</p>
-    <button id="pairBtn" class="btn" onclick="pair()">{{T:bt_button}}</button>
-    <div class="status-line">
-      <span>{{T:bt_status}}</span>
-      <span id="btState" class="pill off">…</span>
-      <span id="btConn" class="muted"></span>
-    </div>
-    <p class="muted step">{{T:bt_after}}</p>
-  </div>
-
-  <!--SPOTIFY-->
-  <div class="card">
-    <h2>{{T:spotify_head}}</h2>
-    <p><span class="num">1</span>{{T:spotify_1}}</p>
-    <p><span class="num">2</span>{{T:spotify_2}}</p>
-    <p class="muted">{{T:spotify_note}}</p>
-  </div>
-  <!--/SPOTIFY-->
-
-  <div class="card">
-    <h2>{{T:airplay_head}}</h2>
-    <p><span class="num">1</span>{{T:airplay_1}}</p>
-    <p><span class="num">2</span>{{T:airplay_2}}</p>
-  </div>
-
-  <div class="card">
-    <h2>{{T:lms_head}}</h2>
-    <p><span class="num">1</span>{{T:lms_1}}</p>
-    <p><span class="num">2</span>{{T:lms_2}}</p>
-    <p>{{T:lms_web}} <a href="{{LMS_URL}}">{{LMS_URL}}</a> {{T:lms_web2}}</p>
-  </div>
-
-  <div class="card note">
-    <h2>{{T:audio_note_head}}</h2>
-    <p class="muted">{{T:audio_note}}</p>
-  </div>
-
-  <p class="muted" style="text-align:center; margin-top:24px;">
-    {{T:players_label}} <span id="svc"></span>
-  </p>
-</div>
-
-<script>
-let timer = null;
-
-async function refresh() {
-  try {
-    const r = await fetch('/api/status', {cache:'no-store'});
-    const s = await r.json();
-    const btState = document.getElementById('btState');
-    const left = s.pair_seconds_left;
-    if (left > 0) {
-      btState.textContent = '{{T:js_pairing}}' + left + 's';
-      btState.className = 'pill on';
-      setBtn(true, left);
-    } else {
-      btState.textContent = s.bt_powered ? '{{T:js_ready}}' : '{{T:js_off}}';
-      btState.className = 'pill ' + (s.bt_powered ? 'on' : 'off');
-      setBtn(false, 0);
-    }
-    const conn = s.connected || [];
-    document.getElementById('btConn').textContent =
-      conn.length ? ('{{T:js_connected}}' + conn.map(d=>d.name).join(', ')) : '';
-
-    // "Now playing"
-    const src = s.sources || [];
-    const box = document.getElementById('sources');
-    if (!src.length) {
-      box.innerHTML = '<p class="muted">{{T:js_silence}}</p>';
-    } else {
-      box.innerHTML = src.map(x => {
-        const dot = x.playing ? '🟢' : '⚪';
-        const det = x.detail
-          ? '<div class="det">' + escapeHtml(x.detail) + '</div>' : '';
-        let btn;
-        if (x.controllable && x.id) {
-          const icon = x.playing ? '⏸' : '▶';
-          const cls = 'tbtn' + (x.playing ? ' playing' : '');
-          btn = '<button class="' + cls + '" title="play/pause" ' +
-                'onclick="ctrl(\\'' + x.id + '\\')">' + icon + '</button>';
-        } else {
-          btn = '<button class="tbtn" disabled title="{{T:js_ctrl_hint}}">▶</button>';
-        }
-        return '<div class="srow"><div class="info">' + dot + ' <b>' +
-               escapeHtml(x.name) + '</b> — ' + x.state + det + '</div>' + btn + '</div>';
-      }).join('');
-    }
-    document.getElementById('warn').style.display =
-      (s.playing_count >= 2) ? 'block' : 'none';
-
-    // who holds the audio device (an open-but-silent stream still blocks the DAC)
-    const own = s.dac_owners || [];
-    document.getElementById('dacline').innerHTML = own.length
-      ? '{{T:js_dac_owner}}' + own.map(o =>
-          '<b>' + escapeHtml(o.label) + '</b>' +
-          (o.running ? '' : ' {{T:js_dac_hold}}')).join(', ')
-      : '{{T:js_dac_free}}';
-
-    const svc = s.services || {};
-    document.getElementById('svc').textContent =
-      Object.keys(svc).map(k => (svc[k]?'🟢':'🔴')+k).join('  ');
-  } catch(e) { /* ignore */ }
-}
-
-function setBtn(active, left) {
-  const b = document.getElementById('pairBtn');
-  if (active) {
-    b.classList.add('active');
-    b.textContent = '{{T:js_pair_active_pre}}' + left + '{{T:js_pair_active_suf}}';
-  } else {
-    b.classList.remove('active');
-    b.textContent = '{{T:bt_button}}';
-  }
-}
-
-async function pair() {
-  const b = document.getElementById('pairBtn');
-  b.disabled = true;
-  try { await fetch('/api/pair', {method:'POST'}); } catch(e){}
-  b.disabled = false;
-  refresh();
-}
-
-async function ctrl(id) {
-  try {
-    await fetch('/api/control', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({source:id, action:'toggle'})
-    });
-  } catch(e){}
-  setTimeout(refresh, 500);
-}
-
-function escapeHtml(s) {
-  return (s||'').replace(/[&<>"']/g, c => (
-    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-refresh();
-setInterval(refresh, 3000);
-</script>
-</body>
-</html>
-"""
-
-
-SETTINGS_TEMPLATE = """<!DOCTYPE html>
-<html lang="{{LANG}}">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{DEVICE}} — {{T:title_settings}}</title>
-<style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; font-family: -apple-system, system-ui, Segoe UI, Roboto, sans-serif;
-    background: #0f1216; color: #e7ecf2; line-height: 1.5;
-    padding: 20px 16px 48px;
-  }
-  .wrap { max-width: 620px; margin: 0 auto; }
-  h1 { font-size: 1.7rem; margin: 4px 0 2px; }
-  .sub { color: #8b97a6; margin: 0 0 20px; font-size: .95rem; }
-  .card {
-    background: #171c23; border: 1px solid #232b35; border-radius: 14px;
-    padding: 16px 18px; margin: 12px 0;
-  }
-  .card h2 { font-size: 1.05rem; margin: 0 0 8px; }
-  .card p { margin: 6px 0; color: #c4cad3; }
-  .muted { color: #8b97a6; font-size: .9rem; }
-  a { color: #6db3ff; }
-  input {
-    width: 100%; padding: 12px; margin: 6px 0; border-radius: 10px;
-    border: 1px solid #2b3440; background: #0b0e12; color: #e7ecf2;
-    font-size: 1rem;
-  }
-  .btn {
-    display: block; width: 100%; border: 0; border-radius: 12px;
-    padding: 14px; font-size: 1rem; font-weight: 600; cursor: pointer;
-    background: #2563eb; color: #fff; margin-top: 8px;
-  }
-  .btn:hover { background: #1d4ed8; }
-  .btn.sec { background: #2b3440; }
-  .btn.sec:hover { background: #374151; }
-  .btn.active { background: #059669; }
-  .btn:disabled { opacity: .6; cursor: default; }
-  .row { display:flex; align-items:center; gap:10px; padding:8px 0;
-    border-bottom:1px solid #232b35; }
-  .row:last-child { border-bottom:0; }
-  .row .info { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis;
-    white-space:nowrap; }
-  .xbtn { flex:none; border:0; border-radius:10px; width:44px; height:38px;
-    background:#3a2328; color:#f0a5a5; font-size:1rem; cursor:pointer; }
-  .xbtn:hover { background:#4c2b32; }
-  .pill { display:inline-block; padding:2px 10px; border-radius:999px;
-    font-size:.8rem; font-weight:600; }
-  .on  { background:#0c3; color:#04210f; }
-  .off { background:#333b46; color:#9aa6b3; }
-  #msg { min-height: 1.4em; }
-  .netbtn { text-align:left; }
-  code { background:#0b0e12; padding:1px 6px; border-radius:6px; font-size:.9em;}
-  .lrow { display:flex; gap:10px; }
-  .lrow .btn { margin-top: 0; }
-  .prow { display:flex; gap:8px; }
-  .prow .btn { flex:1; }
-  .ebtn { flex:none; width:52px; border:0; border-radius:12px; margin-top:8px;
-    background:#2b3440; color:#cfd6dd; font-size:1rem; cursor:pointer; }
-  .ebtn:hover { background:#374151; }
-  #shaderDrop { border:2px dashed #2b3440; border-radius:12px; padding:14px;
-    text-align:center; color:#8b97a6; font-size:.9rem; cursor:pointer;
-    margin-top:8px; }
-  #shaderDrop.over { border-color:#6db3ff; color:#bfe1ff; background:#1a2634; }
-  .credits div { padding: 3px 0; }
-  pre { background:#0b0e12; border:1px solid #2b3440; border-radius:10px;
-    padding:10px; font-size:.78rem; overflow-x:auto; white-space:pre-wrap;
-    word-break:break-word; }
-  .vlabel { display:block; margin:10px 0 2px; color:#c4cad3; font-size:.95rem; }
-  .vlabel input[type=range] { width:100%; margin:4px 0 0; }
-  select {
-    width: 100%; padding: 10px; margin: 4px 0 0; border-radius: 10px;
-    border: 1px solid #2b3440; background: #0b0e12; color: #e7ecf2;
-    font-size: 1rem;
-  }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div style="display:flex; align-items:baseline; justify-content:space-between;">
-    <h1>{{T:settings_head}}</h1>
-    <a href="/" style="text-decoration:none;">{{T:back_to_panel}}</a>
-  </div>
-  <p class="sub">{{DEVICE}}</p>
-
-  <div class="card">
-    <h2>{{T:wifi_now_head}}</h2>
-    <p id="wifiNow" class="muted">…</p>
-    <p id="netInfo" class="muted"></p>
-  </div>
-
-  <div class="card">
-    <h2>{{T:wifi_saved_head}}</h2>
-    <p class="muted">{{T:wifi_saved_note}}</p>
-    <div id="saved"><p class="muted">…</p></div>
-  </div>
-
-  <div class="card">
-    <h2>{{T:wifi_add_head}}</h2>
-    <p class="muted">{{T:wifi_add_note}}</p>
-    <input id="ssid" placeholder="{{T:wifi_ssid_ph}}" autocomplete="off">
-    <input id="key" type="password" placeholder="{{T:wifi_key_ph}}"
-           autocomplete="new-password">
-    <button class="btn" id="addBtn" onclick="addNet()">{{T:wifi_save_btn}}</button>
-    <button class="btn sec" id="scanBtn" onclick="scan()">{{T:wifi_scan_btn}}</button>
-    <div id="scanOut"></div>
-    <p id="msg" class="muted"></p>
-  </div>
-
-  <div class="card">
-    <h2>{{T:bts_head}}</h2>
-    <p class="muted">{{T:bts_note}}</p>
-    <div id="btDevices"><p class="muted">…</p></div>
-    <p id="btMsg" class="muted"></p>
-    <div class="lrow">
-      <button class="btn sec" id="btTestBtn" onclick="btTest()">{{T:bts_test_btn}}</button>
-      <button class="btn sec" onclick="btDebug()">{{T:bts_debug_btn}}</button>
-    </div>
-    <pre id="btReport" style="display:none;"></pre>
-  </div>
-
-  <div class="card" id="vizCard">
-    <h2>{{T:viz_head}}</h2>
-    <p class="muted">{{T:viz_note}}</p>
-    <p id="vizNA" class="muted" style="display:none;">{{T:viz_missing}}</p>
-    <div id="vizBody">
-    <div class="lrow" id="vizEngineRow">
-      <button class="btn sec" id="engCava" onclick="vizEngine('cava')">{{T:viz_eng_cava}}</button>
-      <button class="btn sec" id="engGlsl" onclick="vizEngine('glsl')">{{T:viz_eng_glsl}}</button>
-    </div>
-    <p id="vizErr" class="muted"></p>
-    <div id="vizShaders"></div>
-    <div id="shaderDrop" style="display:none;">{{T:shader_drop}}</div>
-    <input type="file" id="shaderFile" accept=".frag,.glsl,.fs" multiple
-           style="display:none;">
-    <div id="vizCavaCtl">
-    <div id="vizPresets"></div>
-    <button class="btn sec" onclick="vizEdit(null)">{{T:viz_new_preset}}</button>
-    <div id="vizEdit" style="display:none;">
-      <input id="v_name" placeholder="{{T:viz_name_ph}}" maxlength="24"
-             autocomplete="off">
-      <label class="vlabel">{{T:viz_p_framerate}}: <b id="v_fr_v"></b>
-        <input type="range" id="v_fr" min="15" max="60" step="5"></label>
-      <label class="vlabel">{{T:viz_p_bar_width}}: <b id="v_bw_v"></b>
-        <input type="range" id="v_bw" min="1" max="12" step="1"></label>
-      <label class="vlabel">{{T:viz_p_bar_spacing}}: <b id="v_bs_v"></b>
-        <input type="range" id="v_bs" min="0" max="5" step="1"></label>
-      <label class="vlabel">{{T:viz_p_noise}}: <b id="v_nr_v"></b>
-        <input type="range" id="v_nr" min="0" max="100" step="5"></label>
-      <label class="vlabel">{{T:viz_p_color}}
-        <select id="v_color"></select></label>
-      <label class="vlabel"><input type="checkbox" id="v_mc"> {{T:viz_p_monstercat}}</label>
-      <label class="vlabel"><input type="checkbox" id="v_wv"> {{T:viz_p_waves}}</label>
-      <div class="lrow">
-        <button class="btn sec" onclick="vizApply()">{{T:viz_apply}}</button>
-        <button class="btn" onclick="vizSavePreset()">{{T:viz_save}}</button>
-      </div>
-      <button class="btn sec" id="vizDelBtn" onclick="vizDelPreset()">{{T:viz_delete}}</button>
-    </div>
-    </div>
-    <button class="btn sec" id="vizToggle" onclick="vizToggle()">…</button>
-    </div>
-    <p id="vizMsg" class="muted"></p>
-  </div>
-
-  <div class="card">
-    <h2>{{T:audio_head}}</h2>
-    <p class="muted">{{T:audio_note}}</p>
-    <div class="lrow">
-      <button class="btn sec" id="audioDac" onclick="audioSet('dac')">🎛 DAC</button>
-      <button class="btn sec" id="audioHdmi" onclick="audioSet('hdmi')">🖥 HDMI</button>
-    </div>
-    <button class="btn sec" id="rebootBtn" style="display:none;" onclick="doReboot()">{{T:js_reboot}}</button>
-    <p id="audioMsg" class="muted"></p>
-  </div>
-
-  <div class="card">
-    <h2>{{T:upd_head}}</h2>
-    <p class="muted">{{T:upd_note}}</p>
-    <div class="lrow">
-      <button class="btn sec" id="updCheckBtn" onclick="updCheck()">{{T:upd_check_btn}}</button>
-      <button class="btn sec" id="updRunBtn" onclick="updRun()">{{T:upd_run_btn}}</button>
-    </div>
-    <p id="updMsg" class="muted"></p>
-  </div>
-
-  <div class="card">
-    <h2>{{T:lang_head}}</h2>
-    <p class="muted">{{T:lang_note}}</p>
-    <div class="lrow">
-      <button class="btn LANGBTN_en" onclick="setLang('en')">English</button>
-      <button class="btn LANGBTN_pl" onclick="setLang('pl')">Polski</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>{{T:how_head}}</h2>
-    <p class="muted">{{T:how_note}}</p>
-  </div>
-
-  <div class="card">
-    <h2>{{T:about_head}}</h2>
-    <p class="muted">{{T:about_note}}</p>
-    <div class="credits muted">
-      <div>🎚️ <a href="https://github.com/karlstav/cava">cava</a> — <a href="https://github.com/karlstav">Karl Stavestrand</a></div>
-      <div>🌈 <a href="https://github.com/patriciogonzalezvivo/glslViewer">glslViewer</a> — <a href="https://github.com/patriciogonzalezvivo">Patricio Gonzalez Vivo</a></div>
-      <div>🎧 <a href="https://github.com/LMS-Community/slimserver">Lyrion Music Server</a> — <a href="https://github.com/LMS-Community">LMS Community</a></div>
-      <div>🎨 <a href="https://github.com/CDrummond/lms-material">Material Skin</a> — <a href="https://github.com/CDrummond">Craig Drummond</a></div>
-      <div>▶️ <a href="https://github.com/ralph-irving/squeezelite">squeezelite</a> — Adrian Smith, <a href="https://github.com/ralph-irving">Ralph Irving</a></div>
-      <div>🍎 <a href="https://github.com/mikebrady/shairport-sync">Shairport Sync</a> — <a href="https://github.com/mikebrady">Mike Brady</a></div>
-      <div>📶 <a href="https://github.com/arkq/bluez-alsa">BlueALSA</a> — <a href="https://github.com/arkq">Arkadiusz Bokowy</a></div>
-      <div>🤝 <a href="https://github.com/khvzak/bluez-tools">bluez-tools</a> — <a href="https://github.com/khvzak">Alexander Orlenko</a></div>
-      <div>🐧 <a href="https://github.com/MichaIng/DietPi">DietPi</a> — <a href="https://github.com/MichaIng">MichaIng</a> &amp; community</div>
-      <div>🔗 <a href="https://github.com/tailscale/tailscale">Tailscale</a></div>
-      <div>🧮 <a href="https://github.com/numpy/numpy">NumPy</a></div>
-      <div>💡 <a href="https://github.com/ErikOostveen/Slimshader">Slimshader</a> — <a href="https://github.com/ErikOostveen">Erik Oostveen</a></div>
-    </div>
-  </div>
-</div>
-
-<script>
-async function refresh() {
-  try {
-    const r = await fetch('/api/wifi', {cache:'no-store'});
-    const w = await r.json();
-    const cur = w.current;
-    document.getElementById('wifiNow').innerHTML = cur
-      ? '<span class="pill on">{{T:js_wifi_connected}}</span> <b>' + escapeHtml(cur.ssid) + '</b>'
-        + (cur.ip ? ' — ' + cur.ip : '')
-        + (cur.signal != null ? ' <span class="muted">(' + cur.signal + ' dBm)</span>' : '')
-      : '<span class="pill off">{{T:js_wifi_none}}</span>';
-    // addresses "just in case" — how to reach the panel if MagicDNS fails
-    const bits = [];
-    if (cur && cur.ip) bits.push('{{T:js_lan_ip}}<code>' + cur.ip + '</code>');
-    if (w.tailscale_ip) bits.push('{{T:js_ts_ip}}<code>' + w.tailscale_ip + '</code>');
-    if (w.hostname) bits.push('<code>' + escapeHtml(w.hostname) + '</code>');
-    document.getElementById('netInfo').innerHTML = bits.join(' · ');
-    const box = document.getElementById('saved');
-    const saved = w.saved || [];
-    box.innerHTML = saved.length ? saved.map(s =>
-      '<div class="row"><div class="info">' +
-      (cur && cur.ssid === s.ssid ? '🟢 ' : '') + '<b>' + escapeHtml(s.ssid) + '</b>' +
-      ' <span class="muted">{{T:js_slot}}' + s.slot + '</span></div>' +
-      '<button class="xbtn" title="{{T:js_remove}}" onclick="removeNet(' + s.slot + ',\\'' +
-      escapeHtml(s.ssid).replace(/'/g, "\\\\'") + '\\')">🗑</button></div>'
-    ).join('') : '<p class="muted">{{T:js_no_saved}}</p>';
-  } catch(e) {}
-}
-
-async function addNet() {
-  const ssid = document.getElementById('ssid').value;
-  const key = document.getElementById('key').value;
-  const b = document.getElementById('addBtn');
-  b.disabled = true; msg('{{T:js_saving}}');
-  try {
-    const r = await fetch('/api/wifi/add', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ssid, key})
-    });
-    const j = await r.json();
-    msg(j.message || (j.ok ? 'OK' : '{{T:js_error}}'));
-    if (j.ok) { document.getElementById('ssid').value='';
-                document.getElementById('key').value=''; }
-  } catch(e) { msg('{{T:js_conn_error}}'); }
-  b.disabled = false;
-  refresh();
-}
-
-async function removeNet(slot, ssid) {
-  if (!confirm('{{T:js_rm_pre}}' + ssid + '{{T:js_rm_suf}}')) return;
-  try {
-    const r = await fetch('/api/wifi/remove', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({slot})
-    });
-    const j = await r.json();
-    msg(j.message || '');
-  } catch(e) { msg('{{T:js_conn_error}}'); }
-  refresh();
-}
-
-async function scan() {
-  const b = document.getElementById('scanBtn');
-  b.disabled = true; b.textContent = '{{T:js_scanning}}';
-  try {
-    const r = await fetch('/api/wifi/scan', {cache:'no-store'});
-    const j = await r.json();
-    const nets = j.networks || [];
-    document.getElementById('scanOut').innerHTML = nets.length
-      ? nets.map(n =>
-          '<button class="btn sec netbtn" onclick="pick(\\'' +
-          escapeHtml(n.ssid).replace(/'/g, "\\\\'") + '\\')">' +
-          escapeHtml(n.ssid) + ' <span class="muted">' + n.signal + ' dBm</span></button>'
-        ).join('')
-      : '<p class="muted">{{T:js_scan_none}}</p>';
-  } catch(e) { msg('{{T:js_scan_fail}}'); }
-  b.disabled = false; b.textContent = '{{T:wifi_scan_btn}}';
-}
-
-function pick(ssid) {
-  document.getElementById('ssid').value = ssid;
-  document.getElementById('key').focus();
-}
-
-let btBusy = false;
-
-async function btRefresh() {
-  if (btBusy) return;  // do not repaint the list mid-connect
-  try {
-    const r = await fetch('/api/bt', {cache:'no-store'});
-    const b = await r.json();
-    const list = b.paired || [];
-    document.getElementById('btDevices').innerHTML = list.length ? list.map(d =>
-      '<div class="row"><div class="info" style="cursor:pointer;" ' +
-      'onclick="btConnect(\\'' + d.mac + '\\')">' +
-      (d.connected ? '🟢 ' : '⚪ ') + '<b>' + escapeHtml(d.name) + '</b></div>' +
-      (d.connected
-        ? '<button class="xbtn" title="{{T:js_bt_disconnect}}" ' +
-          'onclick="btDisconnect(\\'' + d.mac + '\\')">✕</button>'
-        : '')
-      + '</div>'
-    ).join('') : '<p class="muted">{{T:js_bt_none}}</p>';
-  } catch(e) {}
-}
-
-async function btConnect(mac) {
-  if (btBusy) return;
-  btBusy = true;
-  document.getElementById('btMsg').textContent = '{{T:js_bt_connecting}}';
-  try {
-    const r = await fetch('/api/bt/connect', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({mac})
-    });
-    const j = await r.json();
-    document.getElementById('btMsg').textContent = j.message || '';
-  } catch(e) { document.getElementById('btMsg').textContent = '{{T:js_conn_error}}'; }
-  btBusy = false;
-  btRefresh();
-}
-
-async function btDisconnect(mac) {
-  btBusy = true;
-  try {
-    const r = await fetch('/api/bt/disconnect', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({mac})
-    });
-    const j = await r.json();
-    document.getElementById('btMsg').textContent = j.message || '';
-  } catch(e) {}
-  btBusy = false;
-  btRefresh();
-}
-
-async function btTest() {
-  const b = document.getElementById('btTestBtn');
-  b.disabled = true;
-  document.getElementById('btMsg').textContent = '{{T:js_bt_testing}}';
-  try {
-    const r = await fetch('/api/audio/test', {method:'POST'});
-    const j = await r.json();
-    document.getElementById('btMsg').textContent = j.message || '';
-  } catch(e) { document.getElementById('btMsg').textContent = '{{T:js_conn_error}}'; }
-  b.disabled = false;
-}
-
-async function btDebug() {
-  const el = document.getElementById('btReport');
-  el.style.display = '';
-  el.textContent = '…';
-  try {
-    const r = await fetch('/api/bt/debug', {cache:'no-store'});
-    const j = await r.json();
-    el.textContent = j.report || '';
-  } catch(e) { el.textContent = '{{T:js_conn_error}}'; }
-}
-
-let VIZ = null, vizEditing = null;
-
-async function vizRefresh() {
-  try {
-    const r = await fetch('/api/viz', {cache:'no-store'});
-    const v = await r.json();
-    VIZ = v;
-    // not installed: keep the card visible, explain instead of hiding
-    document.getElementById('vizNA').style.display = v.installed ? 'none' : '';
-    document.getElementById('vizBody').style.display = v.installed ? '' : 'none';
-    if (!v.installed) return;
-    document.getElementById('vizPresets').innerHTML = (v.presets||[]).map(p =>
-      '<div class="prow"><button class="btn ' + (p.id === v.preset ? '' : 'sec') + '" ' +
-      'onclick="vizPreset(\\'' + p.id + '\\')">' + escapeHtml(p.label) +
-      (p.id === v.preset ? ' ✓' : '') + '</button>' +
-      '<button class="ebtn" title="{{T:viz_edit_title}}" ' +
-      'onclick="vizEdit(\\'' + p.id + '\\')">✎</button></div>'
-    ).join('');
-    document.getElementById('vizToggle').textContent =
-      v.active ? '{{T:js_viz_stop}}' : '{{T:js_viz_start}}';
-    // engine switch — the glsl button stays visible even when the engine is
-    // unusable: it gets a warning marker and the click explains what is missing
-    const glsl = v.engine === 'glsl';
-    document.getElementById('engCava').className = 'btn' + (glsl ? ' sec' : '');
-    const g = document.getElementById('engGlsl');
-    g.className = 'btn' + (glsl ? '' : ' sec');
-    g.textContent = '{{T:viz_eng_glsl}}' + (v.glsl_available ? '' : ' ⚠');
-    g.title = v.glsl_available ? '' : '{{T:viz_glsl_missing}}';
-    document.getElementById('vizCavaCtl').style.display = glsl ? 'none' : '';
-    document.getElementById('vizErr').textContent =
-      (glsl && v.glsl_error) ? '{{T:js_glsl_err}}' + v.glsl_error : '';
-    document.getElementById('vizShaders').innerHTML = (glsl ? (v.shaders||[]) : []).map(s =>
-      '<div class="prow"><button class="btn ' + (s.id === v.shader ? '' : 'sec') + '" ' +
-      'onclick="vizShader(\\'' + s.id + '\\')">' + escapeHtml(s.label) +
-      (s.id === v.shader ? ' ✓' : '') + '</button>' +
-      (s.id === v.shader ? '' :
-        '<button class="ebtn" title="{{T:sdel_title}}" ' +
-        'onclick="shaderDel(\\'' + s.id + '\\')">🗑</button>') +
-      '</div>'
-    ).join('');
-    document.getElementById('shaderDrop').style.display = glsl ? '' : 'none';
-  } catch(e) {}
-}
-
-async function vizEngine(engine, shader) {
-  try {
-    const r = await fetch('/api/viz/engine', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({engine, shader: shader || ''})
-    });
-    const j = await r.json();
-    document.getElementById('vizMsg').textContent = j.message || '';
-  } catch(e) {}
-  vizRefresh();
-}
-
-function vizShader(name) { vizEngine('glsl', name); }
-
-// --- shader upload (drag & drop / file picker) ---
-async function shaderFiles(files) {
-  for (const f of files) {
-    let src = '';
-    try { src = await f.text(); } catch(e) { continue; }
-    try {
-      const r = await fetch('/api/viz/shader/upload', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({name: f.name, source: src})
-      });
-      const j = await r.json();
-      document.getElementById('vizMsg').textContent = j.message || '';
-    } catch(e) { document.getElementById('vizMsg').textContent = '{{T:js_conn_error}}'; }
-  }
-  document.getElementById('shaderFile').value = '';
-  vizRefresh();
-}
-
-async function shaderDel(id) {
-  const s = VIZ && (VIZ.shaders||[]).find(x => x.id === id);
-  if (!s || !confirm('{{T:js_sdel_pre}}' + s.label + '{{T:js_sdel_suf}}')) return;
-  try {
-    const r = await fetch('/api/viz/shader/delete', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({id})
-    });
-    const j = await r.json();
-    document.getElementById('vizMsg').textContent = j.message || '';
-  } catch(e) { document.getElementById('vizMsg').textContent = '{{T:js_conn_error}}'; }
-  vizRefresh();
-}
-
-(function wireShaderDrop() {
-  const drop = document.getElementById('shaderDrop');
-  drop.onclick = () => document.getElementById('shaderFile').click();
-  drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
-  drop.ondragleave = () => drop.classList.remove('over');
-  drop.ondrop = e => {
-    e.preventDefault(); drop.classList.remove('over');
-    shaderFiles(e.dataTransfer.files);
-  };
-  document.getElementById('shaderFile').onchange = e => shaderFiles(e.target.files);
-})();
-
-function vizFillEditor(p) {
-  for (const [id, val] of [['v_fr', p.framerate], ['v_bw', p.bar_width],
-                           ['v_bs', p.bar_spacing], ['v_nr', p.noise_reduction]]) {
-    document.getElementById(id).value = val;
-    document.getElementById(id + '_v').textContent = val;
-  }
-  document.getElementById('v_mc').checked = !!p.monstercat;
-  document.getElementById('v_wv').checked = !!p.waves;
-  const sel = document.getElementById('v_color');
-  sel.innerHTML = (p.colors||[]).map(c =>
-    '<option' + (c === p.color ? ' selected' : '') + '>' + c + '</option>').join('');
-}
-
-// opens the editor for a preset (id) or for a brand-new one (null)
-function vizEdit(id) {
-  if (!VIZ) return;
-  vizEditing = id || '';
-  const p = id ? (VIZ.presets||[]).find(x => x.id === id) : null;
-  document.getElementById('v_name').value = p ? p.label : '';
-  const params = Object.assign({}, p ? p.params : (VIZ.params || {}));
-  params.colors = (VIZ.params || {}).colors || [];
-  vizFillEditor(params);
-  document.getElementById('vizDelBtn').style.display = p ? '' : 'none';
-  document.getElementById('vizEdit').style.display = '';
-  document.getElementById('v_name').focus();
-}
-
-function vizEditorBody() {
-  const num = id => +document.getElementById(id).value;
-  return { framerate: num('v_fr'), bar_width: num('v_bw'), bar_spacing: num('v_bs'),
-           noise_reduction: num('v_nr'),
-           monstercat: document.getElementById('v_mc').checked,
-           waves: document.getElementById('v_wv').checked,
-           color: document.getElementById('v_color').value };
-}
-
-async function vizApply() {
-  try {
-    const r = await fetch('/api/viz/params', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(vizEditorBody())
-    });
-    const j = await r.json();
-    document.getElementById('vizMsg').textContent = j.message || '';
-  } catch(e) { document.getElementById('vizMsg').textContent = '{{T:js_conn_error}}'; }
-  vizRefresh();
-}
-
-async function vizSavePreset() {
-  const body = vizEditorBody();
-  body.id = vizEditing || '';
-  body.label = document.getElementById('v_name').value;
-  try {
-    const r = await fetch('/api/viz/preset/save', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(body)
-    });
-    const j = await r.json();
-    document.getElementById('vizMsg').textContent = j.message || '';
-    if (j.ok) document.getElementById('vizEdit').style.display = 'none';
-  } catch(e) { document.getElementById('vizMsg').textContent = '{{T:js_conn_error}}'; }
-  vizRefresh();
-}
-
-async function vizDelPreset() {
-  const p = VIZ && (VIZ.presets||[]).find(x => x.id === vizEditing);
-  if (!p || !confirm('{{T:js_vdel_pre}}' + p.label + '{{T:js_vdel_suf}}')) return;
-  try {
-    const r = await fetch('/api/viz/preset/delete', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({id: vizEditing})
-    });
-    const j = await r.json();
-    document.getElementById('vizMsg').textContent = j.message || '';
-    if (j.ok) document.getElementById('vizEdit').style.display = 'none';
-  } catch(e) { document.getElementById('vizMsg').textContent = '{{T:js_conn_error}}'; }
-  vizRefresh();
-}
-
-async function vizPreset(name) {
-  try {
-    const r = await fetch('/api/viz/preset', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({name})
-    });
-    const j = await r.json();
-    document.getElementById('vizMsg').textContent = j.message || '';
-  } catch(e) {}
-  vizRefresh();
-}
-
-async function vizToggle() {
-  try {
-    const r = await fetch('/api/viz/toggle', {method:'POST'});
-    const j = await r.json();
-    document.getElementById('vizMsg').textContent = j.message || '';
-  } catch(e) {}
-  setTimeout(vizRefresh, 500);
-}
-
-async function audioRefresh() {
-  try {
-    const r = await fetch('/api/audio', {cache:'no-store'});
-    const a = await r.json();
-    const d = document.getElementById('audioDac');
-    const h = document.getElementById('audioHdmi');
-    d.className = 'btn' + (a.output === 'dac' ? '' : ' sec');
-    h.className = 'btn' + (a.output === 'hdmi' ? '' : ' sec');
-    d.textContent = '🎛 DAC' + (a.output === 'dac' ? ' ✓' : '');
-    h.textContent = '🖥 HDMI' + (a.output === 'hdmi' ? ' ✓' : '');
-    document.getElementById('rebootBtn').style.display =
-      a.reboot_required ? '' : 'none';
-    if (a.reboot_required)
-      document.getElementById('audioMsg').textContent = '{{T:js_audio_reboot}}';
-  } catch(e) {}
-}
-
-async function audioSet(mode) {
-  if (!confirm('{{T:js_audio_confirm}}')) return;
-  try {
-    const r = await fetch('/api/audio/set', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({output: mode})
-    });
-    const j = await r.json();
-    document.getElementById('audioMsg').textContent = j.message || '';
-  } catch(e) {
-    document.getElementById('audioMsg').textContent = '{{T:js_conn_error}}';
-  }
-  audioRefresh();
-}
-
-async function doReboot() {
-  if (!confirm('{{T:js_reboot_confirm}}')) return;
-  try { await fetch('/api/reboot', {method:'POST'}); } catch(e) {}
-  document.getElementById('audioMsg').textContent = '{{T:js_rebooting}}';
-}
-
-function updMsg(t) { document.getElementById('updMsg').textContent = t; }
-
-async function updCheck() {
-  const b = document.getElementById('updCheckBtn');
-  b.disabled = true; updMsg('{{T:js_upd_checking}}');
-  try {
-    const r = await fetch('/api/update/check', {cache:'no-store'});
-    const j = await r.json();
-    updMsg(!j.ok ? '{{T:js_upd_checkfail}}'
-           : (j.update_available ? '{{T:js_upd_available}}' : '{{T:js_upd_current}}'));
-  } catch(e) { updMsg('{{T:js_conn_error}}'); }
-  b.disabled = false;
-}
-
-let updTimer = null;
-function updPoll() {
-  if (updTimer) return;
-  document.getElementById('updRunBtn').disabled = true;
-  updMsg('{{T:js_upd_running}}');
-  updTimer = setInterval(async () => {
-    try {
-      const r = await fetch('/api/update', {cache:'no-store'});
-      const j = await r.json();
-      if (j.running) return;
-      clearInterval(updTimer); updTimer = null;
-      document.getElementById('updRunBtn').disabled = false;
-      if (j.failed) { updMsg('{{T:js_upd_failed}}'); }
-      else { updMsg('{{T:js_upd_done}}'); setTimeout(() => location.reload(), 1500); }
-    } catch(e) { /* panel restarting mid-update — keep polling */ }
-  }, 3000);
-}
-
-async function updRun() {
-  if (!confirm('{{T:js_upd_confirm}}')) return;
-  try {
-    const r = await fetch('/api/update/run', {method:'POST'});
-    const j = await r.json();
-    if (!j.ok) { updMsg(j.message || '{{T:js_error}}'); return; }
-    updPoll();
-  } catch(e) { updMsg('{{T:js_conn_error}}'); }
-}
-
-// page opened (or reloaded) while an update is already running -> resume the poll
-fetch('/api/update', {cache:'no-store'}).then(r => r.json())
-  .then(j => { if (j.running) updPoll(); }).catch(() => {});
-
-async function setLang(lang) {
-  try {
-    await fetch('/api/lang', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({lang})
-    });
-  } catch(e) {}
-  location.reload();
-}
-
-function msg(t) { document.getElementById('msg').textContent = t; }
-
-function escapeHtml(s) {
-  return (s||'').replace(/[&<>"']/g, c => (
-    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-// live value labels next to the editor sliders
-['v_fr','v_bw','v_bs','v_nr'].forEach(id => {
-  document.getElementById(id).oninput = e =>
-    document.getElementById(id + '_v').textContent = e.target.value;
-});
-
-// highlight the active language button
-document.querySelector('.LANGBTN_{{LANG}}').classList.add('active');
-document.querySelectorAll('[class*="LANGBTN_"]').forEach(b => {
-  if (!b.classList.contains('active')) b.classList.add('sec');
-});
-
-refresh();
-btRefresh();
-vizRefresh();
-audioRefresh();
-setInterval(refresh, 5000);
-setInterval(btRefresh, 5000);
-</script>
-</body>
-</html>
-"""
+    return _fill(_ui_read("settings.html"), host_header)
+
+
+# The shader studio is a self-contained HTML app from visualizer/ — served
+# when present (on the Pi: copied by visualizer/install.sh; in a repo
+# checkout: straight from the source tree).
+STUDIO_CANDIDATES = (
+    "/opt/pistream-visualizer/visualizer-studio.html",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                 "..", "visualizer", "visualizer-studio.html"),
+)
+
+
+def _studio_html():
+    for p in STUDIO_CANDIDATES:
+        txt = _file_read(p)
+        if txt:
+            return txt
+    return ""
+
+
+def static_file(path):
+    """(body, content_type) for /static/<name>, or None when unknown.
+
+    JS goes through the i18n filler (the sources keep {{T:...}} placeholders);
+    CSS is served raw. basename() kills any path traversal attempt."""
+    name = os.path.basename(path.split("?", 1)[0])
+    full = os.path.join(UI_DIR, name)
+    if not os.path.isfile(full):
+        return None
+    if name.endswith(".js"):
+        return _fill(_file_read(full), ""), "application/javascript; charset=utf-8"
+    if name.endswith(".css"):
+        return _file_read(full), "text/css; charset=utf-8"
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -2684,6 +1967,22 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, render_page(self.headers.get("Host", "")))
         elif self.path == "/settings":
             self._send(200, render_settings(self.headers.get("Host", "")))
+        elif self.path.startswith("/static/"):
+            hit = static_file(self.path)
+            if hit:
+                self._send(200, hit[0], hit[1])
+            else:
+                self._send(404, "not found", "text/plain")
+        elif self.path == "/studio":
+            studio = _studio_html()
+            if studio:
+                self._send(200, studio)
+            else:
+                self._send(404, "studio not installed", "text/plain")
+        elif self.path == "/api/tailscale":
+            self._send(200, json.dumps(_tailscale_state()), "application/json")
+        elif self.path == "/api/sources":
+            self._send(200, json.dumps(_sources_payload()), "application/json")
         elif self.path == "/api/status":
             self._send(200, json.dumps(status_payload()), "application/json")
         elif self.path == "/api/wifi":
@@ -2726,6 +2025,20 @@ class Handler(BaseHTTPRequestHandler):
                        "application/json")
         elif self.path == "/api/bt/disconnect":
             ok, message = _bt_disconnect(str(self._json_body().get("mac", "")))
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/bt/forget":
+            ok, message = _bt_forget(str(self._json_body().get("mac", "")))
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/tailscale/set":
+            ok, message = _tailscale_set(bool(self._json_body().get("up")))
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/source/toggle":
+            body = self._json_body()
+            ok, message = _source_toggle(str(body.get("source", "")),
+                                         bool(body.get("enable")))
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/control":
@@ -2813,7 +2126,9 @@ def main():
     if AUTOPAUSE:
         threading.Thread(target=_autopause_loop, daemon=True).start()
     srv = ThreadingHTTPServer((BIND, PORT), Handler)
-    print(f"Synchrofazotron panel at http://{BIND}:{PORT}")
+    # 0.0.0.0 means "every interface" — print an address a browser can open
+    host = "127.0.0.1" if BIND in ("0.0.0.0", "::") else BIND
+    print(f"Synchrofazotron panel at http://{host}:{PORT}")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
