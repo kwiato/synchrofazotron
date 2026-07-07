@@ -108,6 +108,16 @@ network there and the device switches over on its own. Details in
   would break updates on already-deployed devices. The display name in the
   panel comes from the device hostname (override with `PISTREAM_NAME`).
 
+## TODO
+
+- Test and fix HDMI audio output (the panel's DAC ↔ HDMI switch rewrites the
+  boot config, but the HDMI path has not been verified end-to-end on unit #2).
+- BLE provisioning (Improv Wi-Fi) as part of the companion app — see plan.md.
+- Test the AP-fallback captive portal on real hardware (`ifdown wlan0`, watch
+  `journalctl -fu pistream-net-watch`).
+- Promote the `glyphs` shader draft from the studio to `visualizer/glsl/`
+  once it looks right.
+
 ## Credits
 
 Synchrofazotron is a thin layer of glue — the heavy lifting is done by these
