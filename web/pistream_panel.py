@@ -251,7 +251,7 @@ STR = {
         "js_sdel_pre": "Remove shader \"",
         "js_sdel_suf": "\"?",
         "audio_head": "Audio output",
-        "audio_note": "Where the sound goes: the DAC HAT or the monitor over HDMI. Switching rewrites the boot config and takes effect after a reboot.",
+        "audio_out_note": "Where the sound goes: the DAC HAT or the monitor over HDMI. A card that is up (green dot) switches live; a card that is off (red dot) is enabled in the boot config and needs a reboot.",
         "upd_head": "Updates",
         "upd_note": "Fetches the latest Synchrofazotron from GitHub — the same as re-running setup.sh (safe, settings are kept). The check compares the installed panel with the repo.",
         "upd_check_btn": "Check for updates",
@@ -323,6 +323,7 @@ STR = {
         "audio_bad": "Unknown output (expected dac or hdmi).",
         "audio_cfg_fail": "Could not read the boot config (config.txt).",
         "audio_set": "Output switched to {out} — reboot the device to apply.",
+        "audio_set_live": "Output switched to {out} (live — no reboot).",
         "lang_set": "Language switched to English.",
         # visualizer preset labels
         "preset_classic": "Classic",
@@ -480,7 +481,7 @@ STR = {
         "js_sdel_pre": "Usunąć shader „",
         "js_sdel_suf": "”?",
         "audio_head": "Wyjście dźwięku",
-        "audio_note": "Którędy wychodzi dźwięk: DAC (nakładka HAT) albo monitor po HDMI. Przełączenie przepisuje konfigurację startową i działa po restarcie urządzenia.",
+        "audio_out_note": "Którędy wychodzi dźwięk: DAC (nakładka HAT) albo monitor po HDMI. Karta dostępna (zielona kropka) przełącza się od razu; kartę wyłączoną (czerwona kropka) włącza konfiguracja startowa i wymaga restartu.",
         "upd_head": "Aktualizacje",
         "upd_note": "Pobiera najnowszy Synchrofazotron z GitHuba — to samo co ponowne setup.sh (bezpieczne, ustawienia zostają). Sprawdzenie porównuje zainstalowany panel z repo.",
         "upd_check_btn": "Sprawdź aktualizacje",
@@ -550,6 +551,7 @@ STR = {
         "audio_bad": "Nieznane wyjście (oczekiwane dac lub hdmi).",
         "audio_cfg_fail": "Nie udało się odczytać konfiguracji startowej (config.txt).",
         "audio_set": "Wyjście przełączone na {out} — zrestartuj urządzenie, żeby zadziałało.",
+        "audio_set_live": "Wyjście przełączone na {out} (na żywo — bez restartu).",
         "lang_set": "Przełączono na polski.",
         "preset_classic": "Klasyk",
         "preset_dense": "Gęsty",
@@ -1467,10 +1469,93 @@ def _audio_running_mode():
     return "unknown"
 
 
+DAC_CARD_IDS = ("BossDAC", "sndrpihifiberry")
+
+
+def _card_ids():
+    """The ALSA card ids currently present, e.g. ['BossDAC', 'vc4hdmi0']."""
+    ids = []
+    for line in _file_read("/proc/asound/cards").splitlines():
+        m = re.match(r"\s*\d+\s+\[(\S+)", line)
+        if m:
+            ids.append(m.group(1))
+    return ids
+
+
+def _dac_card_id():
+    return next((c for c in _card_ids() if c in DAC_CARD_IDS), "")
+
+
+def _hdmi_card_id():
+    """ALSA card id of the HDMI / on-board audio, or '' if absent. Matched by
+    name so it is right even when the DAC also occupies a card number."""
+    for c in _card_ids():
+        if c in DAC_CARD_IDS or c == "Loopback":
+            continue
+        if re.search(r"hdmi|bcm2835|headphone|vc4|b1", c, re.I):
+            return c
+    return ""
+
+
+def _cards_present():
+    return {"dac": bool(_dac_card_id()), "hdmi": bool(_hdmi_card_id())}
+
+
+def _audio_tokens(mode):
+    """(pcm, card) ALSA tokens for the output, using card *names* so routing
+    works even when both cards are up (numbering is unstable)."""
+    if mode == "dac":
+        cid = _dac_card_id() or "BossDAC"
+        return f"hw:CARD={cid},DEV=0", cid
+    cid = _hdmi_card_id()
+    return (f"hw:CARD={cid}", cid) if cid else ("default", "0")
+
+
+def _audio_selected():
+    """Which output the tee/players currently target (dac|hdmi|unknown),
+    read from the visualizer tee (or inferred when there is no tee)."""
+    asound = _file_read(ASOUND_CONF)
+    if "# PISTREAM-VIZ BEGIN" in asound and "# PISTREAM-VIZ END" in asound:
+        block = (asound.split("# PISTREAM-VIZ BEGIN", 1)[1]
+                       .split("# PISTREAM-VIZ END", 1)[0])
+        m = re.search(r"^\s*card (?!Loopback\b)(\S+)", block, re.M)
+        if m:
+            return "dac" if m.group(1) in DAC_CARD_IDS else "hdmi"
+    r = _audio_running_mode()
+    return r if r != "unknown" else _audio_cfg_mode()
+
+
 def _audio_state():
-    cfg, running = _audio_cfg_mode(), _audio_running_mode()
-    return {"output": cfg, "running": running, "overlay": DAC_OVERLAY,
-            "reboot_required": ("unknown" not in (cfg, running) and cfg != running)}
+    cards = _cards_present()
+    selected = _audio_selected()
+    return {"output": selected, "running": _audio_running_mode(),
+            "overlay": DAC_OVERLAY, "cards": cards,
+            # a reboot is only needed when the chosen output's card is not up yet
+            "reboot_required": selected in ("dac", "hdmi") and not cards.get(selected)}
+
+
+def _audio_tee_reconcile():
+    """If the visualizer tee points its audible slave at a card that is not
+    present (e.g. a viz reinstall reset it to BossDAC on an HDMI-only box),
+    repoint it at whatever output card IS up — fixes silence after a reinstall."""
+    asound = _file_read(ASOUND_CONF)
+    if "# PISTREAM-VIZ BEGIN" not in asound or "# PISTREAM-VIZ END" not in asound:
+        return
+    block = (asound.split("# PISTREAM-VIZ BEGIN", 1)[1]
+                   .split("# PISTREAM-VIZ END", 1)[0])
+    m = re.search(r"^\s*card (?!Loopback\b)(\S+)", block, re.M)
+    if not m:
+        return
+    cur = m.group(1)
+    cards = _cards_present()
+    cur_ok = ((cur in DAC_CARD_IDS and cards["dac"])
+              or (cur not in DAC_CARD_IDS and cards["hdmi"]))
+    if cur_ok:
+        return
+    target = "dac" if cards["dac"] else ("hdmi" if cards["hdmi"] else "")
+    if target:
+        pcm, card = _audio_tokens(target)
+        _audio_retarget_players(pcm, card)
 
 
 def _audio_retarget_players(pcm, card):
@@ -1530,10 +1615,18 @@ def _audio_retarget_players(pcm, card):
 
 
 def _audio_set(mode):
-    """Switches the output in the boot config + player configs. (ok, message)."""
+    """Switches the audible output. When the target card is already up this is a
+    live routing change (no reboot); otherwise it rewrites the boot config and a
+    reboot is needed to bring the card up. Returns (ok, message)."""
     if mode not in ("dac", "hdmi"):
         return False, T("audio_bad")
     with _audio_lock:
+        if _cards_present().get(mode):
+            # both/target card already present -> just repoint the routing
+            pcm, card = _audio_tokens(mode)
+            _audio_retarget_players(pcm, card)
+            return True, T("audio_set_live").format(out=mode.upper())
+        # target card absent -> rewrite config.txt (mutually exclusive, reboot)
         txt = _file_read(BOOT_CFG)
         if not txt:
             return False, T("audio_cfg_fail")
@@ -2293,6 +2386,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     if not DEV_MODE:   # the background loops only poke real system services
+        _audio_tee_reconcile()   # heal a tee left pointing at an absent card
         threading.Thread(target=_auto_trust_loop, daemon=True).start()
         if BT_AUTOCONNECT:
             threading.Thread(target=_bt_autoconnect_loop, daemon=True).start()

@@ -553,10 +553,13 @@ async function audioRefresh() {
     const a = await r.json();
     const d = document.getElementById('audioDac');
     const h = document.getElementById('audioHdmi');
+    const cards = a.cards || {};
+    // green/red dot = whether that sound card is actually present right now
+    const dot = ok => '<i class="dot ' + (ok ? 'on' : 'err') + '"></i> ';
     d.className = 'btn' + (a.output === 'dac' ? '' : ' sec');
     h.className = 'btn' + (a.output === 'hdmi' ? '' : ' sec');
-    d.textContent = 'DAC' + (a.output === 'dac' ? ' ✓' : '');
-    h.textContent = 'HDMI' + (a.output === 'hdmi' ? ' ✓' : '');
+    d.innerHTML = dot(cards.dac) + 'DAC' + (a.output === 'dac' ? ' ✓' : '');
+    h.innerHTML = dot(cards.hdmi) + 'HDMI' + (a.output === 'hdmi' ? ' ✓' : '');
     document.getElementById('rebootBtn').style.display =
       a.reboot_required ? '' : 'none';
     if (a.reboot_required)
