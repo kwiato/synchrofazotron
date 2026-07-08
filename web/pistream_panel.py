@@ -208,7 +208,7 @@ STR = {
         "bt_reconnect_note": "After boot the device always retries for a short while. Turn this on to keep retrying at the interval below.",
         "bt_interval_label": "Retry interval (seconds)",
         "js_bt_testing": "Playing the test sound…",
-        "audio_test_ok": "Test sound played OK on „{dev}” — the output path works; if BT is still silent, run the diagnostics while the phone plays.",
+        "audio_test_ok": "Test sound played on {dev} — the selected output works.",
         "audio_test_fail": "Test sound FAILED on „{dev}”: {err}",
         "viz_head": "Visualizer (HDMI)",
         "viz_note": "Bar style on the monitor. Changing it restarts the visualizer (music keeps playing). Tap ✎ to edit a preset (name + parameters), ➕ adds a new one.",
@@ -445,7 +445,7 @@ STR = {
         "bt_reconnect_note": "Po starcie urządzenie i tak przez chwilę ponawia próby. Włącz, żeby ponawiać dalej co zadany czas.",
         "bt_interval_label": "Odstęp prób (sekundy)",
         "js_bt_testing": "Gram dźwięk testowy…",
-        "audio_test_ok": "Dźwięk testowy zagrany OK na „{dev}” — tor wyjściowy działa; jeśli BT dalej milczy, odpal diagnostykę w trakcie grania z telefonu.",
+        "audio_test_ok": "Dźwięk testowy zagrany na {dev} — wybrane wyjście działa.",
         "audio_test_fail": "Test na „{dev}” NIE przeszedł: {err}",
         "viz_head": "Wizualizer (HDMI)",
         "viz_note": "Styl słupków na monitorze. Zmiana restartuje wizualizer (muzyka gra dalej). Kliknij ✎, żeby edytować preset (nazwa + parametry); ➕ dodaje nowy.",
@@ -722,26 +722,34 @@ def _bt_debug():
 
 
 def _audio_test():
-    """Plays the standard test wav on the currently selected output (DAC or
-    HDMI), via plughw so the card's format/rate is adapted. Returns
+    """Plays the standard test wav on the currently selected output card. The
+    card is single-substream and normally held by the audio-out bridge, so we
+    briefly stop the bridge to borrow the card, play, then resume it — this
+    works even while a source (LMS/BT) is holding 'pistream'. Returns
     (ok, message)."""
     if DEV_MODE:
         return False, "sandbox mode — audio test disabled"
     mode = _audio_selected()
     cid = _dac_card_id() if mode == "dac" else _hdmi_card_id()
-    dev = f"plughw:CARD={cid}" if cid else "default"
+    if not cid:
+        return False, T("audio_card_absent").format(out=mode.upper())
+    dev = f"plughw:CARD={cid}"
+    bridge_was = _service_active(AOUT_SERVICE)
+    if bridge_was:
+        _run(["systemctl", "stop", AOUT_SERVICE])   # free the card for the test
     try:
         r = subprocess.run(
             ["aplay", "-D", dev, "/usr/share/sounds/alsa/Front_Center.wav"],
             capture_output=True, text=True, timeout=15)
+        rc, err = r.returncode, (r.stderr or "").strip()[:200]
     except Exception as e:  # noqa: BLE001
-        return False, T("audio_test_fail").format(dev=dev, err=str(e))
-    if r.returncode == 0:
+        rc, err = 1, str(e)
+    finally:
+        if bridge_was:
+            _run(["systemctl", "start", AOUT_SERVICE])
+    if rc == 0:
         return True, T("audio_test_ok").format(dev=dev)
-    # surface what cards actually exist so a wrong/missing card is obvious
-    cards = ", ".join(_card_ids()) or "none"
-    err = (r.stderr or "").strip()[:200]
-    return False, T("audio_test_fail").format(dev=dev, err=f"{err} [cards: {cards}]")
+    return False, T("audio_test_fail").format(dev=dev, err=err)
 
 
 def _start_pairing(window=PAIR_WINDOW_SEC):
