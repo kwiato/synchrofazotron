@@ -199,15 +199,30 @@ h1 {
 }
 
 .brand {
+  min-width: 0;
+}
+.brand a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacer-2xs);
+  min-width: 0;
+  max-width: 100%;
   color: inherit;
   text-decoration: none;
 }
-.brand:hover {
+.brand a:hover .brand-name {
   background: var(--grad);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+}
+
+.brand-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sub {
@@ -351,12 +366,6 @@ code {
   justify-content: space-between;
   gap: var(--spacer-xs);
 }
-.top h1 {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 .topbtns {
   display: flex;
@@ -365,8 +374,8 @@ code {
 }
 
 @media (max-width: 430px) {
-  .top h1 {
-    font-size: 1.2rem;
+  .brand-name {
+    display: none;
   }
   .iconbtn .lbl {
     max-width: 8ch;

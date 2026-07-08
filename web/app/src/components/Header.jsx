@@ -3,6 +3,7 @@ import { useStatus } from '../status.jsx';
 import { useI18n } from '../i18n.jsx';
 import { apiPost } from '../api.js';
 import { navigate, useRoute } from '../router.jsx';
+import { RingMark } from './ConsoleLogo.jsx';
 
 export function Header() {
   const { status, refresh } = useStatus();
@@ -24,7 +25,12 @@ export function Header() {
 
   return (
     <header class="top">
-      <h1><a class="brand" href="#/">{device}</a></h1>
+      <h1 class="brand">
+        <a href="#/">
+          <RingMark class="brand-mark" />
+          <span class="brand-name">{device}</span>
+        </a>
+      </h1>
       <div class="topbtns">
         <button class={'iconbtn' + (left > 0 || btName ? ' active' : '')} disabled={busy}
                 onClick={pair} title={t('bt_button')}>

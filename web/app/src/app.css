@@ -73,6 +73,11 @@
   100% { fill: var(--text); filter: drop-shadow(0 0 6px transparent); }
 }
 
+/* the same ring as a small header brand mark: fixed size, and only the one-shot
+   power-on (no ambient flicker in the persistent header chrome) */
+.brand-mark { flex: none; width: 34px; height: 34px; display: block; }
+.brand-mark .seg { animation: seg-intro .8s calc(var(--ord) * .02s) forwards; }
+
 @media (prefers-reduced-motion: reduce) {
   .seg { animation: none; }
 }
