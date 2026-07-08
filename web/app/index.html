@@ -4,8 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Synchrofazotron</title>
-  <!-- Shared neon theme — one source of truth, served raw by the panel. -->
+  <!-- Shared theme — one source of truth, served raw by the panel. -->
   <link rel="stylesheet" href="/static/style.css">
+  <!-- apply the saved theme before first paint (no flash) -->
+  <script>try{var t=localStorage.getItem('theme');if(t&&t!=='neon')document.documentElement.dataset.theme=t;}catch(e){}</script>
 </head>
 <body class="has-playerbar">
   <div id="app"></div>

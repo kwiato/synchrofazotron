@@ -18,6 +18,7 @@ export function ConfigSection() {
         <TailscaleCard />
         <AudioOutputCard />
         <LanguageCard />
+        <ThemeCard />
         <UpdateCard />
         <RebootCard />
       </div>
@@ -234,6 +235,34 @@ function LanguageCard() {
       <select value={lang} onChange={change}>
         <option value="en">English</option>
         <option value="pl">Polski</option>
+      </select>
+    </div>
+  );
+}
+
+// Client-only appearance switch: sets data-theme on <html> and remembers it in
+// localStorage (the same value the no-flash script in index.html reads on load).
+// Applies live — no reload, no server round-trip.
+function ThemeCard() {
+  const { t } = useI18n();
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('theme') || 'neon'; } catch { return 'neon'; }
+  });
+  const change = (e) => {
+    const v = e.currentTarget.value;
+    setTheme(v);
+    try { localStorage.setItem('theme', v); } catch { /* private mode */ }
+    if (v === 'neon') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = v;
+  };
+  return (
+    <div class="card">
+      <h2><i class="ico ico-brush"></i> {t('theme_head')}</h2>
+      <p class="muted">{t('theme_note')}</p>
+      <select value={theme} onChange={change}>
+        <option value="neon">{t('theme_neon')}</option>
+        <option value="mono-light">{t('theme_mono_light')}</option>
+        <option value="mono-dark">{t('theme_mono_dark')}</option>
       </select>
     </div>
   );
