@@ -7,9 +7,11 @@ DAC_PCM="hw:CARD=BossDAC,DEV=0"
 
 echo "==> Stopping and removing services"
 systemctl disable --now pistream-hdmi-watch.service 2>/dev/null || true
+systemctl disable --now pistream-aout.service 2>/dev/null || true
 systemctl stop pistream-visualizer.service 2>/dev/null || true
 rm -f /etc/systemd/system/pistream-visualizer.service \
-      /etc/systemd/system/pistream-hdmi-watch.service
+      /etc/systemd/system/pistream-hdmi-watch.service \
+      /etc/systemd/system/pistream-aout.service
 rm -rf /opt/pistream-visualizer
 systemctl daemon-reload
 systemctl start getty@tty1 2>/dev/null || true

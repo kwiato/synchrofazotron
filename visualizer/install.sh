@@ -16,7 +16,7 @@ REPO="${PISTREAM_REPO:-kwiato/synchrofazotron}"
 BRANCH="${PISTREAM_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/$REPO/$BRANCH/visualizer"
 FILES=(asound-tee.conf cava.conf pistream-visualizer.service pistream-hdmi-watch.service hdmi-watch.sh
-       viz-run.sh glsl-audio-bridge.py glsl-run.py
+       viz-run.sh glsl-audio-bridge.py glsl-run.py pistream-aout.service
        glsl/plasma.frag glsl/tunnel.frag glsl/copper.frag
        glsl/cube.frag glsl/scope.frag glsl/grid.frag
        visualizer-studio.html)
@@ -132,6 +132,27 @@ install -m 0644 "$SRC_DIR/visualizer-studio.html" "$DEST/visualizer-studio.html"
 [[ -f $DEST/engine ]] || echo cava > "$DEST/engine"
 install -m 0644 "$SRC_DIR/pistream-visualizer.service" /etc/systemd/system/
 install -m 0644 "$SRC_DIR/pistream-hdmi-watch.service" /etc/systemd/system/
+install -m 0644 "$SRC_DIR/pistream-aout.service" /etc/systemd/system/
+
+# audio-out bridge target card: keep an existing choice, else auto-detect
+# (a DAC wins over HDMI/on-board; Loopback is never a real output).
+if [[ ! -f $DEST/aout.env ]]; then
+  CARD_IDS=$(awk -F'[][]' '/^ *[0-9]+ \[/{gsub(/ /,"",$2); print $2}' /proc/asound/cards)
+  AOUT_CARD=""; AOUT_MODE="hdmi"
+  for c in $CARD_IDS; do
+    case "$c" in
+      BossDAC|sndrpihifiberry) AOUT_CARD="$c"; AOUT_MODE="dac"; break ;;
+    esac
+  done
+  if [[ -z $AOUT_CARD ]]; then
+    for c in $CARD_IDS; do
+      [[ $c == Loopback ]] && continue
+      AOUT_CARD="$c"; AOUT_MODE="hdmi"; break
+    done
+  fi
+  printf 'AOUT_MODE=%s\nAOUT_CARD=%s\n' "$AOUT_MODE" "${AOUT_CARD:-vc4hdmi}" > "$DEST/aout.env"
+  echo "    audio-out bridge -> ${AOUT_CARD:-vc4hdmi} ($AOUT_MODE)"
+fi
 
 systemctl daemon-reload
 systemctl restart squeezelite 2>/dev/null || true
@@ -140,6 +161,8 @@ systemctl reset-failed bluealsa-aplay 2>/dev/null || true
 systemctl restart bluealsa-aplay 2>/dev/null || true
 systemctl enable --now pistream-hdmi-watch.service
 systemctl restart pistream-hdmi-watch.service
+systemctl enable --now pistream-aout.service
+systemctl restart pistream-aout.service
 # on update: pick up the new unit/engine while it is already running
 systemctl try-restart pistream-visualizer.service 2>/dev/null || true
 

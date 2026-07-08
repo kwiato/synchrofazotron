@@ -1,0 +1,19 @@
+[Unit]
+Description=Synchrofazotron audio-out bridge (loopback -> selected output card)
+# The panel switches output by rewriting aout.env (AOUT_CARD=...) and
+# restarting this unit — no player restart, no reboot.
+After=sound.target
+Wants=sound.target
+
+[Service]
+Type=simple
+EnvironmentFile=/opt/pistream-visualizer/aout.env
+# alsaloop copies the second loopback tap to the real card; plughw adapts the
+# format (PCM -> IEC958 for HDMI, plain PCM for a DAC). Restart=always rides out
+# the card not being ready yet at boot / on HDMI hotplug.
+ExecStart=/usr/bin/alsaloop -C plughw:Loopback,1,1 -P plughw:${AOUT_CARD} -t 50000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

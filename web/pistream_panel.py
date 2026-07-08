@@ -330,6 +330,7 @@ STR = {
         "audio_cfg_fail": "Could not read the boot config (config.txt).",
         "audio_set": "Output switched to {out} — reboot the device to apply.",
         "audio_set_live": "Output switched to {out} (live — no reboot).",
+        "audio_card_absent": "{out} is not available — no such sound card is up.",
         "lang_set": "Language switched to English.",
         # visualizer preset labels
         "preset_classic": "Classic",
@@ -564,6 +565,7 @@ STR = {
         "audio_cfg_fail": "Nie udało się odczytać konfiguracji startowej (config.txt).",
         "audio_set": "Wyjście przełączone na {out} — zrestartuj urządzenie, żeby zadziałało.",
         "audio_set_live": "Wyjście przełączone na {out} (na żywo — bez restartu).",
+        "audio_card_absent": "{out} niedostępne — nie ma takiej karty dźwiękowej.",
         "lang_set": "Przełączono na polski.",
         "preset_classic": "Klasyk",
         "preset_dense": "Gęsty",
@@ -700,18 +702,17 @@ def _bt_debug():
     else:
         lines.append("(nothing holds the output)")
 
-    # visualizer tee sanity: a missing slave card silences EVERY source
-    # routed through 'pistream' (the multi device refuses to open at all)
-    m = re.search(r"pcm\.pistream_dac \{[^}]*card (\S+)", _file_read(ASOUND_CONF))
-    if m:
-        card = m.group(1)
-        present = (re.search(rf"^\s*{card}\s+\[", cards, re.M) if card.isdigit()
-                   else card in cards)
-        lines.append("")
-        lines.append(f"visualizer tee slave: card {card} "
-                     + ("(present, OK)" if present else
-                        "(MISSING!! -> 'pistream' cannot open, every source using it is silent; "
-                        "switch the audio output in the panel or reinstall the visualizer)"))
+    # audio-out bridge: alsaloop copies the loopback tap to the real card;
+    # if it is down, everything through 'pistream' is silent (BT included)
+    mode, bcard = _aout_read()
+    bstate = _run(["systemctl", "is-active", AOUT_SERVICE])
+    bcard_ok = bcard and bcard in cards
+    lines.append("")
+    lines.append(f"audio-out bridge (pistream-aout): {bstate}  "
+                 f"{mode or '?'} -> plughw:{bcard or '?'} "
+                 + ("(card present)" if bcard_ok else
+                    "(CARD ABSENT/blank -> no sound reaches the output; "
+                    "pick an available output in the panel)"))
 
     lines.append("")
     lines.append("--- bluealsa-aplay journal (last 15 lines) ---")
@@ -1553,26 +1554,38 @@ def _cards_present():
     return {"dac": bool(_dac_card_id()), "hdmi": bool(_hdmi_card_id())}
 
 
-def _audio_tokens(mode):
-    """(pcm, card) ALSA tokens for the output, using card *names* so routing
-    works even when both cards are up (numbering is unstable)."""
-    if mode == "dac":
-        cid = _dac_card_id() or "BossDAC"
-        return f"hw:CARD={cid},DEV=0", cid
-    cid = _hdmi_card_id()
-    return (f"hw:CARD={cid}", cid) if cid else ("default", "0")
+# Audio-out bridge (pistream-aout.service): alsaloop copies the loopback tap to
+# the real card. The panel switches output by rewriting aout.env + restarting
+# that unit — no player restart, no reboot. aout.env lives in the visualizer
+# dir (survives panel updates) and is the persisted output choice.
+AOUT_SERVICE = "pistream-aout"
+AOUT_ENV = "/opt/pistream-visualizer/aout.env"
+
+
+def _card_for(mode):
+    return _dac_card_id() if mode == "dac" else _hdmi_card_id()
+
+
+def _aout_read():
+    """(mode, card) from aout.env — the persisted output choice."""
+    txt = _file_read(AOUT_ENV)
+
+    def g(key):
+        m = re.search(rf"^{key}=(\S+)", txt, re.M)
+        return m.group(1) if m else ""
+    return g("AOUT_MODE"), g("AOUT_CARD")
+
+
+def _aout_write(mode, card):
+    _file_write(AOUT_ENV, f"AOUT_MODE={mode}\nAOUT_CARD={card}\n")
+    _run(["systemctl", "restart", AOUT_SERVICE])
 
 
 def _audio_selected():
-    """Which output the tee/players currently target (dac|hdmi|unknown),
-    read from the visualizer tee (or inferred when there is no tee)."""
-    asound = _file_read(ASOUND_CONF)
-    if "# PISTREAM-VIZ BEGIN" in asound and "# PISTREAM-VIZ END" in asound:
-        block = (asound.split("# PISTREAM-VIZ BEGIN", 1)[1]
-                       .split("# PISTREAM-VIZ END", 1)[0])
-        m = re.search(r"^\s*card (?!Loopback\b)(\S+)", block, re.M)
-        if m:
-            return "dac" if m.group(1) in DAC_CARD_IDS else "hdmi"
+    """Which output is chosen (dac|hdmi), from the persisted bridge config."""
+    mode, _card = _aout_read()
+    if mode in ("dac", "hdmi"):
+        return mode
     r = _audio_running_mode()
     return r if r != "unknown" else _audio_cfg_mode()
 
@@ -1582,32 +1595,28 @@ def _audio_state():
     selected = _audio_selected()
     return {"output": selected, "running": _audio_running_mode(),
             "overlay": DAC_OVERLAY, "cards": cards,
-            # a reboot is only needed when the chosen output's card is not up yet
+            "bridge_active": _service_active(AOUT_SERVICE),
+            # the chosen output has no card up yet — needs it enabled at boot
             "reboot_required": selected in ("dac", "hdmi") and not cards.get(selected)}
 
 
-def _audio_tee_reconcile():
-    """If the visualizer tee points its audible slave at a card that is not
-    present (e.g. a viz reinstall reset it to BossDAC on an HDMI-only box),
-    repoint it at whatever output card IS up — fixes silence after a reinstall."""
-    asound = _file_read(ASOUND_CONF)
-    if "# PISTREAM-VIZ BEGIN" not in asound or "# PISTREAM-VIZ END" not in asound:
-        return
-    block = (asound.split("# PISTREAM-VIZ BEGIN", 1)[1]
-                   .split("# PISTREAM-VIZ END", 1)[0])
-    m = re.search(r"^\s*card (?!Loopback\b)(\S+)", block, re.M)
-    if not m:
-        return
-    cur = m.group(1)
+def _aout_reconcile():
+    """Point the bridge at the preferred card if present, else at any output
+    card that IS up — runs at startup and after hardware changes so audio never
+    lands on a dead/absent card (the classic silence)."""
+    mode, cur = _aout_read()
     cards = _cards_present()
-    cur_ok = ((cur in DAC_CARD_IDS and cards["dac"])
-              or (cur not in DAC_CARD_IDS and cards["hdmi"]))
-    if cur_ok:
+    if mode in ("dac", "hdmi") and cards.get(mode):
+        target = mode
+    elif cards["dac"]:
+        target = "dac"
+    elif cards["hdmi"]:
+        target = "hdmi"
+    else:
         return
-    target = "dac" if cards["dac"] else ("hdmi" if cards["hdmi"] else "")
-    if target:
-        pcm, card = _audio_tokens(target)
-        _audio_retarget_players(pcm, card)
+    cid = _card_for(target)
+    if cid and (target != mode or cid != cur):
+        _aout_write(target, cid)
 
 
 def _audio_retarget_players(pcm, card):
@@ -1667,62 +1676,17 @@ def _audio_retarget_players(pcm, card):
 
 
 def _audio_set(mode):
-    """Switches the audible output. When the target card is already up this is a
-    live routing change (no reboot); otherwise it rewrites the boot config and a
-    reboot is needed to bring the card up. Returns (ok, message)."""
+    """Switches the audible output by pointing the audio-out bridge at that
+    card and restarting it — seamless, no player restart, no reboot. Returns
+    (ok, message)."""
     if mode not in ("dac", "hdmi"):
         return False, T("audio_bad")
     with _audio_lock:
-        if _cards_present().get(mode):
-            # both/target card already present -> just repoint the routing
-            pcm, card = _audio_tokens(mode)
-            _audio_retarget_players(pcm, card)
-            return True, T("audio_set_live").format(out=mode.upper())
-        # target card absent -> rewrite config.txt (mutually exclusive, reboot)
-        txt = _file_read(BOOT_CFG)
-        if not txt:
-            return False, T("audio_cfg_fail")
-        if mode == "dac":
-            txt = _cfg_set(txt, "dtparam=audio", "off")
-            # bring back a commented-out DAC overlay, or add ours
-            txt = re.sub(rf"^#\s*(dtoverlay={re.escape(DAC_OVERLAY)}\b.*)$",
-                         r"\1", txt, flags=re.M)
-            if not _DAC_OVERLAY_RE.search(txt):
-                txt = txt.rstrip("\n") + f"\ndtoverlay={DAC_OVERLAY}\n"
-            # DietPi keeps the on-board audio blacklisted — restore that
-            bl = _file_read(RPI_AUDIO_BLACKLIST)
-            if "#blacklist snd_bcm2835" in bl:
-                bl = bl.replace("#blacklist snd_bcm2835", "blacklist snd_bcm2835")
-            elif "blacklist snd_bcm2835" not in bl:
-                bl = (bl.rstrip("\n") + "\nblacklist snd_bcm2835\n").lstrip("\n")
-            _file_write(RPI_AUDIO_BLACKLIST, bl)
-            try:
-                os.remove(HDMI_MODULES)
-            except OSError:
-                pass
-            pcm, card = DAC_PCM, "BossDAC"
-        else:  # hdmi — the workaround documented in dac-setup.md
-            txt = _cfg_set(txt, "dtparam=audio", "on")
-            txt = _cfg_set(txt, "hdmi_drive", "2")
-            txt = _cfg_set(txt, "hdmi_force_hotplug", "1")
-            txt = _cfg_set(txt, "hdmi_blanking", "0")
-            txt = re.sub(r"^(dtoverlay=(?:hifiberry|allo-boss)\S*.*)$",
-                         r"#\1", txt, flags=re.M)
-            bl = _file_read(RPI_AUDIO_BLACKLIST)
-            if bl:
-                _file_write(RPI_AUDIO_BLACKLIST,
-                            re.sub(r"^blacklist snd_bcm2835",
-                                   "#blacklist snd_bcm2835", bl, flags=re.M))
-            _file_write(HDMI_MODULES, "snd_bcm2835\n")
-            asound = _file_read(ASOUND_CONF)
-            if "pcm.!default" not in asound:
-                _file_write(ASOUND_CONF, asound
-                            + "pcm.!default { type hw; card 0; }\n"
-                            + "ctl.!default { type hw; card 0; }\n")
-            pcm, card = "default", "0"
-        _file_write(BOOT_CFG, txt)
-        _audio_retarget_players(pcm, card)
-    return True, T("audio_set").format(out=mode.upper())
+        cid = _card_for(mode)
+        if not cid:
+            return False, T("audio_card_absent").format(out=mode.upper())
+        _aout_write(mode, cid)
+    return True, T("audio_set_live").format(out=mode.upper())
 
 
 # ---------------------------------------------------------------------------
@@ -2442,7 +2406,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     if not DEV_MODE:   # the background loops only poke real system services
-        _audio_tee_reconcile()   # heal a tee left pointing at an absent card
+        _aout_reconcile()   # point the audio-out bridge at a present card
         threading.Thread(target=_auto_trust_loop, daemon=True).start()
         if BT_AUTOCONNECT:
             threading.Thread(target=_bt_autoconnect_loop, daemon=True).start()

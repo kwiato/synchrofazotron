@@ -257,17 +257,27 @@ fi
 
 # KMS/GPU driver — DietPi ships the vc4-kms-v3d overlay commented out, so
 # there is no /dev/dri and glslViewer cannot initialize DRM (found the hard
-# way on unit #2, 2026-07-07). `noaudio` keeps HDMI audio off the vc4 driver
-# so the DAC/bcm2835 routes above stay untouched.
+# way on unit #2, 2026-07-07). We enable it WITH HDMI audio (no `noaudio`):
+# HDMI audio then shows up as the `vc4hdmi` card, which the audio-out bridge
+# targets. `dtparam=audio=on` provides the DMA the vc4-hdmi node needs — without
+# it the driver logs "'dmas' property missing, no HDMI audio" (confirmed on a
+# Pi Zero 2 W, 2026-07-08). This is independent of the DAC (an I2S device), and
+# DietPi's kernel cmdline hides the bcm2835 PCMs, so no on-board clutter.
+set_cfg "dtparam=audio" on
+if grep -qE '^dtoverlay=vc4-kms-v3d,noaudio' "$CFG"; then
+  sed -i -E 's|^(dtoverlay=vc4-kms-v3d),noaudio|\1|' "$CFG"
+  ok "KMS: enabled HDMI audio (removed noaudio)"
+  REBOOT_NEEDED=1
+fi
 if grep -qE '^dtoverlay=vc4-kms-v3d' "$CFG"; then
   ok "KMS (vc4-kms-v3d) already enabled"
 else
   if grep -qE '^#dtoverlay=vc4-kms-v3d' "$CFG"; then
-    sed -i -E 's|^#(dtoverlay=vc4-kms-v3d.*)|\1|' "$CFG"
+    sed -i -E 's|^#(dtoverlay=vc4-kms-v3d)[^#]*|\1|' "$CFG"   # uncomment, drop noaudio
   else
-    echo "dtoverlay=vc4-kms-v3d,noaudio" >> "$CFG"
+    echo "dtoverlay=vc4-kms-v3d" >> "$CFG"
   fi
-  ok "KMS (vc4-kms-v3d) enabled — needed by the GLSL visualizer"
+  ok "KMS (vc4-kms-v3d) enabled — needed by the GLSL visualizer + HDMI audio"
   REBOOT_NEEDED=1
 fi
 

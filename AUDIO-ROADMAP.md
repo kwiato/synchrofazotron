@@ -32,7 +32,46 @@ real card at a time (plus the soft Loopback, which has no crystal) is
 drift-free. True simultaneous DAC+HDMI audio is therefore a separate,
 opt-in "may click" mode.
 
-## Option A — live single-output switching (IMPLEMENTED)
+## Option B — bridge architecture (IMPLEMENTED 2026-07-08)
+
+Superseded Option A. Forced by HDMI: the `vc4hdmi` card only accepts
+`IEC958_SUBFRAME_LE`, so an ALSA `multi` cannot feed one real card (needs
+IEC958) and the Loopback (needs PCM) the same format. The fix — and it also
+gives seamless switching + kills the "hardcoded card" regression — is:
+
+```
+players → pistream (plug → route → multi) → [ Loopback,0,0 + Loopback,0,1 ]
+                                               ├─ 1,0 → visualizer (cava/glsl)
+                                               └─ 1,1 → pistream-aout (alsaloop)
+                                                        → plughw:<card>  (plug does
+                                                          PCM→IEC958 for HDMI)
+```
+
+- `visualizer/asound-tee.conf` — dual-loopback tee, **references no real card**
+  (so a dead/absent card can never make `pistream` unopenable).
+- `visualizer/pistream-aout.service` — `alsaloop -C plughw:Loopback,1,1 -P
+  plughw:${AOUT_CARD}`, card from `/opt/pistream-visualizer/aout.env`
+  (`AOUT_MODE`/`AOUT_CARD`, the persisted output choice; survives updates).
+- `visualizer/install.sh` — installs the unit, auto-detects the card (DAC wins
+  over HDMI), writes aout.env if absent, enables the bridge.
+- Panel: `_audio_set` rewrites aout.env + restarts only the bridge (seamless —
+  no player restart, no reboot); `_aout_reconcile()` at startup points the
+  bridge at a present card; `_audio_state` reports `cards` + `bridge_active`;
+  the DAC/HDMI buttons show green/red availability dots; the sound test plays
+  on the selected card via plughw.
+- `setup.sh` — KMS overlay now WITHOUT `noaudio` + `dtparam=audio=on`, so
+  `vc4hdmi` audio exists on every install (the `dmas` fix, confirmed live).
+
+Validated end-to-end on staging (BT clean, tone RUNNING on vc4hdmi, live
+switch ok, DAC-absent handled).
+
+Follow-ups still worth doing: drop the legacy `pcm.!default { card 0 }` that
+old HDMI installs left in `/etc/asound.conf` (card 0 is unstable once both
+cards exist); simplify the `setup.sh` `AUDIO=hdmi` bcm2835 branch (the bridge
+now uses vc4hdmi, not bcm2835); alsaloop burns a little CPU copying silence
+when idle — could gate it on playback.
+
+## Option A — live single-output switching (SUPERSEDED by B)
 
 Panel picks the audible output live; only one real card is fed at a time, so no
 drift. Implemented in `web/pistream_panel.py`:
