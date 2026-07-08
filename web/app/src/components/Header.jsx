@@ -26,7 +26,7 @@ export function Header() {
   return (
     <header class="top">
       <h1 class="brand">
-        <a href="#/">
+        <a href="#/" aria-label={device}>
           <RingMark class="brand-mark" />
           <span class="brand-name">{device}</span>
         </a>
