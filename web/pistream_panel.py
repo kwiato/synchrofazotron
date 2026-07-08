@@ -737,8 +737,10 @@ def _audio_test():
         return False, T("audio_test_fail").format(dev=dev, err=str(e))
     if r.returncode == 0:
         return True, T("audio_test_ok").format(dev=dev)
-    return False, T("audio_test_fail").format(dev=dev,
-                                              err=(r.stderr or "").strip()[:300])
+    # surface what cards actually exist so a wrong/missing card is obvious
+    cards = ", ".join(_card_ids()) or "none"
+    err = (r.stderr or "").strip()[:200]
+    return False, T("audio_test_fail").format(dev=dev, err=f"{err} [cards: {cards}]")
 
 
 def _start_pairing(window=PAIR_WINDOW_SEC):
@@ -1535,13 +1537,16 @@ def _dac_card_id():
 
 def _hdmi_card_id():
     """ALSA card id of the HDMI / on-board audio, or '' if absent. Matched by
-    name so it is right even when the DAC also occupies a card number."""
+    name; falls back to the first card that is neither the DAC nor the Loopback
+    (on a Pi that is the HDMI / on-board output)."""
+    other = ""
     for c in _card_ids():
         if c in DAC_CARD_IDS or c == "Loopback":
             continue
         if re.search(r"hdmi|bcm2835|headphone|vc4|b1", c, re.I):
             return c
-    return ""
+        other = other or c
+    return other
 
 
 def _cards_present():
