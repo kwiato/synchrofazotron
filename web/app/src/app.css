@@ -52,25 +52,25 @@
   display: block; width: 100%; border: 0; background: none; padding: 0;
   margin: 12px 0 6px; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-.ring-logo svg { display: block; width: 100%; max-width: 190px; height: auto; margin: 0 auto; }
+.ring-logo svg { display: block; width: 100%; max-width: 150px; height: auto; margin: 0 auto; }
 .ring-logo:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: 12px; }
 
 .seg {
   fill: var(--text);   /* black on the light theme, white on dark + neon */
   animation:
-    seg-intro .55s calc(var(--ord) * .022s) both,
-    seg-flash 24s calc(var(--ord) * .022s + .55s + var(--dly)) infinite;
+    seg-intro .8s calc(var(--ord) * .02s) forwards,
+    seg-flash 36s calc(var(--ord) * .02s + .8s + var(--dly)) infinite;
 }
-/* sudden on, slow fade — cyan/pink glow via an animatable drop-shadow colour */
+/* Instant strike, then a slow ease-out fade (phosphor-like) back to the ink.
+   The colour lives in the drop-shadow so the glow fades smoothly. */
 @keyframes seg-intro {
-  0%   { fill: var(--text); filter: drop-shadow(0 0 6px transparent); }
-  40%  { fill: var(--hot); filter: drop-shadow(0 0 6px var(--hot)); }
+  0%   { fill: var(--hot); filter: drop-shadow(0 0 6px var(--hot)); animation-timing-function: ease-out; }
   100% { fill: var(--text); filter: drop-shadow(0 0 6px transparent); }
 }
 @keyframes seg-flash {
-  0%, 1.2%   { fill: var(--text); filter: drop-shadow(0 0 6px transparent); }
-  2%         { fill: var(--hot); filter: drop-shadow(0 0 7px var(--hot)); }
-  10%, 100%  { fill: var(--text); filter: drop-shadow(0 0 6px transparent); }
+  0%   { fill: var(--hot); filter: drop-shadow(0 0 8px var(--hot)); animation-timing-function: ease-out; }
+  9%   { fill: var(--text); filter: drop-shadow(0 0 6px transparent); }
+  100% { fill: var(--text); filter: drop-shadow(0 0 6px transparent); }
 }
 
 @media (prefers-reduced-motion: reduce) {
