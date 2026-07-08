@@ -6,6 +6,7 @@ import { primary, srcSub } from '../util.js';
 import { Eq } from '../components/Eq.jsx';
 import { Collapsible } from '../components/Collapsible.jsx';
 import { Tabs } from '../components/Tabs.jsx';
+import { EmptyState } from '../components/EmptyState.jsx';
 
 // Main view: the Now / Visualizer tabs. Ported from panel.js.
 export function Panel() {
@@ -107,26 +108,31 @@ function VizTab() {
           <span class="knob"></span>
         </label>
       </div>
-      {v.hdmi_connected === false && <p class="viz-warn">{t('viz_hdmi_off')}</p>}
-      <Collapsible open={on}>
-        <Tabs compact active={v.engine} onChange={(id) => engine(id)}
-              items={[
-                { id: 'cava', label: t('viz_eng_cava') },
-                { id: 'glsl', label: t('viz_eng_glsl') + (v.glsl_available ? '' : ' ⚠'),
-                  title: v.glsl_available ? '' : t('viz_glsl_missing') },
-              ]} />
-        {glsl && v.glsl_error && <p class="muted">{t('js_glsl_err')}{v.glsl_error}</p>}
-        <div class="vgrid">
-          {items.map((it) => (
-            <button key={it.id} class={'btn' + (it.id === current ? '' : ' sec')}
-                    onClick={() => (glsl ? engine('glsl', it.id) : preset(it.id))}>
-              {it.label}{it.id === current ? ' ✓' : ''}
-            </button>
-          ))}
-        </div>
-        <p class="muted small">{t('viz_more')}</p>
-      </Collapsible>
-      {!on && <p class="muted">{t('viz_off_hint')}</p>}
+      {v.hdmi_connected === false ? (
+        <EmptyState icon="ico-plug-off" title={t('viz_hdmi_off')} sub={t('viz_hdmi_off_sub')} />
+      ) : (
+        <>
+          <Collapsible open={on}>
+            <Tabs compact active={v.engine} onChange={(id) => engine(id)}
+                  items={[
+                    { id: 'cava', label: t('viz_eng_cava') },
+                    { id: 'glsl', label: t('viz_eng_glsl') + (v.glsl_available ? '' : ' ⚠'),
+                      title: v.glsl_available ? '' : t('viz_glsl_missing') },
+                  ]} />
+            {glsl && v.glsl_error && <p class="muted">{t('js_glsl_err')}{v.glsl_error}</p>}
+            <div class="vgrid">
+              {items.map((it) => (
+                <button key={it.id} class={'btn' + (it.id === current ? '' : ' sec')}
+                        onClick={() => (glsl ? engine('glsl', it.id) : preset(it.id))}>
+                  {it.label}{it.id === current ? ' ✓' : ''}
+                </button>
+              ))}
+            </div>
+            <p class="muted small">{t('viz_more')}</p>
+          </Collapsible>
+          {!on && <p class="muted">{t('viz_off_hint')}</p>}
+        </>
+      )}
       {msg && <p class="muted">{msg}</p>}
     </div>
   );

@@ -4,6 +4,7 @@ import { apiPost } from '../../api.js';
 import { useApi } from '../../hooks.js';
 import { Collapsible } from '../../components/Collapsible.jsx';
 import { Tabs } from '../../components/Tabs.jsx';
+import { EmptyState } from '../../components/EmptyState.jsx';
 
 export function VisualizerSection() {
   const { t } = useI18n();
@@ -43,12 +44,13 @@ export function VisualizerSection() {
             )}
           </div>
           <p class="muted">{t('viz_note')}</p>
-          {installed && v.hdmi_connected === false && <p class="viz-warn">{t('viz_hdmi_off')}</p>}
           {!v
             ? <p class="muted">…</p>
             : !v.installed
               ? <p class="muted">{t('viz_missing')}</p>
-              : (
+              : v.hdmi_connected === false
+                ? <EmptyState icon="ico-plug-off" title={t('viz_hdmi_off')} sub={t('viz_hdmi_off_sub')} />
+                : (
                 <>
                   <Collapsible open={on}>
                     <Tabs compact active={v.engine} onChange={(id) => engine(id)}

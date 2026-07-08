@@ -41,9 +41,15 @@
   .collapsible { transition: none; }
 }
 
-/* Inline warning line (e.g. "HDMI not connected") inside a card. */
-.viz-warn { color: var(--warn); font-size: 13px; margin: 6px 0 2px; }
-
 /* Tabs sitting inside a card (engine picker) want tighter margins than the
    top-level Now/Viz nav. */
 .tabs.compact { margin: 4px 0 12px; }
+
+/* Empty / unavailable state: big centered icon + thin larger text. */
+.empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 10px; padding: 30px 16px 26px; color: var(--muted);
+}
+.empty .empty-ico { width: 58px; height: 58px; opacity: .6; }
+.empty-title { margin: 0; font-size: 1.2rem; font-weight: 300; letter-spacing: .01em; color: var(--text); }
+.empty-sub { margin: 0; max-width: 34ch; font-size: .9rem; }
