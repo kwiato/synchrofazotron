@@ -2192,6 +2192,27 @@ def render_settings(host_header):
     return _fill(_ui_read("settings.html"), host_header)
 
 
+def _i18n_payload(host_header):
+    """Everything the Preact bundle needs at boot in one request: the active
+    language, all translated strings (with {{DEVICE}} etc. already substituted),
+    and the handful of config values the UI references. STR stays the single
+    source of truth — the bundle carries no baked-in copy, so it stays static
+    and drops unchanged into a WebView / native shell later."""
+    base = dict(STR["en"])
+    base.update(STR.get(_lang, {}))      # same en-fallback semantics as T()
+    strings = {k: _fill(v, host_header) for k, v in base.items()}
+    return {
+        "lang": _lang,
+        "langs": list(LANGS),
+        "device": DEVICE_NAME,
+        "player": SQUEEZELITE_PLAYER,
+        "lms_port": LMS_PORT,
+        "pair_win": PAIR_WINDOW_SEC,
+        "repo": REPO,
+        "strings": strings,
+    }
+
+
 # The shader studio is a self-contained HTML app from visualizer/ — served
 # when present (on the Pi: copied by visualizer/install.sh; in a repo
 # checkout: straight from the source tree).
@@ -2226,6 +2247,43 @@ def static_file(path):
     return None
 
 
+# The Preact panel (web/app/) is built on the laptop into app/dist and served
+# here as a flat static mount under /app/. Hash routing means there are no
+# server-side SPA routes to special-case: /app and /app/ serve index.html,
+# everything else maps straight to a file in dist. No Node ever runs on the Pi.
+APP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app", "dist")
+
+_APP_MIME = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".map": "application/json; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".woff2": "font/woff2",
+}
+
+
+def app_file(path):
+    """(body_bytes, content_type) for a path under /app/, or None if unbuilt or
+    unknown. Traversal-safe: the resolved path must stay inside APP_DIR."""
+    rel = path[len("/app"):].split("?", 1)[0].lstrip("/")
+    if not rel:
+        rel = "index.html"
+    full = os.path.normpath(os.path.join(APP_DIR, rel))
+    if os.path.commonpath([full, APP_DIR]) != APP_DIR or not os.path.isfile(full):
+        return None
+    ext = os.path.splitext(full)[1].lower()
+    try:
+        with open(full, "rb") as fh:
+            return fh.read(), _APP_MIME.get(ext, "application/octet-stream")
+    except OSError:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # HTTP handler
 # ---------------------------------------------------------------------------
@@ -2252,6 +2310,13 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, render_page(self.headers.get("Host", "")))
         elif self.path == "/settings":
             self._send(200, render_settings(self.headers.get("Host", "")))
+        elif self.path == "/app" or self.path.startswith("/app/"):
+            hit = app_file(self.path)
+            if hit:
+                self._send(200, hit[0], hit[1])
+            else:
+                self._send(404, "panel app not built (run: cd web/app && npm run build)",
+                           "text/plain")
         elif self.path.startswith("/static/"):
             hit = static_file(self.path)
             if hit:
@@ -2289,6 +2354,9 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps(_update_check()), "application/json")
         elif self.path == "/api/lang":
             self._send(200, json.dumps({"lang": _lang, "available": LANGS}),
+                       "application/json")
+        elif self.path == "/api/i18n":
+            self._send(200, json.dumps(_i18n_payload(self.headers.get("Host", ""))),
                        "application/json")
         elif self.path == "/healthz":
             self._send(200, "ok", "text/plain")

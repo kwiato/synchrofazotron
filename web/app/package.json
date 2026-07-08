@@ -1,0 +1,19 @@
+{
+  "name": "synchrofazotron-panel",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Preact control panel for the Synchrofazotron audio player. Built on the laptop; the Pi only serves the static bundle.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "preact": "^10.24.3"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.3",
+    "vite": "^6.0.7"
+  }
+}

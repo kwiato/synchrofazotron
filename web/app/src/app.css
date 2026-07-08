@@ -1,0 +1,26 @@
+/* Preact shell — only the additions the SPA needs on top of the shared
+   /static/style.css theme. Chrome (header, player bar) stays put; only the
+   routed view animates, which is what gives the "app", not "page reload", feel. */
+
+.stage { position: relative; }
+
+/* Route change = the incoming view is remounted (key={path}) so the animation
+   replays every navigation. Direction comes from the nav (forward into
+   settings slides from the right; back slides from the left). Cheap transform +
+   opacity only — GPU-composited, no layout, nothing the Pi ever computes (it
+   all runs in the phone's browser). */
+.route-enter-fwd  { animation: routeFwd .22s ease both; }
+.route-enter-back { animation: routeBack .22s ease both; }
+
+@keyframes routeFwd {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes routeBack {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-enter-fwd, .route-enter-back { animation: none; }
+}
