@@ -87,3 +87,20 @@ The visualizer occupies `tty1`; text consoles remain available on Alt+F2…F6.
 | `hdmi-watch.sh` | `/opt/pistream-visualizer/` | HDMI hotplug loop |
 | `pistream-visualizer.service` | `/etc/systemd/system/` | cava on tty1 |
 | `pistream-hdmi-watch.service` | `/etc/systemd/system/` | watcher (enabled) |
+
+## Ideas / experiments (not planned)
+
+The split today: **cava = ultra-fast bars**, **GLSL (`viz-glsl`) = the pretty
+one**. Both hold up, so the below is a low-priority curiosity, not a commitment.
+
+- **Truecolor / gradient cava.** cava's console output (`method = noncurses` on
+  `tty1`, `TERM=linux`) is capped at the 8 named ANSI colours — that's why the
+  panel's colour palette is fixed and hex isn't offered. But the packaged cava
+  is linked against **SDL2**, the Pi has KMS/DRM (`/dev/dri/card0`), and the
+  binary carries a gradient GLSL path — so `method = sdl_glsl` (with
+  `SDL_VIDEODRIVER=kmsdrm`) could render **hex colours and gradients** on HDMI,
+  GPU-side. Open question: does SDL actually *display* on VC4 (glslViewer once
+  rendered but showed nothing there; our own `viz-glsl` does display, so it's
+  plausible)? Needs on-screen verification. If it works and stays light, we'd
+  get an "ultra-fast cava with colours". Until then, rich/arbitrary colours live
+  in the shader engine.
