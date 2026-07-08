@@ -30,6 +30,7 @@
   --card-2: #161d28;
   --border: #202a38;
   --border-hi: #2e3c50;
+  --card-border: var(--border);
   --text: #e8eef6;
   --text-2: #c6cdd7;
   --muted: #8b98a9;
@@ -74,6 +75,7 @@
   --card-2: #fff;
   --border: #000;
   --border-hi: #000;
+  --card-border: #e6e6e6;
   --text: #000;
   --text-2: #222;
   --muted: #555;
@@ -123,6 +125,7 @@
   --card-2: #000;
   --border: #fff;
   --border-hi: #fff;
+  --card-border: #1a1a1a;
   --text: #fff;
   --text-2: #ddd;
   --muted: #aaa;
@@ -451,7 +454,7 @@ code {
 
 .card {
   background: var(--card);
-  border: var(--bw) solid var(--border);
+  border: var(--bw) solid var(--card-border);
   border-radius: 16px;
   padding: var(--spacer-sm) var(--spacer-base);
   margin: var(--spacer-xs) 0;

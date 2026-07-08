@@ -68,6 +68,7 @@ $spacers: (
   --card-2: #161d28;
   --border: #202a38;
   --border-hi: #2e3c50;
+  --card-border: var(--border);   // card outline — softened per theme to cut eye strain
   --text: #e8eef6;
   --text-2: #c6cdd7;             // secondary body text (card paragraphs, labels)
   --muted: #8b98a9;
@@ -120,7 +121,7 @@ $spacers: (
 :root[data-theme="mono-light"] {
   color-scheme: light;
   --bg: #fff; --card: #fff; --card-2: #fff;
-  --border: #000; --border-hi: #000;
+  --border: #000; --border-hi: #000; --card-border: #e6e6e6;
   --text: #000; --text-2: #222; --muted: #555; --link: #000;
   --acc1: #000; --acc2: #000; --grad: #000;
   --glow-cyan: transparent; --glow-mag: transparent;
@@ -143,7 +144,7 @@ $spacers: (
 :root[data-theme="mono-dark"] {
   color-scheme: dark;
   --bg: #000; --card: #000; --card-2: #000;
-  --border: #fff; --border-hi: #fff;
+  --border: #fff; --border-hi: #fff; --card-border: #1a1a1a;
   --text: #fff; --text-2: #ddd; --muted: #aaa; --link: #fff;
   --acc1: #fff; --acc2: #fff; --grad: #fff;
   --glow-cyan: transparent; --glow-mag: transparent;
@@ -353,7 +354,7 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
 // Cards
 // ---------------------------------------------------------------------------
 .card {
-  background: var(--card); border: var(--bw) solid var(--border); border-radius: 16px;
+  background: var(--card); border: var(--bw) solid var(--card-border); border-radius: 16px;
   padding: var(--spacer-sm) var(--spacer-base); margin: var(--spacer-xs) 0;
 
   h2 { font-size: 1.02rem; margin: 0 0 var(--spacer-2xs); display: flex; align-items: center; gap: var(--spacer-2xs); }
