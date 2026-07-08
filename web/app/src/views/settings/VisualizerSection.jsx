@@ -96,6 +96,7 @@ function CavaControls({ v, reload, setMsg }) {
       bar_spacing: params.bar_spacing, noise_reduction: params.noise_reduction,
       monstercat: !!params.monstercat, waves: !!params.waves,
       color: params.color, colors: (v.params || {}).colors || [],
+      background: params.background || 'black', bg_colors: (v.params || {}).bg_colors || [],
     });
     setEditing(id || '');
   };
@@ -104,6 +105,7 @@ function CavaControls({ v, reload, setMsg }) {
     framerate: +form.framerate, bar_width: +form.bar_width,
     bar_spacing: +form.bar_spacing, noise_reduction: +form.noise_reduction,
     monstercat: form.monstercat, waves: form.waves, color: form.color,
+    background: form.background,
   });
 
   const pick = async (name) => {
@@ -165,6 +167,11 @@ function CavaControls({ v, reload, setMsg }) {
           <label class="vlabel">{t('viz_p_color')}
             <select value={form.color} onChange={(e) => set('color', e.currentTarget.value)}>
               {(form.colors || []).map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          <label class="vlabel">{t('viz_p_background')}
+            <select value={form.background} onChange={(e) => set('background', e.currentTarget.value)}>
+              {(form.bg_colors || []).map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
           <label class="vlabel">

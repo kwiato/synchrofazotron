@@ -235,6 +235,7 @@ STR = {
         "viz_p_monstercat": "Monstercat smoothing (rounded peaks)",
         "viz_p_waves": "Waves smoothing (ripple falloff)",
         "viz_p_color": "Bar color",
+        "viz_p_background": "Background",
         "viz_apply": "Apply",
         "viz_eng_cava": "Bars (cava)",
         "viz_eng_glsl": "Shaders (glslViewer)",
@@ -474,6 +475,7 @@ STR = {
         "viz_p_monstercat": "Wygładzanie Monstercat (zaokrąglone szczyty)",
         "viz_p_waves": "Wygładzanie Waves (falujące opadanie)",
         "viz_p_color": "Kolor słupków",
+        "viz_p_background": "Tło",
         "viz_apply": "Zastosuj",
         "viz_eng_cava": "Słupki (cava)",
         "viz_eng_glsl": "Shadery (glslViewer)",
@@ -1164,7 +1166,7 @@ method = noncurses
 channels = stereo
 
 [color]
-background = black
+background = {background}
 foreground = {color}
 
 [smoothing]
@@ -1176,20 +1178,20 @@ foreground = {color}
 # set lives in presets.json and this dict is only the fallback for a
 # missing/corrupt file.
 _VIZ_PARAM_KEYS = ("framerate", "bar_width", "bar_spacing",
-                   "noise_reduction", "monstercat", "waves", "color")
+                   "noise_reduction", "monstercat", "waves", "color", "background")
 VIZ_PRESETS = {
     "snappy": {"label": "Snappy", "framerate": 60, "bar_width": 1,
                "bar_spacing": 1, "noise_reduction": 10, "monstercat": False,
-               "waves": False, "color": "white"},
+               "waves": False, "color": "white", "background": "black"},
     "jumpy": {"label": "Jumpy", "framerate": 60, "bar_width": 8,
               "bar_spacing": 1, "noise_reduction": 50, "monstercat": False,
-              "waves": False, "color": "cyan"},
+              "waves": False, "color": "cyan", "background": "black"},
     "smooth": {"label": "Smooth", "framerate": 40, "bar_width": 12,
                "bar_spacing": 2, "noise_reduction": 70, "monstercat": False,
-               "waves": True, "color": "green"},
+               "waves": True, "color": "green", "background": "black"},
     "hot": {"label": "Hot", "framerate": 60, "bar_width": 1,
             "bar_spacing": 4, "noise_reduction": 10, "monstercat": True,
-            "waves": False, "color": "yellow"},
+            "waves": False, "color": "yellow", "background": "black"},
 }
 VIZ_USER_PRESETS = "/opt/pistream-visualizer/presets.json"
 # Pre-rename ids (Polish) still found in configs written by older panels.
@@ -1198,6 +1200,8 @@ _VIZ_LEGACY_IDS = {"klasyk": "classic", "gesty": "dense",
 
 # The Linux console cava draws on has a 16-color palette — hex values are out.
 VIZ_COLORS = ("cyan", "green", "blue", "magenta", "red", "yellow", "white")
+# Background may also be black (the usual choice) — offered on top of the bar colors.
+VIZ_BG_COLORS = ("black",) + VIZ_COLORS
 
 
 def _viz_params():
@@ -1213,6 +1217,7 @@ def _viz_params():
         return int(m.group(1)) if m else default
 
     m = re.search(r"^foreground = (\S+)", txt, re.M)
+    bg = re.search(r"^background = (\S+)", txt, re.M)
     return {"framerate": num("framerate", 45),
             "bar_width": num("bar_width", 9),
             "bar_spacing": num("bar_spacing", 2),
@@ -1220,7 +1225,9 @@ def _viz_params():
             "monstercat": bool(re.search(r"^monstercat = 1", txt, re.M)),
             "waves": bool(re.search(r"^waves = 1", txt, re.M)),
             "color": m.group(1) if m and m.group(1) in VIZ_COLORS else "magenta",
-            "colors": list(VIZ_COLORS)}
+            "background": bg.group(1) if bg and bg.group(1) in VIZ_BG_COLORS else "black",
+            "colors": list(VIZ_COLORS),
+            "bg_colors": list(VIZ_BG_COLORS)}
 
 
 def _viz_glsl_bin():
@@ -1279,13 +1286,15 @@ def _viz_clamp_params(body):
         return max(lo, min(hi, v))
 
     color = str(body.get("color", "magenta"))
+    background = str(body.get("background", "black"))
     return {"framerate": clamp("framerate", 10, 120, 45),
             "bar_width": clamp("bar_width", 1, 20, 9),
             "bar_spacing": clamp("bar_spacing", 0, 10, 2),
             "noise_reduction": clamp("noise_reduction", 0, 100, 10),
             "monstercat": bool(body.get("monstercat")),
             "waves": bool(body.get("waves")),
-            "color": color if color in VIZ_COLORS else "magenta"}
+            "color": color if color in VIZ_COLORS else "magenta",
+            "background": background if background in VIZ_BG_COLORS else "black"}
 
 
 def _viz_write_conf(name, params):
@@ -1300,7 +1309,8 @@ def _viz_write_conf(name, params):
         fh.write(_VIZ_TEMPLATE.format(
             name=name, framerate=params["framerate"],
             bar_width=params["bar_width"], bar_spacing=params["bar_spacing"],
-            color=params["color"], smoothing="\n".join(smoothing)))
+            color=params["color"], background=params.get("background", "black"),
+            smoothing="\n".join(smoothing)))
     _run(["systemctl", "try-restart", VIZ_SERVICE])
 
 
