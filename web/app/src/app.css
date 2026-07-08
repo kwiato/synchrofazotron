@@ -45,6 +45,40 @@
    top-level Now/Viz nav. */
 .tabs.compact { margin: 4px 0 12px; }
 
+/* Console logo (About) — swaying gauges + flickering indicator lamps. Clicking
+   remounts the SVG so the light-up sweep replays. */
+.console-logo {
+  display: block; width: 100%; border: 0; background: none; padding: 0;
+  margin: 10px 0 4px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.console-logo svg { display: block; width: 100%; height: auto; color: var(--muted); }
+.console-logo:hover svg { filter: brightness(1.12); }
+.console-logo:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: 10px; }
+
+.cl-panel { fill: none; stroke: currentColor; stroke-width: 1.5; opacity: .4; }
+.cl-gauge circle { fill: none; stroke: currentColor; stroke-width: 1.5; opacity: .55; }
+.cl-needle {
+  stroke: currentColor; stroke-width: 1.5; opacity: .8; stroke-linecap: round;
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: cl-sway 5s ease-in-out infinite alternate;
+}
+.cl-lamp {
+  /* light up in a left→right sweep, then settle into an independent flicker */
+  animation:
+    cl-in .4s calc(var(--col) * .07s) both,
+    cl-blink var(--t) calc(var(--col) * .07s + .4s + var(--d)) infinite;
+}
+
+@keyframes cl-sway { from { transform: rotate(-24deg); } to { transform: rotate(24deg); } }
+@keyframes cl-in   { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+@keyframes cl-blink { 0%, 100% { opacity: .28; } 50% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cl-lamp { animation: none; opacity: .85; }
+  .cl-needle { animation: none; }
+}
+
 /* Empty / unavailable state: big centered icon + thin larger text. */
 .empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;

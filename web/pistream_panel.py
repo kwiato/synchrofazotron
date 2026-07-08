@@ -32,7 +32,7 @@ PORT = int(os.environ.get("PISTREAM_PANEL_PORT", "8787"))
 BIND = os.environ.get("PISTREAM_PANEL_BIND", "0.0.0.0")
 REPO = os.environ.get("PISTREAM_REPO", "kwiato/synchrofazotron")
 BRANCH = os.environ.get("PISTREAM_BRANCH", "main")
-VERSION = "0.69.1"                 # shown in the panel's About; bump on releases
+VERSION = "0.70.0"                 # shown in the panel's About; bump on releases
 
 _HOSTNAME = socket.gethostname() or "Synchrofazotron"
 # Runtime-changeable device identity. A name set from /settings is persisted to

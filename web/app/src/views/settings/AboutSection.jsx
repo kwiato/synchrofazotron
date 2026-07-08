@@ -1,4 +1,6 @@
 import { useI18n } from '../../i18n.jsx';
+import { CardHead } from '../../components/CardHead.jsx';
+import { ConsoleLogo } from '../../components/ConsoleLogo.jsx';
 
 const CREDITS = [
   ['🎚️', 'cava', 'https://github.com/karlstav/cava', 'Karl Stavestrand', 'https://github.com/karlstav'],
@@ -22,8 +24,10 @@ export function AboutSection() {
       <div class="sect-title">{t('nav_about')}</div>
       <div class="cardgrid">
         <div class="card">
-          <h2>💜 Synchrofazotron</h2>
-          {version && <p class="muted small"><span class="pill on">{t('about_version')} {version}</span></p>}
+          <CardHead title="💜 Synchrofazotron">
+            {version && <span class="pill on" title={t('about_version')}>v{version}</span>}
+          </CardHead>
+          <ConsoleLogo />
           <p class="muted">{t('about_desc')}</p>
           <p class="muted">{t('about_repo')}</p>
           <a class="btn sec" href={`https://github.com/${repo}`} target="_blank" rel="noreferrer"
