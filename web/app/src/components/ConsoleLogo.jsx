@@ -9,7 +9,7 @@ import { useState } from 'preact/hooks';
 const ARCS = [45, 135, 225, 315];          // arc centres — gaps sit at 0/90/180/270
 const OFFS = [-32, -16, 0, 16, 32];        // 5 segments per arc → 26° cardinal gaps
 const ROWS = [40, 54];                     // inner / outer radius
-const CX = 62, CY = 62, W = 4, H = 10, T = 36;
+const CX = 62, CY = 62, W = 5, H = 10, T = 36;
 
 export function ConsoleLogo() {
   const [gen, setGen] = useState(0);       // bump → remount → replay the sweep
