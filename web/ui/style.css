@@ -101,6 +101,7 @@
   --spinner-track: rgba(0, 0, 0, .2);
   --iconbtn-active-bg: #000;
   --iconbtn-active-ink: #fff;
+  --seg-ink: #bbb;
 }
 
 :root[data-theme=mono-light] .pbwrap {
@@ -151,6 +152,7 @@
   --spinner-track: rgba(255, 255, 255, .2);
   --iconbtn-active-bg: #fff;
   --iconbtn-active-ink: #000;
+  --seg-ink: #555;
 }
 
 :root[data-theme=mono-dark] .pbwrap {
@@ -436,11 +438,26 @@ code {
   box-shadow: inset 0 0 0 1px var(--ring-soft), 0 0 18px var(--glow-cyan);
 }
 
+:root[data-theme^=mono-] .tabs {
+  border: 0;
+  background: var(--fill-soft);
+}
+
+:root[data-theme^=mono-] .tab {
+  color: var(--seg-ink);
+}
+
+:root[data-theme^=mono-] .tab.active {
+  color: var(--text);
+  background: var(--bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
 .card {
   background: var(--card);
   border: var(--bw) solid var(--border);
   border-radius: 16px;
-  padding: var(--spacer-sm) var(--spacer-sm);
+  padding: var(--spacer-sm) var(--spacer-base);
   margin: var(--spacer-xs) 0;
 }
 .card h2 {

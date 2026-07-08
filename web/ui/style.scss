@@ -128,6 +128,7 @@ $spacers: (
   --dot-idle: #c9c9c9; --pill-off-bg: #ececec; --pill-off-ink: #333;
   --pb-bg: #000; --spinner-track: rgba(0, 0, 0, .2);
   --iconbtn-active-bg: #000; --iconbtn-active-ink: #fff;
+  --seg-ink: #bbb;   // inactive tab text on the black track
 }
 // player bar is a black island → flip the tokens back to a dark treatment
 :root[data-theme="mono-light"] .pbwrap {
@@ -150,6 +151,7 @@ $spacers: (
   --dot-idle: #3a3a3a; --pill-off-bg: #222; --pill-off-ink: #ccc;
   --pb-bg: #fff; --spinner-track: rgba(255, 255, 255, .2);
   --iconbtn-active-bg: #fff; --iconbtn-active-ink: #000;
+  --seg-ink: #555;   // inactive tab text on the white track
 }
 // player bar is a white island in the negative theme
 :root[data-theme="mono-dark"] .pbwrap {
@@ -334,12 +336,22 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
   }
 }
 
+// Mono themes flip the tabs: the track is the negative fill (no outline) and the
+// active segment is a cutout in the page background colour — like a segmented
+// control. Neon keeps its glowing gradient tab above.
+:root[data-theme^="mono-"] .tabs { border: 0; background: var(--fill-soft); }
+:root[data-theme^="mono-"] .tab { color: var(--seg-ink); }
+:root[data-theme^="mono-"] .tab.active {
+  color: var(--text); background: var(--bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .28);
+}
+
 // ---------------------------------------------------------------------------
 // Cards
 // ---------------------------------------------------------------------------
 .card {
   background: var(--card); border: var(--bw) solid var(--border); border-radius: 16px;
-  padding: var(--spacer-sm) var(--spacer-sm); margin: var(--spacer-xs) 0;
+  padding: var(--spacer-sm) var(--spacer-base); margin: var(--spacer-xs) 0;
 
   h2 { font-size: 1.02rem; margin: 0 0 var(--spacer-2xs); display: flex; align-items: center; gap: var(--spacer-2xs); }
   h3 { font-size: .95rem; margin: var(--spacer-xs) 0 var(--spacer-3xs); }
