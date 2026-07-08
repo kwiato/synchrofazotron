@@ -24,7 +24,7 @@ export function AboutSection() {
       <div class="sect-title">{t('nav_about')}</div>
       <div class="cardgrid">
         <div class="card">
-          <CardHead title="💜 Synchrofazotron">
+          <CardHead title="Synchrofazotron">
             {version && <span class="pill on" title={t('about_version')}>v{version}</span>}
           </CardHead>
           <ConsoleLogo />
