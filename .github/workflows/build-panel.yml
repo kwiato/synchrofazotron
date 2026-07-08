@@ -1,0 +1,60 @@
+# Rebuilds the Preact control panel (web/app) and commits the refreshed bundle
+# (web/app/dist) back to main, so the static files install.sh ships to the Pi
+# always match the source. The Pi has no Node, so the build must happen here;
+# dist is committed to the repo (not a release asset) because install.sh fetches
+# it from raw.githubusercontent.com by fixed path.
+name: Build panel (web/app)
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      # Source only — deliberately NOT web/app/dist/**, so the commit this job
+      # pushes back does not retrigger the workflow. The [skip ci] tag on that
+      # commit is a second guard.
+      - 'web/app/src/**'
+      - 'web/app/index.html'
+      - 'web/app/vite.config.js'
+      - 'web/app/package.json'
+      - 'web/app/package-lock.json'
+      - '.github/workflows/build-panel.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-panel-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web/app
+        run: npm ci
+
+      - name: Build the bundle
+        working-directory: web/app
+        run: npm run build
+
+      - name: Commit the refreshed bundle if it changed
+        run: |
+          git add web/app/dist
+          if git diff --cached --quiet; then
+            echo "dist already up to date — nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "panel: rebuild /app bundle [skip ci]"
+          git push
