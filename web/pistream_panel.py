@@ -332,11 +332,6 @@ STR = {
         "audio_set_live": "Output switched to {out} (live — no reboot).",
         "audio_card_absent": "{out} is not available — no such sound card is up.",
         "lang_set": "Language switched to English.",
-        # visualizer preset labels
-        "preset_classic": "Classic",
-        "preset_dense": "Dense",
-        "preset_waves": "Waves",
-        "preset_massive": "Massive",
     },
     "pl": {
         "title_panel": "panel",
@@ -567,10 +562,6 @@ STR = {
         "audio_set_live": "Wyjście przełączone na {out} (na żywo — bez restartu).",
         "audio_card_absent": "{out} niedostępne — nie ma takiej karty dźwiękowej.",
         "lang_set": "Przełączono na polski.",
-        "preset_classic": "Klasyk",
-        "preset_dense": "Gęsty",
-        "preset_waves": "Fale",
-        "preset_massive": "Masyw",
     },
 }
 
@@ -1153,25 +1144,25 @@ foreground = {color}
 {smoothing}
 """
 
-# Built-in preset defaults. Ids are stable; display labels are translated
-# (preset_* keys) until the user customizes presets — from then on the whole
-# set (with plain-string labels) lives in presets.json and this dict is only
-# the fallback for a missing/corrupt file.
+# Built-in preset defaults. Ids and labels are stable (proper names, same in
+# every language) — until the user customizes presets, from then on the whole
+# set lives in presets.json and this dict is only the fallback for a
+# missing/corrupt file.
 _VIZ_PARAM_KEYS = ("framerate", "bar_width", "bar_spacing",
                    "noise_reduction", "monstercat", "waves", "color")
 VIZ_PRESETS = {
-    "classic": {"label_key": "preset_classic", "framerate": 45, "bar_width": 2,
-                "bar_spacing": 1, "noise_reduction": 77, "monstercat": False,
-                "waves": False, "color": "cyan"},
-    "dense": {"label_key": "preset_dense", "framerate": 45, "bar_width": 1,
-              "bar_spacing": 0, "noise_reduction": 70, "monstercat": True,
-              "waves": False, "color": "green"},
-    "waves": {"label_key": "preset_waves", "framerate": 45, "bar_width": 3,
-              "bar_spacing": 1, "noise_reduction": 80, "monstercat": False,
-              "waves": True, "color": "blue"},
-    "massive": {"label_key": "preset_massive", "framerate": 45, "bar_width": 10,
-                "bar_spacing": 2, "noise_reduction": 85, "monstercat": False,
-                "waves": False, "color": "magenta"},
+    "snappy": {"label": "Snappy", "framerate": 60, "bar_width": 1,
+               "bar_spacing": 1, "noise_reduction": 10, "monstercat": False,
+               "waves": False, "color": "white"},
+    "jumpy": {"label": "Jumpy", "framerate": 60, "bar_width": 8,
+              "bar_spacing": 1, "noise_reduction": 50, "monstercat": False,
+              "waves": False, "color": "cyan"},
+    "smooth": {"label": "Smooth", "framerate": 40, "bar_width": 12,
+               "bar_spacing": 2, "noise_reduction": 70, "monstercat": False,
+               "waves": True, "color": "green"},
+    "hot": {"label": "Hot", "framerate": 60, "bar_width": 1,
+            "bar_spacing": 4, "noise_reduction": 10, "monstercat": True,
+            "waves": False, "color": "yellow"},
 }
 VIZ_USER_PRESETS = "/opt/pistream-visualizer/presets.json"
 # Pre-rename ids (Polish) still found in configs written by older panels.
@@ -1298,7 +1289,7 @@ def _viz_presets_list():
                     for p in lst]
     except Exception:  # noqa: BLE001
         pass
-    return [{"id": k, "label": T(v["label_key"]),
+    return [{"id": k, "label": v["label"],
              "params": {key: v[key] for key in _VIZ_PARAM_KEYS}}
             for k, v in VIZ_PRESETS.items()]
 
