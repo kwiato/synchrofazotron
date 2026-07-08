@@ -1891,10 +1891,8 @@ _RAW_BASE = f"https://raw.githubusercontent.com/{REPO}/{BRANCH}"
 
 # Files compared against the repo by the update check — the panel code plus
 # the UI files (a restyle ships without touching the .py).
-_UPDATE_CHECK_FILES = ("pistream_panel.py", "ui/panel.html", "ui/settings.html",
-                       "ui/style.css", "ui/common.js", "ui/panel.js",
-                       "ui/settings.js", "app/dist/index.html",
-                       "app/dist/assets/index.js")
+_UPDATE_CHECK_FILES = ("pistream_panel.py", "ui/style.css",
+                       "app/dist/index.html", "app/dist/assets/index.js")
 
 
 def _update_check():
@@ -2245,20 +2243,6 @@ def _fill(template, host_header):
 UI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui")
 
 
-def _ui_read(name):
-    """UI files are read from disk on every request — edit + refresh, no
-    service restart needed (they are small; the Pi does not notice)."""
-    return _file_read(os.path.join(UI_DIR, name))
-
-
-def render_page(host_header):
-    return _fill(_ui_read("panel.html"), host_header)
-
-
-def render_settings(host_header):
-    return _fill(_ui_read("settings.html"), host_header)
-
-
 def _i18n_payload(host_header):
     """Everything the Preact bundle needs at boot in one request: the active
     language, all translated strings (with {{DEVICE}} etc. already substituted),
@@ -2300,17 +2284,11 @@ def _studio_html():
 
 
 def static_file(path):
-    """(body, content_type) for /static/<name>, or None when unknown.
-
-    JS goes through the i18n filler (the sources keep {{T:...}} placeholders);
-    CSS is served raw. basename() kills any path traversal attempt."""
+    """(body, content_type) for /static/<name> — now just the shared stylesheet
+    the SPA links (ui/style.css). basename() kills any path traversal attempt."""
     name = os.path.basename(path.split("?", 1)[0])
     full = os.path.join(UI_DIR, name)
-    if not os.path.isfile(full):
-        return None
-    if name.endswith(".js"):
-        return _fill(_file_read(full), ""), "application/javascript; charset=utf-8"
-    if name.endswith(".css"):
+    if os.path.isfile(full) and name.endswith(".css"):
         return _file_read(full), "text/css; charset=utf-8"
     return None
 
@@ -2370,6 +2348,20 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _redirect(self, location):
+        self.send_response(302)
+        self.send_header("Location", location)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _serve_app(self, app_path):
+        hit = app_file(app_path)
+        if hit:
+            self._send(200, hit[0], hit[1], no_cache=True)
+        else:
+            self._send(404, "panel app not built (run: cd web/app && npm run build)",
+                       "text/plain")
+
     def _json_body(self):
         length = int(self.headers.get("Content-Length", 0) or 0)
         try:
@@ -2378,17 +2370,15 @@ class Handler(BaseHTTPRequestHandler):
             return {}
 
     def do_GET(self):
+        # The Preact SPA is the whole UI: "/" serves its index.html and /app/*
+        # serves the bundle (index.html links assets by absolute /app/assets path,
+        # so it runs fine from the root). Hash routing → no server SPA routes.
         if self.path == "/" or self.path.startswith("/?"):
-            self._send(200, render_page(self.headers.get("Host", "")))
-        elif self.path == "/settings":
-            self._send(200, render_settings(self.headers.get("Host", "")))
+            self._serve_app("/app")
         elif self.path == "/app" or self.path.startswith("/app/"):
-            hit = app_file(self.path)
-            if hit:
-                self._send(200, hit[0], hit[1], no_cache=True)
-            else:
-                self._send(404, "panel app not built (run: cd web/app && npm run build)",
-                           "text/plain")
+            self._serve_app(self.path)
+        elif self.path == "/settings" or self.path.startswith("/settings?"):
+            self._redirect("/#/settings")      # legacy full-page URL → SPA route
         elif self.path.startswith("/static/"):
             hit = static_file(self.path)
             if hit:

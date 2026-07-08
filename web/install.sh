@@ -11,8 +11,7 @@ REPO="${PISTREAM_REPO:-kwiato/synchrofazotron}"
 BRANCH="${PISTREAM_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/$REPO/$BRANCH/web"
 FILES=(pistream_panel.py pistream-panel.service bt-agent.service
-       ui/panel.html ui/settings.html ui/style.css ui/common.js ui/panel.js
-       ui/settings.js
+       ui/style.css
        app/dist/index.html app/dist/assets/index.js app/dist/assets/index.css)
 DEST=/opt/pistream-panel
 
@@ -21,7 +20,7 @@ DEST=/opt/pistream-panel
 # if (stale) panel files happen to be lying around in the current directory.
 SRC_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo .)"
 if [[ "$(basename -- "$0")" != "install.sh" || ! -f "$SRC_DIR/pistream_panel.py" \
-      || ! -f "$SRC_DIR/ui/panel.html" ]]; then
+      || ! -f "$SRC_DIR/ui/style.css" ]]; then
   echo "==> Downloading $REPO@$BRANCH from GitHub"
   SRC_DIR="$(mktemp -d)"
   trap 'rm -rf "$SRC_DIR"' EXIT
@@ -40,9 +39,7 @@ install -m 0644 "$SRC_DIR/bt-agent.service" /etc/systemd/system/bt-agent.service
 echo "==> Copying the panel to $DEST"
 install -d "$DEST" "$DEST/ui" "$DEST/app/dist/assets"
 install -m 0755 "$SRC_DIR/pistream_panel.py" "$DEST/pistream_panel.py"
-install -m 0644 "$SRC_DIR"/ui/panel.html "$SRC_DIR"/ui/settings.html \
-                "$SRC_DIR"/ui/style.css "$SRC_DIR"/ui/common.js \
-                "$SRC_DIR"/ui/panel.js "$SRC_DIR"/ui/settings.js "$DEST/ui/"
+install -m 0644 "$SRC_DIR/ui/style.css" "$DEST/ui/"
 
 # Prebuilt Preact panel (web/app) served at /app — shipped as static files
 # (the Pi has no Node). Stable filenames, so this fixed list stays valid.
