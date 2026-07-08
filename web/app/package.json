@@ -6,7 +6,8 @@
   "description": "Preact control panel for the Synchrofazotron audio player. Built on the laptop; the Pi only serves the static bundle.",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:css": "sass ../ui/style.scss ../ui/style.css --no-source-map --style=expanded",
+    "build": "npm run build:css && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -14,6 +15,7 @@
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.9.3",
+    "sass": "^1.101.0",
     "vite": "^6.0.7"
   }
 }

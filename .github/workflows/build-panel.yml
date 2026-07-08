@@ -1,8 +1,9 @@
-# Rebuilds the Preact control panel (web/app) and commits the refreshed bundle
-# (web/app/dist) back to main, so the static files install.sh ships to the Pi
-# always match the source. The Pi has no Node, so the build must happen here;
-# dist is committed to the repo (not a release asset) because install.sh fetches
-# it from raw.githubusercontent.com by fixed path.
+# Rebuilds the Preact control panel (web/app) and compiles the shared SCSS
+# (web/ui/style.scss -> style.css), committing the refreshed bundle
+# (web/app/dist) and stylesheet back to main, so the static files install.sh
+# ships to the Pi always match the source. The Pi has no Node, so the build must
+# happen here; the artifacts are committed to the repo (not release assets)
+# because install.sh fetches them from raw.githubusercontent.com by fixed path.
 name: Build panel (web/app)
 
 on:
@@ -18,6 +19,8 @@ on:
       - 'web/app/vite.config.js'
       - 'web/app/package.json'
       - 'web/app/package-lock.json'
+      # the shared stylesheet is compiled from SCSS by the same build
+      - 'web/ui/style.scss'
       - '.github/workflows/build-panel.yml'
 
 permissions:
@@ -47,14 +50,14 @@ jobs:
         working-directory: web/app
         run: npm run build
 
-      - name: Commit the refreshed bundle if it changed
+      - name: Commit the refreshed bundle / stylesheet if it changed
         run: |
-          git add web/app/dist
+          git add web/app/dist web/ui/style.css
           if git diff --cached --quiet; then
-            echo "dist already up to date — nothing to commit"
+            echo "dist + style.css already up to date — nothing to commit"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "panel: rebuild /app bundle [skip ci]"
+          git commit -m "panel: rebuild /app bundle + style.css [skip ci]"
           git push
