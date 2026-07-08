@@ -103,14 +103,14 @@
               <button class="btn sec" id="updCheckBtn" onclick="updCheck()">{{T:upd_check_btn}}</button>
               <button class="btn sec" id="updRunBtn" onclick="updRun()">{{T:upd_run_btn}}</button>
             </div>
-            <p id="updMsg" class="muted"></p>
+            <p id="updMsg" class="muted"><span id="updSpin" class="spinner" style="display:none;"></span><span id="updMsgText"></span></p>
           </div>
 
           <div class="card">
             <h2><i class="ico ico-refresh"></i> {{T:reboot_head}}</h2>
             <p class="muted">{{T:reboot_note}}</p>
-            <button class="btn sec" onclick="doReboot()">{{T:js_reboot}}</button>
-            <p id="rebootMsg" class="muted"></p>
+            <button class="btn sec" id="rebootBtn2" onclick="doReboot()">{{T:js_reboot}}</button>
+            <p id="rebootMsg" class="muted"><span id="rebootSpin" class="spinner" style="display:none;"></span><span id="rebootMsgText"></span></p>
           </div>
 
         </div>
@@ -347,6 +347,8 @@
     </div>
   </div>
 </div>
+
+<div id="toast" class="toast"></div>
 
 <script src="/static/common.js"></script>
 <script src="/static/settings.js"></script>

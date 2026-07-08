@@ -582,17 +582,57 @@ async function audioSet(mode) {
   audioRefresh();
 }
 
+function rebootMsg(t) {
+  const el = document.getElementById('rebootMsgText') || document.getElementById('audioMsg');
+  if (el) el.textContent = t || '';
+}
+
 async function doReboot() {
   if (!confirm('{{T:js_reboot_confirm}}')) return;
+  const btn = document.getElementById('rebootBtn2');
+  if (btn) btn.disabled = true;
   try { await fetch('/api/reboot', {method:'POST'}); } catch(e) {}
-  // the dedicated reboot card owns the message; the audio card reuses it too
-  const el = document.getElementById('rebootMsg') || document.getElementById('audioMsg');
-  if (el) el.textContent = '{{T:js_rebooting}}';
+  document.getElementById('rebootSpin').style.display = '';
+  rebootMsg('{{T:js_rebooting}}');
+  watchComeBack(() => {
+    document.getElementById('rebootSpin').style.display = 'none';
+    if (btn) btn.disabled = false;
+    rebootMsg('');
+    toast('{{T:reboot_done_toast}}');
+    setTimeout(() => location.reload(), 1800);
+  });
+}
+
+// Polls /healthz until the device goes down and then comes back (reboot), then
+// fires done(). Falls through after ~4 min so the spinner never spins forever.
+function watchComeBack(done) {
+  let wentDown = false;
+  const started = Date.now();
+  const iv = setInterval(async () => {
+    try {
+      const r = await fetch('/healthz', {cache:'no-store'});
+      if (r.ok && wentDown) { clearInterval(iv); done(); return; }
+    } catch(e) {
+      wentDown = true;   // unreachable -> it is restarting
+    }
+    if (Date.now() - started > 240000) { clearInterval(iv); done(); }
+  }, 3000);
+}
+
+// toast: a brief centered notification
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
 }
 
 /* ---- config: updates --------------------------------------------------------------- */
 
-function updMsg(t) { document.getElementById('updMsg').textContent = t; }
+function updMsg(t) { document.getElementById('updMsgText').textContent = t; }
 
 async function updCheck() {
   const b = document.getElementById('updCheckBtn');
@@ -610,6 +650,7 @@ let updTimer = null;
 function updPoll() {
   if (updTimer) return;
   document.getElementById('updRunBtn').disabled = true;
+  document.getElementById('updSpin').style.display = '';
   updMsg('{{T:js_upd_running}}');
   updTimer = setInterval(async () => {
     try {
@@ -617,9 +658,15 @@ function updPoll() {
       const j = await r.json();
       if (j.running) return;
       clearInterval(updTimer); updTimer = null;
+      document.getElementById('updSpin').style.display = 'none';
       document.getElementById('updRunBtn').disabled = false;
-      if (j.failed) { updMsg('{{T:js_upd_failed}}'); }
-      else { updMsg('{{T:js_upd_done}}'); setTimeout(() => location.reload(), 1500); }
+      if (j.failed) {
+        updMsg('{{T:js_upd_failed}}');
+      } else {
+        updMsg('{{T:js_upd_done}}');
+        toast('{{T:upd_done_toast}}');
+        setTimeout(() => location.reload(), 1500);
+      }
     } catch(e) { /* panel restarting mid-update — keep polling */ }
   }, 3000);
 }

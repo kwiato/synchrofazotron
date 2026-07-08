@@ -489,6 +489,28 @@ pre {
 .dot.on { background: var(--good); box-shadow: 0 0 8px rgba(52, 211, 153, .6); }
 .dot.err { background: var(--danger); box-shadow: 0 0 8px rgba(248, 113, 113, .5); }
 
+/* ---- spinner --------------------------------------------------------------- */
+.spinner {
+  display: inline-block; width: 16px; height: 16px; vertical-align: -3px;
+  margin-right: 6px; flex: none;
+  border: 2px solid rgba(255, 255, 255, .18); border-top-color: var(--acc1);
+  border-radius: 50%; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- toast ----------------------------------------------------------------- */
+.toast {
+  position: fixed; left: 50%; top: 18px;
+  transform: translateX(-50%) translateY(-16px);
+  background: var(--card); border: 1px solid var(--border-hi); border-radius: 12px;
+  padding: 12px 18px; color: var(--text); font-weight: 600;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, .55), 0 0 20px var(--glow-cyan);
+  opacity: 0; pointer-events: none; z-index: 60; max-width: 90vw; text-align: center;
+  display: flex; align-items: center; gap: 8px;
+  transition: opacity .25s, transform .25s;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
 /* ---- modal ----------------------------------------------------------------- */
 .overlay {
   position: fixed; inset: 0; z-index: 50; display: none;

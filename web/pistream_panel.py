@@ -305,6 +305,8 @@ STR = {
         "js_reboot": "Reboot the device",
         "js_reboot_confirm": "Reboot now? Music will stop for about a minute.",
         "js_rebooting": "Rebooting… the panel will come back in about a minute.",
+        "reboot_done_toast": "✅ Reboot finished",
+        "upd_done_toast": "✅ Update finished",
         # server messages
         "wifi_bad_ssid": "Invalid SSID.",
         "wifi_bad_key": "A WPA password must be 8–63 characters (empty = open network).",
@@ -534,6 +536,8 @@ STR = {
         "js_reboot": "Zrestartuj urządzenie",
         "js_reboot_confirm": "Zrestartować teraz? Muzyka przestanie grać na około minutę.",
         "js_rebooting": "Restartuję… panel wróci za około minutę.",
+        "reboot_done_toast": "✅ Restart zakończony",
+        "upd_done_toast": "✅ Aktualizacja zakończona",
         "wifi_bad_ssid": "Nieprawidłowy SSID.",
         "wifi_bad_key": "Hasło WPA musi mieć 8–63 znaki (puste = sieć otwarta).",
         "wifi_no_slot": "Brak miejsca — DietPi mieści {n} sieci. Usuń jakąś.",
