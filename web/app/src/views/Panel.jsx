@@ -4,6 +4,7 @@ import { useI18n } from '../i18n.jsx';
 import { apiGet, apiPost } from '../api.js';
 import { primary, srcSub } from '../util.js';
 import { Eq } from '../components/Eq.jsx';
+import { Collapsible } from '../components/Collapsible.jsx';
 
 // Main view: the Now / Visualizer tabs. Ported from panel.js.
 export function Panel() {
@@ -62,6 +63,7 @@ function VizTab() {
   const { t } = useI18n();
   const [v, setV] = useState(null);
   const [msg, setMsg] = useState('');
+  const [pending, setPending] = useState(null);   // optimistic switch state
 
   const refresh = async () => { try { setV(await apiGet('/api/viz')); } catch { /* keep */ } };
   useEffect(() => {
@@ -81,40 +83,54 @@ function VizTab() {
     refresh();
   };
   const toggle = async () => {
+    setPending(!on);
     try { setMsg((await apiPost('/api/viz/toggle')).message || ''); }
     catch { setMsg(t('js_conn_error')); }
-    setTimeout(refresh, 500);
+    await new Promise((r) => setTimeout(r, 600));   // the service takes a beat
+    await refresh();
+    setPending(null);
   };
 
   if (!v) return <div class="card"><p class="muted">…</p></div>;
   if (!v.installed) return <div class="card"><p class="muted">{t('viz_missing')}</p></div>;
 
+  const on = pending != null ? pending : !!v.active;
   const glsl = v.engine === 'glsl';
   const items = glsl ? (v.shaders || []) : (v.presets || []);
   const current = glsl ? v.shader : v.preset;
 
   return (
     <div class="card">
-      <div class="lrow">
-        <button class={'btn' + (glsl ? ' sec' : '')} onClick={() => engine('cava')}>{t('viz_eng_cava')}</button>
-        <button class={'btn' + (glsl ? '' : ' sec')}
-                title={v.glsl_available ? '' : t('viz_glsl_missing')}
-                onClick={() => engine('glsl')}>
-          {t('viz_eng_glsl')}{v.glsl_available ? '' : ' ⚠'}
-        </button>
+      <div class="card-head">
+        <h2>{t('tab_viz')}</h2>
+        <label class="switch">
+          <input type="checkbox" checked={on} onChange={toggle} />
+          <span class="knob"></span>
+        </label>
       </div>
-      {glsl && v.glsl_error && <p class="muted">{t('js_glsl_err')}{v.glsl_error}</p>}
-      <div class="vgrid">
-        {items.map((it) => (
-          <button key={it.id} class={'btn' + (it.id === current ? '' : ' sec')}
-                  onClick={() => (glsl ? engine('glsl', it.id) : preset(it.id))}>
-            {it.label}{it.id === current ? ' ✓' : ''}
+      {v.hdmi_connected === false && <p class="viz-warn">{t('viz_hdmi_off')}</p>}
+      <Collapsible open={on}>
+        <div class="lrow">
+          <button class={'btn' + (glsl ? ' sec' : '')} onClick={() => engine('cava')}>{t('viz_eng_cava')}</button>
+          <button class={'btn' + (glsl ? '' : ' sec')}
+                  title={v.glsl_available ? '' : t('viz_glsl_missing')}
+                  onClick={() => engine('glsl')}>
+            {t('viz_eng_glsl')}{v.glsl_available ? '' : ' ⚠'}
           </button>
-        ))}
-      </div>
-      <button class="btn sec" onClick={toggle}>{v.active ? t('js_viz_stop') : t('js_viz_start')}</button>
+        </div>
+        {glsl && v.glsl_error && <p class="muted">{t('js_glsl_err')}{v.glsl_error}</p>}
+        <div class="vgrid">
+          {items.map((it) => (
+            <button key={it.id} class={'btn' + (it.id === current ? '' : ' sec')}
+                    onClick={() => (glsl ? engine('glsl', it.id) : preset(it.id))}>
+              {it.label}{it.id === current ? ' ✓' : ''}
+            </button>
+          ))}
+        </div>
+        <p class="muted small">{t('viz_more')}</p>
+      </Collapsible>
+      {!on && <p class="muted">{t('viz_off_hint')}</p>}
       {msg && <p class="muted">{msg}</p>}
-      <p class="muted small">{t('viz_more')}</p>
     </div>
   );
 }

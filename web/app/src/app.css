@@ -24,3 +24,22 @@
 @media (prefers-reduced-motion: reduce) {
   .route-enter-fwd, .route-enter-back { animation: none; }
 }
+
+/* Collapsible — folds its content with the grid 0fr↔1fr row trick so the
+   height animates without JS measuring. The inner wrapper hides overflow while
+   the row height interpolates. */
+.collapsible {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows .28s ease, opacity .2s ease;
+}
+.collapsible.open { grid-template-rows: 1fr; opacity: 1; }
+.collapsible > .collapsible-in { overflow: hidden; min-height: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .collapsible { transition: none; }
+}
+
+/* Inline warning line (e.g. "HDMI not connected") inside a card. */
+.viz-warn { color: var(--warn); font-size: 13px; margin: 6px 0 2px; }

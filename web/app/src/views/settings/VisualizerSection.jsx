@@ -2,11 +2,13 @@ import { useRef, useState } from 'preact/hooks';
 import { useI18n } from '../../i18n.jsx';
 import { apiPost } from '../../api.js';
 import { useApi } from '../../hooks.js';
+import { Collapsible } from '../../components/Collapsible.jsx';
 
 export function VisualizerSection() {
   const { t } = useI18n();
   const [v, reload] = useApi('/api/viz', 0);
   const [msg, setMsg] = useState('');
+  const [pending, setPending] = useState(null);   // optimistic switch state
 
   const engine = async (eng, shader) => {
     try { setMsg((await apiPost('/api/viz/engine', { engine: eng, shader: shader || '' })).message || ''); }
@@ -14,10 +16,15 @@ export function VisualizerSection() {
     reload();
   };
   const toggle = async () => {
+    setPending(!on);
     try { setMsg((await apiPost('/api/viz/toggle')).message || ''); } catch { /* ignore */ }
-    setTimeout(reload, 500);
+    await new Promise((r) => setTimeout(r, 600));   // the service takes a beat
+    await reload();
+    setPending(null);
   };
 
+  const installed = !!(v && v.installed);
+  const on = pending != null ? pending : !!(v && v.active);
   const glsl = v && v.engine === 'glsl';
 
   return (
@@ -25,27 +32,38 @@ export function VisualizerSection() {
       <div class="sect-title">{t('nav_viz')}</div>
       <div class="cardgrid">
         <div class="card">
-          <h2><i class="ico ico-chart"></i> {t('viz_head')}</h2>
+          <div class="card-head">
+            <h2><i class="ico ico-chart"></i> {t('viz_head')}</h2>
+            {installed && (
+              <label class="switch">
+                <input type="checkbox" checked={on} onChange={toggle} />
+                <span class="knob"></span>
+              </label>
+            )}
+          </div>
           <p class="muted">{t('viz_note')}</p>
+          {installed && v.hdmi_connected === false && <p class="viz-warn">{t('viz_hdmi_off')}</p>}
           {!v
             ? <p class="muted">…</p>
             : !v.installed
               ? <p class="muted">{t('viz_missing')}</p>
               : (
                 <>
-                  <div class="lrow">
-                    <button class={'btn' + (glsl ? ' sec' : '')} onClick={() => engine('cava')}>{t('viz_eng_cava')}</button>
-                    <button class={'btn' + (glsl ? '' : ' sec')}
-                            title={v.glsl_available ? '' : t('viz_glsl_missing')}
-                            onClick={() => engine('glsl')}>
-                      {t('viz_eng_glsl')}{v.glsl_available ? '' : ' ⚠'}
-                    </button>
-                  </div>
-                  {glsl && v.glsl_error && <p class="muted">{t('js_glsl_err')}{v.glsl_error}</p>}
-                  {glsl
-                    ? <ShaderPanel v={v} reload={reload} setMsg={setMsg} onPick={(id) => engine('glsl', id)} />
-                    : <CavaControls v={v} reload={reload} setMsg={setMsg} />}
-                  <button class="btn sec" onClick={toggle}>{v.active ? t('js_viz_stop') : t('js_viz_start')}</button>
+                  <Collapsible open={on}>
+                    <div class="lrow">
+                      <button class={'btn' + (glsl ? ' sec' : '')} onClick={() => engine('cava')}>{t('viz_eng_cava')}</button>
+                      <button class={'btn' + (glsl ? '' : ' sec')}
+                              title={v.glsl_available ? '' : t('viz_glsl_missing')}
+                              onClick={() => engine('glsl')}>
+                        {t('viz_eng_glsl')}{v.glsl_available ? '' : ' ⚠'}
+                      </button>
+                    </div>
+                    {glsl && v.glsl_error && <p class="muted">{t('js_glsl_err')}{v.glsl_error}</p>}
+                    {glsl
+                      ? <ShaderPanel v={v} reload={reload} setMsg={setMsg} onPick={(id) => engine('glsl', id)} />
+                      : <CavaControls v={v} reload={reload} setMsg={setMsg} />}
+                  </Collapsible>
+                  {!on && <p class="muted">{t('viz_off_hint')}</p>}
                 </>)}
           {msg && <p class="muted">{msg}</p>}
         </div>

@@ -305,6 +305,8 @@ STR = {
         "js_scan_fail": "Scan failed — try again.",
         "js_viz_stop": "⏻ Stop visualizer",
         "js_viz_start": "⏻ Start visualizer",
+        "viz_hdmi_off": "⚠ HDMI not connected — plug a monitor into the HDMI port to see the visualizer.",
+        "viz_off_hint": "Visualizer is off. Turn it on to pick a look.",
         "js_name_confirm": "Rename the device? The Bluetooth name changes and the network address (hostname) may change too — you might have to reconnect to reach the panel.",
         "js_audio_confirm": "Switch the audio output? The change needs a reboot.",
         "js_audio_reboot": "Config changed — reboot to apply.",
@@ -537,6 +539,8 @@ STR = {
         "js_scan_fail": "Skan nie wyszedł — spróbuj ponownie.",
         "js_viz_stop": "⏻ Zatrzymaj wizualizer",
         "js_viz_start": "⏻ Uruchom wizualizer",
+        "viz_hdmi_off": "⚠ HDMI niepodłączone — podłącz monitor do portu HDMI, żeby zobaczyć wizualizer.",
+        "viz_off_hint": "Wizualizer jest wyłączony. Włącz go, żeby wybrać wygląd.",
         "js_name_confirm": "Zmienić nazwę urządzenia? Zmieni się nazwa Bluetooth, a adres w sieci (hostname) też może się zmienić — może być trzeba połączyć się ponownie, żeby wejść do panelu.",
         "js_audio_confirm": "Przełączyć wyjście dźwięku? Zmiana wymaga restartu.",
         "js_audio_reboot": "Konfiguracja zmieniona — zrestartuj, żeby zadziałało.",
@@ -1353,10 +1357,22 @@ def _viz_preset_delete(body):
     return True, T("viz_deleted").format(label=hit["label"])
 
 
+def _hdmi_display_connected():
+    """Whether a monitor is plugged into the HDMI port — the screen the
+    visualizer draws on. Reads the KMS connector status in sysfs. Returns
+    True/False, or None when it cannot be told (no DRM connector exposed, e.g.
+    a legacy/fkms stack or the dev box) so the UI can stay quiet in that case."""
+    files = glob.glob("/sys/class/drm/card*-HDMI-A-*/status")
+    if not files:
+        return None
+    return any(_file_read(f).strip() == "connected" for f in files)
+
+
 def _viz_state():
     installed = os.path.isfile(VIZ_CONF)
     engine, shader = _viz_engine()
     return {"installed": installed, "active": _service_active(VIZ_SERVICE),
+            "hdmi_connected": _hdmi_display_connected(),
             "preset": _viz_current_preset() if installed else "",
             "params": _viz_params() if installed else None,
             "presets": [{"id": p["id"], "label": p["label"], "params": p["params"]}
