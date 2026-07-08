@@ -684,8 +684,11 @@ pre {
 
   input { position: absolute; opacity: 0; width: 0; height: 0; }
   .knob {
+    /* fixed 1px border (NOT --bw): the knob dot uses fixed px offsets, so a
+       thicker border on hi-DPI would shrink the padding box and push the dot
+       off-centre / flush to the edge. */
     position: absolute; inset: 0; border-radius: 999px; cursor: pointer;
-    background: var(--switch-off); border: var(--bw) solid var(--border);
+    background: var(--switch-off); border: 1px solid var(--border);
     transition: background .2s, box-shadow .2s, border-color .2s;
     &::after {
       content: ''; position: absolute; top: 2px; left: 2px;
