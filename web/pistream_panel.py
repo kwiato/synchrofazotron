@@ -1198,10 +1198,12 @@ VIZ_USER_PRESETS = "/opt/pistream-visualizer/presets.json"
 _VIZ_LEGACY_IDS = {"klasyk": "classic", "gesty": "dense",
                    "fale": "waves", "masyw": "massive"}
 
-# The Linux console cava draws on has a 16-color palette — hex values are out.
-VIZ_COLORS = ("cyan", "green", "blue", "magenta", "red", "yellow", "white")
-# Background may also be black (the usual choice) — offered on top of the bar colors.
-VIZ_BG_COLORS = ("black",) + VIZ_COLORS
+# cava runs on the Linux text console (tty1, TERM=linux, noncurses output),
+# whose palette is the 8 named ANSI colours — hex/truecolour is not honoured
+# there (that needs cava's SDL output). Both bars and background pick from this
+# full set, black included (black bars only make sense over a lit background).
+VIZ_COLORS = ("cyan", "green", "blue", "magenta", "red", "yellow", "white", "black")
+VIZ_BG_COLORS = VIZ_COLORS
 
 
 def _viz_params():
