@@ -11,8 +11,17 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    // Keep it obvious what ships to the Pi: no per-file hashing churn, small tree.
     assetsDir: 'assets',
+    // Stable, unhashed filenames so install.sh can fetch them from GitHub by a
+    // fixed path list (the Pi has no Node to build). Cache-busting is handled by
+    // the panel serving /app with Cache-Control: no-cache instead.
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/index.js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/index.[ext]',
+      },
+    },
   },
   server: {
     port: 5173,

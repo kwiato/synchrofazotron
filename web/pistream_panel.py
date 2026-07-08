@@ -1819,7 +1819,8 @@ _RAW_BASE = f"https://raw.githubusercontent.com/{REPO}/{BRANCH}"
 # the UI files (a restyle ships without touching the .py).
 _UPDATE_CHECK_FILES = ("pistream_panel.py", "ui/panel.html", "ui/settings.html",
                        "ui/style.css", "ui/common.js", "ui/panel.js",
-                       "ui/settings.js")
+                       "ui/settings.js", "app/dist/index.html",
+                       "app/dist/assets/index.js")
 
 
 def _update_check():
@@ -2281,10 +2282,14 @@ def app_file(path):
 class Handler(BaseHTTPRequestHandler):
     server_version = "SynchrofazotronPanel/1.0"
 
-    def _send(self, code, body, ctype="text/html; charset=utf-8"):
+    def _send(self, code, body, ctype="text/html; charset=utf-8", no_cache=False):
         data = body.encode("utf-8") if isinstance(body, str) else body
         self.send_response(code)
         self.send_header("Content-Type", ctype)
+        if no_cache:
+            # /app ships with stable (unhashed) filenames, so make the browser
+            # revalidate — otherwise a panel update would serve stale JS.
+            self.send_header("Cache-Control", "no-cache")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -2304,7 +2309,7 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/app" or self.path.startswith("/app/"):
             hit = app_file(self.path)
             if hit:
-                self._send(200, hit[0], hit[1])
+                self._send(200, hit[0], hit[1], no_cache=True)
             else:
                 self._send(404, "panel app not built (run: cd web/app && npm run build)",
                            "text/plain")
