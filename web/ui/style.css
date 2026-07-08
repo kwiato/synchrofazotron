@@ -37,6 +37,8 @@
   --acc1: #2dd4ee;
   --acc2: #c26bf5;
   --grad: linear-gradient(135deg, var(--acc1), #7c8cf8 55%, var(--acc2));
+  --primary: linear-gradient(135deg, #2dd4ee, #c26bf5);
+  --primary-glow: rgba(45, 212, 238, .5);
   --glow-cyan: rgba(45, 212, 238, .18);
   --glow-mag: rgba(194, 107, 245, .14);
   --on-fill: #fff;
@@ -47,9 +49,7 @@
   --input-bg: #0b0e13;
   --range-track: #263140;
   --switch-off: #2a333f;
-  --switch-on: linear-gradient(135deg, rgba(45, 212, 238, .55), rgba(194, 107, 245, .55));
   --knob: #8b98a9;
-  --knob-on: #fff;
   --dot-idle: #3a4656;
   --pill-off-bg: #2a333f;
   --pill-off-ink: #9aa6b3;
@@ -91,9 +91,7 @@
   --input-bg: #fff;
   --range-track: #d0d0d0;
   --switch-off: #fff;
-  --switch-on: #000;
   --knob: #000;
-  --knob-on: #fff;
   --dot-idle: #c9c9c9;
   --pill-off-bg: #ececec;
   --pill-off-ink: #333;
@@ -142,9 +140,7 @@
   --input-bg: #000;
   --range-track: #3a3a3a;
   --switch-off: #000;
-  --switch-on: #fff;
   --knob: #fff;
-  --knob-on: #000;
   --dot-idle: #3a3a3a;
   --pill-off-bg: #222;
   --pill-off-ink: #ccc;
@@ -1092,6 +1088,7 @@ pre {
   align-items: center;
   justify-content: space-between;
   gap: var(--spacer-xs);
+  margin-bottom: var(--spacer-2xs);
 }
 .card-head h2 {
   margin: 0;
@@ -1131,13 +1128,13 @@ pre {
   transition: left 0.2s, background 0.2s;
 }
 .switch input:checked + .knob {
-  background: var(--switch-on);
+  background: var(--primary);
   border-color: transparent;
-  box-shadow: 0 0 14px var(--glow-cyan);
+  box-shadow: 0 0 16px var(--primary-glow);
 }
 .switch input:checked + .knob::after {
   left: 22px;
-  background: var(--knob-on);
+  background: #fff;
 }
 .switch input:disabled + .knob {
   opacity: 0.4;
