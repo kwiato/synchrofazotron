@@ -56,21 +56,21 @@
 .ring-logo:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: 12px; }
 
 .seg {
-  fill: var(--dot-idle);
+  fill: var(--text);   /* black on the light theme, white on dark + neon */
   animation:
     seg-intro .55s calc(var(--ord) * .022s) both,
     seg-flash 24s calc(var(--ord) * .022s + .55s + var(--dly)) infinite;
 }
 /* sudden on, slow fade — cyan/pink glow via an animatable drop-shadow colour */
 @keyframes seg-intro {
-  0%   { fill: var(--dot-idle); filter: drop-shadow(0 0 6px transparent); }
+  0%   { fill: var(--text); filter: drop-shadow(0 0 6px transparent); }
   40%  { fill: var(--hot); filter: drop-shadow(0 0 6px var(--hot)); }
-  100% { fill: var(--dot-idle); filter: drop-shadow(0 0 6px transparent); }
+  100% { fill: var(--text); filter: drop-shadow(0 0 6px transparent); }
 }
 @keyframes seg-flash {
-  0%, 1.2%   { fill: var(--dot-idle); filter: drop-shadow(0 0 6px transparent); }
+  0%, 1.2%   { fill: var(--text); filter: drop-shadow(0 0 6px transparent); }
   2%         { fill: var(--hot); filter: drop-shadow(0 0 7px var(--hot)); }
-  10%, 100%  { fill: var(--dot-idle); filter: drop-shadow(0 0 6px transparent); }
+  10%, 100%  { fill: var(--text); filter: drop-shadow(0 0 6px transparent); }
 }
 
 @media (prefers-reduced-motion: reduce) {

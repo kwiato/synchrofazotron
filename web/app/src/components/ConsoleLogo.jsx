@@ -29,7 +29,7 @@ export function ConsoleLogo() {
       <svg key={gen} viewBox="0 0 140 124" role="img" aria-hidden="true">
         {segs.map((s) => (
           <rect key={s.ord} class="seg" x={CX - W / 2} y={CY - R - H / 2}
-                width={W} height={H} rx={W / 2}
+                width={W} height={H}
                 transform={`rotate(${s.deg} ${CX} ${CY})`}
                 style={`--hot:${s.hot}; --dly:${s.dly}s; --ord:${s.ord}`} />
         ))}
