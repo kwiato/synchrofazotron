@@ -10,7 +10,7 @@ const I18nContext = createContext(null);
 
 const FALLBACK = {
   lang: 'en', langs: ['en'], device: 'Synchrofazotron',
-  player: '', lms_port: 9000, pair_win: 180, repo: '', strings: {},
+  player: '', lms_port: 9000, pair_win: 180, repo: '', version: '', strings: {},
 };
 
 export function I18nProvider({ children }) {
@@ -38,5 +38,6 @@ export function useI18n() {
     lmsPort: d.lms_port,
     pairWin: d.pair_win,
     repo: d.repo,
+    version: d.version,
   };
 }

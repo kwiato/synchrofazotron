@@ -16,13 +16,14 @@ const CREDITS = [
 ];
 
 export function AboutSection() {
-  const { t, repo } = useI18n();
+  const { t, repo, version } = useI18n();
   return (
     <section class="active">
       <div class="sect-title">{t('nav_about')}</div>
       <div class="cardgrid">
         <div class="card">
           <h2>💜 Synchrofazotron</h2>
+          {version && <p class="muted small"><span class="pill on">{t('about_version')} {version}</span></p>}
           <p class="muted">{t('about_desc')}</p>
           <p class="muted">{t('about_repo')}</p>
           <a class="btn sec" href={`https://github.com/${repo}`} target="_blank" rel="noreferrer"

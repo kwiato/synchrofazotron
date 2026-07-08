@@ -32,6 +32,7 @@ PORT = int(os.environ.get("PISTREAM_PANEL_PORT", "8787"))
 BIND = os.environ.get("PISTREAM_PANEL_BIND", "0.0.0.0")
 REPO = os.environ.get("PISTREAM_REPO", "kwiato/synchrofazotron")
 BRANCH = os.environ.get("PISTREAM_BRANCH", "main")
+VERSION = "0.69.1"                 # shown in the panel's About; bump on releases
 
 _HOSTNAME = socket.gethostname() or "Synchrofazotron"
 # Runtime-changeable device identity. A name set from /settings is persisted to
@@ -140,6 +141,7 @@ STR = {
         "about_desc": "Synchrofazotron turns a Raspberry Pi into a multi-source audio player: Bluetooth, AirPlay, Spotify Connect and TIDAL/radio/library via Lyrion Music Server, plus a music visualizer on HDMI.",
         "about_repo": "Source code, docs and issues:",
         "about_license": "Free software, licensed under GPL-3.0.",
+        "about_version": "Version",
         "now_playing": "🎚️ Now playing",
         "warn_multi": "⚠️ Multiple sources are playing at once — the first one owns the DAC, the rest play into the void. Stop the ones you do not need.",
         "sources_note": "Starting a new source automatically pauses the previous one (exception: Spotify — pause it in its own app).",
@@ -375,6 +377,7 @@ STR = {
         "about_desc": "Synchrofazotron zamienia Raspberry Pi w odtwarzacz audio z wieloma źródłami: Bluetooth, AirPlay, Spotify Connect oraz TIDAL/radio/biblioteka przez Lyrion Music Server, do tego wizualizer muzyki na HDMI.",
         "about_repo": "Kod źródłowy, dokumentacja i zgłoszenia:",
         "about_license": "Wolne oprogramowanie na licencji GPL-3.0.",
+        "about_version": "Wersja",
         "now_playing": "🎚️ Teraz gra",
         "warn_multi": "⚠️ Kilka źródeł gra jednocześnie — pierwsze zajmuje DAC, reszta gra w próżnię. Zatrzymaj niepotrzebne.",
         "sources_note": "Start nowego źródła automatycznie pauzuje poprzednie (wyjątek: Spotify — pauzuj w jego apce).",
@@ -2201,6 +2204,7 @@ def _i18n_payload(host_header):
         "lms_port": LMS_PORT,
         "pair_win": PAIR_WINDOW_SEC,
         "repo": REPO,
+        "version": VERSION,
         "strings": strings,
     }
 
