@@ -203,6 +203,10 @@ STR = {
         "bt_disc_ok": "Disconnected.",
         "bts_debug_btn": "Audio/BT diagnostics",
         "bts_test_btn": "Test sound",
+        "audio_test_btn": "🔔 Test the selected output",
+        "bt_reconnect_label": "Auto-reconnect paired devices",
+        "bt_reconnect_note": "After boot the device always retries for a short while. Turn this on to keep retrying at the interval below.",
+        "bt_interval_label": "Retry interval (seconds)",
         "js_bt_testing": "Playing the test sound…",
         "audio_test_ok": "Test sound played OK on „{dev}” — the output path works; if BT is still silent, run the diagnostics while the phone plays.",
         "audio_test_fail": "Test sound FAILED on „{dev}”: {err}",
@@ -435,6 +439,10 @@ STR = {
         "bt_disc_ok": "Rozłączono.",
         "bts_debug_btn": "Diagnostyka audio/BT",
         "bts_test_btn": "Test dźwięku",
+        "audio_test_btn": "🔔 Testuj wybrane wyjście",
+        "bt_reconnect_label": "Auto-reconnect sparowanych",
+        "bt_reconnect_note": "Po starcie urządzenie i tak przez chwilę ponawia próby. Włącz, żeby ponawiać dalej co zadany czas.",
+        "bt_interval_label": "Odstęp prób (sekundy)",
         "js_bt_testing": "Gram dźwięk testowy…",
         "audio_test_ok": "Dźwięk testowy zagrany OK na „{dev}” — tor wyjściowy działa; jeśli BT dalej milczy, odpal diagnostykę w trakcie grania z telefonu.",
         "audio_test_fail": "Test na „{dev}” NIE przeszedł: {err}",
@@ -614,7 +622,8 @@ def _paired_devices():
 def _bt_payload():
     connected = {m for m, _ in _connected_devices()}
     return {"paired": [{"mac": m, "name": n, "connected": m in connected}
-                       for m, n in _paired_devices()]}
+                       for m, n in _paired_devices()],
+            "reconnect": _bt_reconnect_cfg()}
 
 
 _MAC_RE = re.compile(r"[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}")
@@ -712,11 +721,14 @@ def _bt_debug():
 
 
 def _audio_test():
-    """Plays the standard ALSA test wav through bluealsa-aplay's device —
-    exercises exactly the path BT audio takes. Returns (ok, message)."""
+    """Plays the standard test wav on the currently selected output (DAC or
+    HDMI), via plughw so the card's format/rate is adapted. Returns
+    (ok, message)."""
     if DEV_MODE:
         return False, "sandbox mode — audio test disabled"
-    dev = _aplay_device()
+    mode = _audio_selected()
+    cid = _dac_card_id() if mode == "dac" else _hdmi_card_id()
+    dev = f"plughw:CARD={cid}" if cid else "default"
     try:
         r = subprocess.run(
             ["aplay", "-D", dev, "/usr/share/sounds/alsa/Front_Center.wav"],
@@ -770,26 +782,57 @@ def _auto_trust_loop():
 
 
 # Reconnecting after boot: phones do not always reconnect to an A2DP sink on
-# their own, so while nothing is connected the Pi keeps the adapter powered
-# and periodically pages the paired devices itself (connectable, NOT
-# discoverable/pairable — pairing stays behind the panel button).
+# their own, so like a real speaker the Pi pages the paired devices itself
+# (connectable, NOT discoverable/pairable — pairing stays behind the panel
+# button). Two phases: a short aggressive BURST right after start (always on),
+# then optional periodic retries gated by a panel toggle (default off).
 BT_AUTOCONNECT = os.environ.get("PISTREAM_BT_AUTOCONNECT", "1") == "1"
+BT_BURST_WINDOW = 120       # aggressive reconnect window after start (seconds)
+BT_BURST_INTERVAL = 10      # retry every 10 s during the burst
+BT_CFG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "bt-reconnect.json")
+
+
+def _bt_reconnect_cfg():
+    """Persisted periodic-reconnect setting: {'enabled': bool, 'interval': int}."""
+    try:
+        d = json.load(open(BT_CFG_FILE, encoding="utf-8"))
+        return {"enabled": bool(d.get("enabled")),
+                "interval": max(10, min(600, int(d.get("interval", 45))))}
+    except Exception:  # noqa: BLE001
+        return {"enabled": False, "interval": 45}
+
+
+def _bt_reconnect_set(enabled, interval):
+    try:
+        interval = max(10, min(600, int(interval)))
+    except (TypeError, ValueError):
+        interval = 45
+    cfg = {"enabled": bool(enabled), "interval": interval}
+    _file_write(BT_CFG_FILE, json.dumps(cfg) + "\n")
+    return cfg
 
 
 def _bt_autoconnect_loop():
+    start = time.time()
     while True:
+        interval = 30
         try:
-            if _pair_seconds_left() == 0:  # keep out of an open pairing window
-                if "Powered: yes" not in _bt_show():
-                    _run(["bluetoothctl", "power", "on"])
-                if not _connected_devices():
-                    for mac, _name in _paired_devices():
-                        _run(["bluetoothctl", "connect", mac], timeout=15)
-                        if _connected_devices():
-                            break
+            cfg = _bt_reconnect_cfg()
+            in_burst = (time.time() - start) < BT_BURST_WINDOW
+            if in_burst or cfg["enabled"]:
+                if _pair_seconds_left() == 0:  # keep out of an open pairing window
+                    if "Powered: yes" not in _bt_show():
+                        _run(["bluetoothctl", "power", "on"])
+                    if not _connected_devices():
+                        for mac, _name in _paired_devices():
+                            _run(["bluetoothctl", "connect", mac], timeout=15)
+                            if _connected_devices():
+                                break
+                interval = BT_BURST_INTERVAL if in_burst else cfg["interval"]
         except Exception:  # noqa: BLE001
             pass
-        time.sleep(45)
+        time.sleep(interval)
 
 
 def _pair_seconds_left():
@@ -2296,6 +2339,10 @@ class Handler(BaseHTTPRequestHandler):
             ok, message = _bt_forget(str(self._json_body().get("mac", "")))
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
+        elif self.path == "/api/bt/reconnect":
+            body = self._json_body()
+            cfg = _bt_reconnect_set(body.get("enabled"), body.get("interval", 45))
+            self._send(200, json.dumps({"ok": True, **cfg}), "application/json")
         elif self.path == "/api/tailscale/set":
             ok, message = _tailscale_set(bool(self._json_body().get("up")))
             self._send(200, json.dumps({"ok": ok, "message": message}),

@@ -270,8 +270,39 @@ async function btRefresh() {
       escapeHtml(d.name).replace(/'/g, "\\'") + '\')"><i class="ico ico-trash"></i></button>' +
       '</div>'
     ).join('') : '<p class="muted">{{T:js_bt_none}}</p>';
+    applyReconnect(b.reconnect);
   } catch(e) {}
 }
+
+// periodic auto-reconnect toggle + interval (don't stomp a control in use)
+function applyReconnect(rc) {
+  if (!rc) return;
+  const sw = document.getElementById('btReconnectSw');
+  const iv = document.getElementById('btInterval');
+  if (document.activeElement !== sw) sw.checked = rc.enabled;
+  if (document.activeElement !== iv) {
+    iv.value = rc.interval;
+    document.getElementById('btIntervalVal').textContent = rc.interval;
+  }
+  iv.disabled = !sw.checked;
+}
+
+async function saveReconnect() {
+  const enabled = document.getElementById('btReconnectSw').checked;
+  const interval = +document.getElementById('btInterval').value;
+  document.getElementById('btInterval').disabled = !enabled;
+  try {
+    await fetch('/api/bt/reconnect', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({enabled, interval})
+    });
+  } catch(e) {}
+}
+
+document.getElementById('btReconnectSw').onchange = saveReconnect;
+document.getElementById('btInterval').oninput = e =>
+  document.getElementById('btIntervalVal').textContent = e.target.value;
+document.getElementById('btInterval').onchange = saveReconnect;
 
 async function btConnect(mac) {
   if (btBusy) return;
@@ -318,15 +349,15 @@ async function btForget(mac, name) {
   btRefresh();
 }
 
-async function btTest() {
-  const b = document.getElementById('btTestBtn');
+async function audioTest() {
+  const b = document.getElementById('audioTestBtn');
   b.disabled = true;
-  document.getElementById('btMsg').textContent = '{{T:js_bt_testing}}';
+  document.getElementById('audioMsg').textContent = '{{T:js_bt_testing}}';
   try {
     const r = await fetch('/api/audio/test', {method:'POST'});
     const j = await r.json();
-    document.getElementById('btMsg').textContent = j.message || '';
-  } catch(e) { document.getElementById('btMsg').textContent = '{{T:js_conn_error}}'; }
+    document.getElementById('audioMsg').textContent = j.message || '';
+  } catch(e) { document.getElementById('audioMsg').textContent = '{{T:js_conn_error}}'; }
   b.disabled = false;
 }
 

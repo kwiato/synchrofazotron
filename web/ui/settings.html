@@ -83,6 +83,7 @@
               <button class="btn sec" id="audioDac" onclick="audioSet('dac')">DAC</button>
               <button class="btn sec" id="audioHdmi" onclick="audioSet('hdmi')">HDMI</button>
             </div>
+            <button class="btn sec" id="audioTestBtn" onclick="audioTest()">{{T:audio_test_btn}}</button>
             <button class="btn sec" id="rebootBtn" style="display:none;" onclick="doReboot()">{{T:js_reboot}}</button>
             <p id="audioMsg" class="muted"></p>
           </div>
@@ -135,11 +136,18 @@
             <p class="muted">{{T:bts_note}}</p>
             <div id="btDevices"><p class="muted">…</p></div>
             <p id="btMsg" class="muted"></p>
-            <div class="lrow">
-              <button class="btn sec" id="btTestBtn" onclick="btTest()">{{T:bts_test_btn}}</button>
-              <button class="btn sec" onclick="btDebug()">{{T:bts_debug_btn}}</button>
-            </div>
+            <button class="btn sec" onclick="btDebug()">{{T:bts_debug_btn}}</button>
             <pre id="btReport" style="display:none;"></pre>
+            <div class="card-head" style="margin-top:14px;">
+              <h3 style="margin:0;">{{T:bt_reconnect_label}}</h3>
+              <label class="switch">
+                <input type="checkbox" id="btReconnectSw">
+                <span class="knob"></span>
+              </label>
+            </div>
+            <p class="muted">{{T:bt_reconnect_note}}</p>
+            <label class="vlabel">{{T:bt_interval_label}}: <b id="btIntervalVal"></b>
+              <input type="range" id="btInterval" min="10" max="300" step="5"></label>
             <p class="muted" id="hint_bluetooth" style="display:none;">{{T:src_disabled_hint}}</p>
             <p class="muted" id="msg_bluetooth"></p>
             <div class="dots" id="dots_bluetooth"></div>
