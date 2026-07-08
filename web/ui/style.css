@@ -151,6 +151,8 @@ code { background: #0b0e13; padding: 1px 6px; border-radius: 6px; font-size: .9e
 .iconbtn svg { width: 18px; height: 18px; flex: none; }
 .iconbtn .ico { transition: transform .25s; }
 .iconbtn:disabled { opacity: .6; cursor: default; }
+/* header badge labels (BT device / Wi-Fi SSID) — truncate long names */
+.iconbtn .lbl { max-width: 11ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---- tabs -------------------------------------------------------------- */
 .tabs {
@@ -491,6 +493,7 @@ pre {
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
   background: #3a4656; flex: none; }
 .dot.on { background: var(--good); box-shadow: 0 0 8px rgba(52, 211, 153, .6); }
+.dot.warn { background: var(--warn); box-shadow: 0 0 8px rgba(251, 191, 36, .5); }
 .dot.err { background: var(--danger); box-shadow: 0 0 8px rgba(248, 113, 113, .5); }
 
 /* ---- spinner --------------------------------------------------------------- */

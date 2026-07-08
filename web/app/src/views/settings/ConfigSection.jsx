@@ -190,6 +190,10 @@ function AudioOutputCard() {
   const cards = (a && a.cards) || {};
   const out = a && a.output;
   const rebootReq = a && a.reboot_required;
+  // HDMI: the ALSA card exists even with no monitor, but audio only plays to a
+  // connected display — so green requires both. Amber = card up, no monitor.
+  const hdmiNoDisp = a && a.hdmi_connected === false;
+  const hdmiDot = !cards.hdmi ? 'err' : (hdmiNoDisp ? 'warn' : 'on');
   const dot = (ok) => <i class={'dot ' + (ok ? 'on' : 'err')}></i>;
 
   return (
@@ -200,12 +204,14 @@ function AudioOutputCard() {
         <button class={'btn' + (out === 'dac' ? '' : ' sec')} onClick={() => set('dac')}>
           {dot(cards.dac)} DAC{out === 'dac' ? ' ✓' : ''}
         </button>
-        <button class={'btn' + (out === 'hdmi' ? '' : ' sec')} onClick={() => set('hdmi')}>
-          {dot(cards.hdmi)} HDMI{out === 'hdmi' ? ' ✓' : ''}
+        <button class={'btn' + (out === 'hdmi' ? '' : ' sec')} onClick={() => set('hdmi')}
+                title={hdmiNoDisp ? t('audio_hdmi_nodisp') : ''}>
+          <i class={'dot ' + hdmiDot}></i> HDMI{out === 'hdmi' ? ' ✓' : ''}
         </button>
       </div>
       <button class="btn sec" disabled={testing} onClick={test}>{t('audio_test_btn')}</button>
       {rebootReq && <button class="btn sec" disabled={rebooting} onClick={reboot}>{t('js_reboot')}</button>}
+      {out === 'hdmi' && hdmiNoDisp && <p class="muted">{t('audio_hdmi_nodisp')}</p>}
       <p class="muted">
         {rebooting && <span class="spinner"></span>}{' '}
         {msg || (rebootReq ? t('js_audio_reboot') : '')}

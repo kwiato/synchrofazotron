@@ -106,6 +106,8 @@ STR = {
         "tab_now": "Now playing",
         "tab_viz": "Visualizer",
         "pair_short": "Pair",
+        "wifi_none_short": "Wi-Fi",
+        "wifi_header_title": "Wi-Fi — open network settings",
         "sheet_sources": "Sources",
         "viz_more": "Preset editing and shader upload live in settings.",
         "how_connect_head": "How to connect sources",
@@ -258,6 +260,7 @@ STR = {
         "js_sdel_suf": "\"?",
         "audio_head": "Audio output",
         "audio_out_note": "Where the sound goes: the DAC HAT or the monitor over HDMI. A card that is up (green dot) switches live; a card that is off (red dot) is enabled in the boot config and needs a reboot.",
+        "audio_hdmi_nodisp": "No monitor on the HDMI port — HDMI audio stays silent until a display is connected.",
         "upd_head": "Updates",
         "upd_note": "Fetches the latest Synchrofazotron from GitHub — the same as re-running setup.sh (safe, settings are kept). The check compares the installed panel with the repo.",
         "upd_check_btn": "Check for updates",
@@ -346,6 +349,8 @@ STR = {
         "tab_now": "Teraz gra",
         "tab_viz": "Wizualizer",
         "pair_short": "Paruj",
+        "wifi_none_short": "Wi-Fi",
+        "wifi_header_title": "Wi-Fi — otwórz ustawienia sieci",
         "sheet_sources": "Źródła",
         "viz_more": "Edycja presetów i wgrywanie shaderów są w ustawieniach.",
         "how_connect_head": "Jak podłączyć źródła",
@@ -494,6 +499,7 @@ STR = {
         "js_sdel_suf": "”?",
         "audio_head": "Wyjście dźwięku",
         "audio_out_note": "Którędy wychodzi dźwięk: DAC (nakładka HAT) albo monitor po HDMI. Karta dostępna (zielona kropka) przełącza się od razu; kartę wyłączoną (czerwona kropka) włącza konfiguracja startowa i wymaga restartu.",
+        "audio_hdmi_nodisp": "Brak monitora na porcie HDMI — dźwięk HDMI będzie cichy, dopóki nie podłączysz ekranu.",
         "upd_head": "Aktualizacje",
         "upd_note": "Pobiera najnowszy Synchrofazotron z GitHuba — to samo co ponowne setup.sh (bezpieczne, ustawienia zostają). Sprawdzenie porównuje zainstalowany panel z repo.",
         "upd_check_btn": "Sprawdź aktualizacje",
@@ -967,6 +973,13 @@ def _wifi_apply():
     rec = _run(["wpa_cli", "-i", WIFI_IFACE, "reconfigure"], timeout=10)
     return {"apply": out, "reconfigure": rec,
             "reloaded": rec.strip().endswith("OK")}
+
+
+def _wifi_ssid():
+    """Just the connected SSID (light — one iw call), '' if not connected.
+    Used by the header badge which polls /api/status every few seconds."""
+    m = re.search(r"^\s*SSID:\s*(.+)$", _run(["iw", "dev", WIFI_IFACE, "link"]), re.M)
+    return m.group(1).strip() if m else ""
 
 
 def _wifi_current():
@@ -1632,6 +1645,7 @@ def _audio_state():
     selected = _audio_selected()
     return {"output": selected, "running": _audio_running_mode(),
             "overlay": DAC_OVERLAY, "cards": cards,
+            "hdmi_connected": _hdmi_display_connected(),
             "bridge_active": _service_active(AOUT_SERVICE),
             # the chosen output has no card up yet — needs it enabled at boot
             "reboot_required": selected in ("dac", "hdmi") and not cards.get(selected)}
@@ -2166,6 +2180,7 @@ def status_payload():
         "bt_powered": "Powered: yes" in show,
         "bt_discoverable": "Discoverable: yes" in show,
         "pair_seconds_left": _pair_seconds_left(),
+        "wifi_ssid": _wifi_ssid(),
         "connected": [{"mac": m, "name": n} for m, n in connected],
         "lms_playerid": _lms_playerid or "",
         "sources": sources,
