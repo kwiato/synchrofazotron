@@ -294,8 +294,16 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
 // ---------------------------------------------------------------------------
 // Header
 // ---------------------------------------------------------------------------
-.top { display: flex; align-items: center; justify-content: space-between; gap: var(--spacer-xs); }
-.topbtns { display: flex; gap: var(--spacer-2xs); }
+.top {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--spacer-xs);
+  // let a long device name shrink + ellipsis instead of pushing the page wide
+  h1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+.topbtns { display: flex; gap: var(--spacer-2xs); flex: none; }
+@media (max-width: 430px) {
+  .top h1 { font-size: 1.2rem; }
+  .iconbtn .lbl { max-width: 8ch; }   // keep the badges compact on phones
+}
 
 .iconbtn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--spacer-2xs);

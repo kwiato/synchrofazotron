@@ -351,12 +351,27 @@ code {
   justify-content: space-between;
   gap: var(--spacer-xs);
 }
+.top h1 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .topbtns {
   display: flex;
   gap: var(--spacer-2xs);
+  flex: none;
 }
 
+@media (max-width: 430px) {
+  .top h1 {
+    font-size: 1.2rem;
+  }
+  .iconbtn .lbl {
+    max-width: 8ch;
+  }
+}
 .iconbtn {
   display: inline-flex;
   align-items: center;
