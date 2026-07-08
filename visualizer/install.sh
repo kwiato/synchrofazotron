@@ -121,7 +121,9 @@ fi
 
 echo "==> Visualizer files and services"
 install -d "$DEST" "$DEST/glsl"
-install -m 0644 "$SRC_DIR/cava.conf" "$DEST/cava.conf"
+# seed cava.conf only on first install — keep the user's chosen/edited preset
+# across updates (the panel owns this file once it's there)
+[[ -f $DEST/cava.conf ]] || install -m 0644 "$SRC_DIR/cava.conf" "$DEST/cava.conf"
 install -m 0755 "$SRC_DIR/hdmi-watch.sh" "$DEST/hdmi-watch.sh"
 install -m 0755 "$SRC_DIR/viz-run.sh" "$DEST/viz-run.sh"
 install -m 0755 "$SRC_DIR/glsl-audio-bridge.py" "$DEST/glsl-audio-bridge.py"

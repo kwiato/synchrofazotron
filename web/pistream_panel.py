@@ -1131,8 +1131,8 @@ def _wifi_remove(slot):
 # ---------------------------------------------------------------------------
 # Visualizer (cava on HDMI) — look presets + start/stop.
 # The panel rewrites /opt/pistream-visualizer/cava.conf and restarts the unit.
-# Note: a visualizer update (visualizer/install.sh) overwrites the config
-# file, so the preset falls back to the default then.
+# The seed config is the first built-in preset (Snappy); install.sh only writes
+# it on a fresh install, so a user's chosen/edited preset survives updates.
 # ---------------------------------------------------------------------------
 VIZ_CONF = "/opt/pistream-visualizer/cava.conf"
 VIZ_SERVICE = "pistream-visualizer"
