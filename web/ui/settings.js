@@ -582,7 +582,9 @@ async function audioSet(mode) {
 async function doReboot() {
   if (!confirm('{{T:js_reboot_confirm}}')) return;
   try { await fetch('/api/reboot', {method:'POST'}); } catch(e) {}
-  document.getElementById('audioMsg').textContent = '{{T:js_rebooting}}';
+  // the dedicated reboot card owns the message; the audio card reuses it too
+  const el = document.getElementById('rebootMsg') || document.getElementById('audioMsg');
+  if (el) el.textContent = '{{T:js_rebooting}}';
 }
 
 /* ---- config: updates --------------------------------------------------------------- */
