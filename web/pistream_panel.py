@@ -328,7 +328,7 @@ STR = {
         "viz_not_installed": "The visualizer is not installed.",
         "viz_preset_set": "Preset „{label}” applied.",
         "viz_params_set": "Custom settings applied.",
-        "viz_stopped": "Visualizer stopped (until reboot / manual start).",
+        "viz_stopped": "Visualizer turned off — it stays off until you switch it back on.",
         "viz_started": "Visualizer started.",
         "audio_bad": "Unknown output (expected dac or hdmi).",
         "audio_cfg_fail": "Could not read the boot config (config.txt).",
@@ -561,7 +561,7 @@ STR = {
         "viz_not_installed": "Wizualizer nie jest zainstalowany.",
         "viz_preset_set": "Preset „{label}” ustawiony.",
         "viz_params_set": "Własne ustawienia zastosowane.",
-        "viz_stopped": "Wizualizer zatrzymany (do reboota / ręcznego startu).",
+        "viz_stopped": "Wizualizer wyłączony — pozostanie wyłączony, dopóki go nie włączysz.",
         "viz_started": "Wizualizer wystartowany.",
         "audio_bad": "Nieznane wyjście (oczekiwane dac lub hdmi).",
         "audio_cfg_fail": "Nie udało się odczytać konfiguracji startowej (config.txt).",
@@ -1125,6 +1125,11 @@ VIZ_SERVICE = "pistream-visualizer"
 VIZ_ENGINE_FILE = "/opt/pistream-visualizer/engine"
 VIZ_GLSL_DIR = "/opt/pistream-visualizer/glsl"
 VIZ_GLSL_ERR = "/opt/pistream-visualizer/glsl-error"
+# Manual off-switch. When this flag exists the visualizer stays off even with a
+# monitor attached — hdmi-watch.sh honours it instead of auto-starting. It is
+# the user's intent (the panel toggle); the service's live state can differ
+# (e.g. enabled but no HDMI = intent on, service off).
+VIZ_DISABLED_FLAG = "/opt/pistream-visualizer/disabled"
 
 _VIZ_TEMPLATE = """# preset: {name} (managed by the Synchrofazotron panel — /settings page)
 [general]
@@ -1372,6 +1377,7 @@ def _viz_state():
     installed = os.path.isfile(VIZ_CONF)
     engine, shader = _viz_engine()
     return {"installed": installed, "active": _service_active(VIZ_SERVICE),
+            "enabled": _viz_enabled(),
             "hdmi_connected": _hdmi_display_connected(),
             "preset": _viz_current_preset() if installed else "",
             "params": _viz_params() if installed else None,
@@ -1465,10 +1471,21 @@ def _viz_set_params(body):
     return True, T("viz_params_set")
 
 
+def _viz_enabled():
+    """User intent: is the visualizer allowed to run? (No disable flag = on.)"""
+    return not os.path.exists(VIZ_DISABLED_FLAG)
+
+
 def _viz_toggle():
-    if _service_active(VIZ_SERVICE):
+    """Flip the user's on/off intent. We persist a flag (so hdmi-watch.sh does
+    not just turn it back on) and start/stop the service to match right away."""
+    if _viz_enabled():
+        try: _file_write(VIZ_DISABLED_FLAG, "")
+        except OSError: pass
         _run(["systemctl", "stop", VIZ_SERVICE])
         return True, T("viz_stopped")
+    try: os.remove(VIZ_DISABLED_FLAG)
+    except OSError: pass
     _run(["systemctl", "start", VIZ_SERVICE])
     return True, T("viz_started")
 

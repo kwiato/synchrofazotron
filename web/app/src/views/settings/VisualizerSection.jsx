@@ -3,6 +3,7 @@ import { useI18n } from '../../i18n.jsx';
 import { apiPost } from '../../api.js';
 import { useApi } from '../../hooks.js';
 import { Collapsible } from '../../components/Collapsible.jsx';
+import { Tabs } from '../../components/Tabs.jsx';
 
 export function VisualizerSection() {
   const { t } = useI18n();
@@ -24,7 +25,7 @@ export function VisualizerSection() {
   };
 
   const installed = !!(v && v.installed);
-  const on = pending != null ? pending : !!(v && v.active);
+  const on = pending != null ? pending : !!(v && v.enabled);
   const glsl = v && v.engine === 'glsl';
 
   return (
@@ -50,14 +51,12 @@ export function VisualizerSection() {
               : (
                 <>
                   <Collapsible open={on}>
-                    <div class="lrow">
-                      <button class={'btn' + (glsl ? ' sec' : '')} onClick={() => engine('cava')}>{t('viz_eng_cava')}</button>
-                      <button class={'btn' + (glsl ? '' : ' sec')}
-                              title={v.glsl_available ? '' : t('viz_glsl_missing')}
-                              onClick={() => engine('glsl')}>
-                        {t('viz_eng_glsl')}{v.glsl_available ? '' : ' ⚠'}
-                      </button>
-                    </div>
+                    <Tabs compact active={v.engine} onChange={(id) => engine(id)}
+                          items={[
+                            { id: 'cava', label: t('viz_eng_cava') },
+                            { id: 'glsl', label: t('viz_eng_glsl') + (v.glsl_available ? '' : ' ⚠'),
+                              title: v.glsl_available ? '' : t('viz_glsl_missing') },
+                          ]} />
                     {glsl && v.glsl_error && <p class="muted">{t('js_glsl_err')}{v.glsl_error}</p>}
                     {glsl
                       ? <ShaderPanel v={v} reload={reload} setMsg={setMsg} onPick={(id) => engine('glsl', id)} />

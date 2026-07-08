@@ -43,3 +43,7 @@
 
 /* Inline warning line (e.g. "HDMI not connected") inside a card. */
 .viz-warn { color: var(--warn); font-size: 13px; margin: 6px 0 2px; }
+
+/* Tabs sitting inside a card (engine picker) want tighter margins than the
+   top-level Now/Viz nav. */
+.tabs.compact { margin: 4px 0 12px; }

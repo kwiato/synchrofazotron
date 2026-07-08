@@ -5,6 +5,9 @@ set -u
 
 VIZ=pistream-visualizer.service
 INTERVAL=5
+# Manual off-switch written by the panel toggle. When present the visualizer
+# stays off regardless of HDMI — the user's intent wins over the hotplug logic.
+DISABLED_FLAG=/opt/pistream-visualizer/disabled
 
 hdmi_connected() {
     local f
@@ -15,23 +18,28 @@ hdmi_connected() {
     return 1
 }
 
+ensure_off() { systemctl is-active -q "$VIZ" && systemctl stop "$VIZ"; return 0; }
+ensure_on()  { systemctl is-active -q "$VIZ" || systemctl start "$VIZ"; return 0; }
+
 # Without KMS there is no DRM status, so hotplug cannot be detected. Fallback:
-# the visualizer runs PERMANENTLY (the Pi is managed over SSH anyway; cava with
-# no monitor attached is only a few % CPU). sleep infinity so Restart=always
-# does not respawn the unit in a loop.
+# the visualizer runs whenever enabled (the Pi is managed over SSH anyway; cava
+# with no monitor attached is only a few % CPU). Still poll so the panel toggle
+# takes effect.
 if ! compgen -G "/sys/class/drm/card*-HDMI-A-*/status" >/dev/null; then
-    echo "No /sys/class/drm/*-HDMI-*/status (kernel without KMS?) — visualizer stays on permanently."
-    systemctl start "$VIZ"
-    exec sleep infinity
+    echo "No /sys/class/drm/*-HDMI-*/status (kernel without KMS?) — visualizer runs whenever enabled."
+    while :; do
+        if [[ -e $DISABLED_FLAG ]]; then ensure_off; else ensure_on; fi
+        sleep "$INTERVAL"
+    done
 fi
 
 while :; do
-    if hdmi_connected; then
-        systemctl is-active -q "$VIZ" || systemctl start "$VIZ"
+    if [[ -e $DISABLED_FLAG ]]; then
+        ensure_off
+    elif hdmi_connected; then
+        ensure_on
     else
-        if systemctl is-active -q "$VIZ"; then
-            systemctl stop "$VIZ"
-        fi
+        ensure_off
     fi
     sleep "$INTERVAL"
 done

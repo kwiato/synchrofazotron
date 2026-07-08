@@ -5,6 +5,7 @@ import { apiGet, apiPost } from '../api.js';
 import { primary, srcSub } from '../util.js';
 import { Eq } from '../components/Eq.jsx';
 import { Collapsible } from '../components/Collapsible.jsx';
+import { Tabs } from '../components/Tabs.jsx';
 
 // Main view: the Now / Visualizer tabs. Ported from panel.js.
 export function Panel() {
@@ -20,10 +21,8 @@ export function Panel() {
 
   return (
     <>
-      <nav class="tabs">
-        <button class={'tab' + (tab === 'now' ? ' active' : '')} onClick={() => pick('now')}>{t('tab_now')}</button>
-        <button class={'tab' + (tab === 'viz' ? ' active' : '')} onClick={() => pick('viz')}>{t('tab_viz')}</button>
-      </nav>
+      <Tabs items={[{ id: 'now', label: t('tab_now') }, { id: 'viz', label: t('tab_viz') }]}
+            active={tab} onChange={pick} />
       {tab === 'now' ? <NowTab /> : <VizTab />}
     </>
   );
@@ -94,7 +93,7 @@ function VizTab() {
   if (!v) return <div class="card"><p class="muted">…</p></div>;
   if (!v.installed) return <div class="card"><p class="muted">{t('viz_missing')}</p></div>;
 
-  const on = pending != null ? pending : !!v.active;
+  const on = pending != null ? pending : !!v.enabled;
   const glsl = v.engine === 'glsl';
   const items = glsl ? (v.shaders || []) : (v.presets || []);
   const current = glsl ? v.shader : v.preset;
@@ -110,14 +109,12 @@ function VizTab() {
       </div>
       {v.hdmi_connected === false && <p class="viz-warn">{t('viz_hdmi_off')}</p>}
       <Collapsible open={on}>
-        <div class="lrow">
-          <button class={'btn' + (glsl ? ' sec' : '')} onClick={() => engine('cava')}>{t('viz_eng_cava')}</button>
-          <button class={'btn' + (glsl ? '' : ' sec')}
-                  title={v.glsl_available ? '' : t('viz_glsl_missing')}
-                  onClick={() => engine('glsl')}>
-            {t('viz_eng_glsl')}{v.glsl_available ? '' : ' ⚠'}
-          </button>
-        </div>
+        <Tabs compact active={v.engine} onChange={(id) => engine(id)}
+              items={[
+                { id: 'cava', label: t('viz_eng_cava') },
+                { id: 'glsl', label: t('viz_eng_glsl') + (v.glsl_available ? '' : ' ⚠'),
+                  title: v.glsl_available ? '' : t('viz_glsl_missing') },
+              ]} />
         {glsl && v.glsl_error && <p class="muted">{t('js_glsl_err')}{v.glsl_error}</p>}
         <div class="vgrid">
           {items.map((it) => (
