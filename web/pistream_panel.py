@@ -2241,6 +2241,21 @@ def _lms_fav_remove(fav_id):
     return {"ok": True}
 
 
+def _lms_art(path):
+    """Fetch an LMS icon/cover so the app can load it from the panel origin
+    instead of needing the LMS web port (9000) reachable from the phone — which
+    also makes artwork work over Tailscale. Accepts an LMS-relative path
+    (/imageproxy/…, /plugins/…, /music/…) or an absolute http(s) URL."""
+    if path.startswith("/"):
+        url = f"http://127.0.0.1:{LMS_PORT}{path}"
+    elif path.startswith("http://") or path.startswith("https://"):
+        url = path
+    else:
+        return None
+    with urllib.request.urlopen(url, timeout=6) as r:
+        return r.read(), r.headers.get("Content-Type", "image/jpeg")
+
+
 def _bt_streams():
     """List of A2DP streams: [{'mac','running'}] (Running=true => actually playing)."""
     streams = []
@@ -2701,6 +2716,16 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/i18n":
             self._send(200, json.dumps(_i18n_payload(self.headers.get("Host", ""))),
                        "application/json")
+        elif self.path.startswith("/api/lms/art?"):
+            try:
+                q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                art = _lms_art((q.get("path") or [""])[0])
+            except Exception:  # noqa: BLE001 — LMS down / bad path
+                art = None
+            if art:
+                self._send(200, art[0], art[1])
+            else:
+                self._send(404, "no art", "text/plain")
         elif self.path.startswith("/api/lms/"):
             self._send(200, json.dumps(self._lms_get()), "application/json",
                        no_cache=True)

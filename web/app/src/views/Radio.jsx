@@ -32,7 +32,7 @@ export function RadioTab() {
 // Shared list renderer for a normalized {items:[{title,icon,playable,browsable,
 // item_id,fav,id,url}]} payload. onOpen(item) drills in, onPlay(item) plays.
 function List({ data, loading, onOpen, onPlay, onStar, onRemove }) {
-  const { t, lmsPort } = useI18n();
+  const { t } = useI18n();
   if (loading && !data) return <p class="muted lms-note">{t('radio_loading')}</p>;
   if (data && data.error === 'lms') {
     return <EmptyState icon="ico-plug-off" title={t('radio_unavailable')} />;
@@ -44,7 +44,7 @@ function List({ data, loading, onOpen, onPlay, onStar, onRemove }) {
   return (
     <div class="lms-list">
       {items.map((it, i) => {
-        const icon = lmsIcon(it.icon, lmsPort);
+        const icon = lmsIcon(it.icon);
         const act = () => (it.browsable ? onOpen(it) : it.playable && onPlay(it));
         return (
           <div key={it.item_id || it.id || i} class="lms-row" role="button" tabIndex={0}

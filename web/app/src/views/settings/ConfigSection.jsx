@@ -6,7 +6,7 @@ import { useApi, doReboot } from '../../hooks.js';
 import { useToast } from '../../components/Toast.jsx';
 import { WifiModal } from '../../components/WifiModal.jsx';
 import { IS_APP } from '../../host.js';
-import { APP_SHA_SHORT, APK_URL, VERSION_URL } from '../../appversion.js';
+import { APP_SHA_SHORT, APK_URL, RELEASE_API } from '../../appversion.js';
 
 export function ConfigSection() {
   const { t } = useI18n();
@@ -294,9 +294,10 @@ function UpdateCard() {
     setAppChecking(true);
     setAppMsg(t('js_upd_checking'));
     try {
-      const r = await fetch(`${VERSION_URL}?_=${Date.now()}`, { cache: 'no-store' });
+      const r = await fetch(`${RELEASE_API}?_=${Date.now()}`, { cache: 'no-store' });
       if (!r.ok) throw new Error(String(r.status));
-      const latest = ((await r.json()).sha || '').slice(0, 7);
+      const m = ((await r.json()).body || '').match(/[0-9a-f]{7,40}/i);
+      const latest = m ? m[0].slice(0, 7) : '';
       const isNew = !!latest && latest !== APP_SHA_SHORT;
       setAppAvail(isNew);
       setAppMsg(isNew ? t('appupd_available') : t('appupd_current'));

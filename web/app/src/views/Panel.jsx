@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { useStatus } from '../status.jsx';
 import { useI18n } from '../i18n.jsx';
 import { apiGet, apiPost } from '../api.js';
-import { lmsBase } from '../host.js';
+import { lmsArt } from '../host.js';
 import { primary, srcSub } from '../util.js';
 import { Eq } from '../components/Eq.jsx';
 import { Collapsible } from '../components/Collapsible.jsx';
@@ -39,15 +39,14 @@ export function Panel() {
 
 function NowTab() {
   const { status } = useStatus();
-  const { t, lmsPort } = useI18n();
+  const { t } = useI18n();
   const p = primary(status);
   const playing = !!(p && p.playing);
 
-  // LMS serves the current track cover itself; other sources have no art.
+  // LMS serves the current track cover; proxied through the panel (see lmsArt).
   const artUrl = (p && p.id === 'lms' && p.playing && status && status.lms_playerid)
-    ? `${lmsBase(lmsPort)}/music/current/cover.jpg`
-      + `?player=${encodeURIComponent(status.lms_playerid)}`
-      + `&_t=${encodeURIComponent(p.detail || '')}`
+    ? lmsArt(`/music/current/cover.jpg?player=${encodeURIComponent(status.lms_playerid)}`
+      + `&_t=${encodeURIComponent(p.detail || '')}`)
     : '';
 
   return (

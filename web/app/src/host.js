@@ -33,22 +33,16 @@ export function apiUrl(path) {
   return base ? base + path : path;
 }
 
-// LMS serves artwork/icons on its own web port (9000), not the panel's (8787).
-// Build that origin from the chosen device — same host, different port (on the
-// web build, from the current page).
-export function lmsBase(port) {
-  const host = base
-    ? base.replace(/^https?:\/\//, '').replace(/:\d+$/, '')
-    : location.hostname;
-  return `http://${host}:${port}`;
+// LMS artwork/icons live on the LMS web port (9000), which the phone often
+// cannot reach (bound locally / cleartext-blocked / not on the tailnet). Route
+// them through the panel's own origin instead — it proxies to LMS on localhost.
+export function lmsArt(path) {
+  return apiUrl('/api/lms/art?path=' + encodeURIComponent(path));
 }
 
-// Resolve an LMS icon path: absolute URLs pass through, LMS-relative paths
-// (/imageproxy/…, /plugins/…) get the LMS origin.
-export function lmsIcon(icon, port) {
-  if (!icon) return '';
-  if (/^https?:\/\//.test(icon)) return icon;
-  return lmsBase(port) + (icon.startsWith('/') ? icon : '/' + icon);
+// Resolve an LMS icon path (relative or absolute) to a panel-proxied URL.
+export function lmsIcon(icon) {
+  return icon ? lmsArt(icon) : '';
 }
 
 // Drop the current device and reload — sends the app back to the picker.
