@@ -1,4 +1,4 @@
-package org.synchrofazotron.panel;
+package com.synchrofazotron.panel;
 
 import com.getcapacitor.BridgeActivity;
 
