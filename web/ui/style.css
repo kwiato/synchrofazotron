@@ -184,14 +184,7 @@ body {
   min-height: 100vh;
 }
 body.has-playerbar {
-  display: flex;
-  flex-direction: column;
-}
-body.has-playerbar .wrap-wide, body.has-playerbar .stage, body.has-playerbar .route {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+  padding-bottom: var(--spacer-xl);
 }
 
 .wrap, .wrap-wide {
@@ -714,14 +707,6 @@ code {
     height: 100%;
   }
 }
-.nowfill {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 0;
-}
-
 .now {
   text-align: center;
   padding: var(--spacer-2xs) 0 2px;
@@ -772,7 +757,9 @@ code {
 }
 
 .playerbar {
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
   z-index: 30;
   padding: 0 var(--spacer-xs) calc(var(--spacer-xs) + env(safe-area-inset-bottom, 0px));

@@ -1,0 +1,16 @@
+#!/bin/sh
+# Built output is owned by CI: build-panel.yml rebuilds web/app/dist and compiles
+# web/ui/style.css on every push to main and commits them back (install.sh then
+# fetches them from main by fixed raw URL). Hand-committing them in a branch is
+# what produces merge conflicts on the minified bundle — so block it here.
+#
+# Enable this hook once per clone:  git config core.hooksPath .githooks
+# CI never sets core.hooksPath, so this never runs there.
+blocked=$(git diff --cached --name-only | grep -E '^web/app/dist/|^web/ui/style\.css$')
+if [ -n "$blocked" ]; then
+  echo "✗ Refusing to commit built output — CI (build-panel.yml) owns it on main:"
+  echo "$blocked" | sed 's/^/    /'
+  echo "  Unstage it:  git restore --staged web/app/dist web/ui/style.css"
+  echo "  Override once (rarely needed):  git commit --no-verify"
+  exit 1
+fi
