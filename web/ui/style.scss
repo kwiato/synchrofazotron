@@ -472,7 +472,8 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
 .tbtn {
   flex: none; width: 52px; height: 44px; border: var(--bw) solid var(--border);
   border-radius: 12px; background: var(--card-2); color: var(--text);
-  font-size: 1.15rem; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
   &:hover { border-color: var(--border-hi); }
   &.playing {
     background: var(--grad); border-color: transparent;
@@ -627,15 +628,19 @@ input[type=checkbox] { width: auto; margin: 0 var(--spacer-2xs) 0 0; }
 
 .vlabel {
   display: block; margin: var(--spacer-xs) 0 2px; color: var(--text-2); font-size: .95rem;
-  input[type=range] { width: 100%; margin: var(--spacer-3xs) 0 0; padding: 0; border: 0; background: none; }
+  input[type=range] { width: 100%; margin: var(--spacer-3xs) 0 0; }
 }
 
 input[type=range] {
   -webkit-appearance: none; appearance: none; height: 26px;
+  // undo the shared text-input chrome — a range is track + thumb, nothing else
+  padding: 0; border: 0; background: none;
+  &:focus { border: 0; box-shadow: none; }
   &::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--range-track); }
   &::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
-    width: 18px; height: 18px; border-radius: 50%; margin-top: -var(--spacer-2xs);
+    width: 18px; height: 18px; border-radius: 50%;
+    margin-top: -7px;  // (4px track − 18px thumb) / 2 — centers the thumb on the track
     background: var(--grad); box-shadow: 0 0 10px var(--glow-cyan); border: 0;
   }
   &::-moz-range-track { height: 4px; border-radius: 2px; background: var(--range-track); }

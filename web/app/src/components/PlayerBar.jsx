@@ -60,7 +60,7 @@ export function PlayerBar() {
                       <button class={'tbtn' + (x.playing ? ' playing' : '')}
                               disabled={off} title={off ? t('js_ctrl_hint') : ''}
                               onClick={() => !off && ctrl(x.id)}>
-                        {x.playing ? '⏸' : '▶'}
+                        <i class={'ico ' + (x.playing ? 'ico-pause' : 'ico-play')} aria-hidden="true"></i>
                       </button>
                     </div>
                   );

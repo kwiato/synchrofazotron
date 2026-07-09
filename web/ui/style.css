@@ -681,7 +681,9 @@ code {
   border-radius: 12px;
   background: var(--card-2);
   color: var(--text);
-  font-size: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 .tbtn:hover {
@@ -967,15 +969,19 @@ input[type=checkbox] {
 .vlabel input[type=range] {
   width: 100%;
   margin: var(--spacer-3xs) 0 0;
-  padding: 0;
-  border: 0;
-  background: none;
 }
 
 input[type=range] {
   -webkit-appearance: none;
   appearance: none;
   height: 26px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+input[type=range]:focus {
+  border: 0;
+  box-shadow: none;
 }
 input[type=range]::-webkit-slider-runnable-track {
   height: 4px;
@@ -988,7 +994,7 @@ input[type=range]::-webkit-slider-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  margin-top: -var(--spacer-2xs);
+  margin-top: -7px;
   background: var(--grad);
   box-shadow: 0 0 10px var(--glow-cyan);
   border: 0;
