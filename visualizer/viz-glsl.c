@@ -226,11 +226,19 @@ int main(int argc, char **argv) {
     drmEventContext evctx = { .version = 2, .page_flip_handler = flip_handler };
     struct gbm_bo *bo_prev = NULL;
     int first = 1;
+    struct timespec fps_t = t0; int fps_n = 0;   /* fps log (every ~2 s -> stderr) */
 
     while (running) {
         poll_stdin();
         clock_gettime(CLOCK_MONOTONIC, &t);
         float tt = (t.tv_sec - t0.tv_sec) + (t.tv_nsec - t0.tv_nsec) * 1e-9f;
+
+        fps_n++;
+        float fel = (t.tv_sec - fps_t.tv_sec) + (t.tv_nsec - fps_t.tv_nsec) * 1e-9f;
+        if (fel >= 2.0f) {
+            fprintf(stderr, "viz-glsl: %.1f fps\n", fps_n / fel);
+            fps_n = 0; fps_t = t;
+        }
 
         if (loc_res  >= 0) glUniform2f(loc_res, mode.hdisplay, mode.vdisplay);
         if (loc_time >= 0) glUniform1f(loc_time, tt);
