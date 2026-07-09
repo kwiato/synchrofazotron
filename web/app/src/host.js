@@ -33,6 +33,24 @@ export function apiUrl(path) {
   return base ? base + path : path;
 }
 
+// LMS serves artwork/icons on its own web port (9000), not the panel's (8787).
+// Build that origin from the chosen device — same host, different port (on the
+// web build, from the current page).
+export function lmsBase(port) {
+  const host = base
+    ? base.replace(/^https?:\/\//, '').replace(/:\d+$/, '')
+    : location.hostname;
+  return `http://${host}:${port}`;
+}
+
+// Resolve an LMS icon path: absolute URLs pass through, LMS-relative paths
+// (/imageproxy/…, /plugins/…) get the LMS origin.
+export function lmsIcon(icon, port) {
+  if (!icon) return '';
+  if (/^https?:\/\//.test(icon)) return icon;
+  return lmsBase(port) + (icon.startsWith('/') ? icon : '/' + icon);
+}
+
 // Drop the current device and reload — sends the app back to the picker.
 export function switchDevice() {
   setApiBase('');

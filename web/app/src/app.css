@@ -84,31 +84,76 @@
 
 /* Device picker (app build only) — shown before a device is chosen, so it
    stands alone without the header/player chrome. */
-.connect { padding-top: 32px; }
-.connect-brand { display: flex; justify-content: center; margin-bottom: 10px; }
+.connect { padding-top: var(--spacer-base); }
+.connect-brand { display: flex; justify-content: center; margin-bottom: var(--spacer-xs); }
 .connect-brand .brand-mark { width: 52px; height: 52px; }
 .connect-tag {
-  text-align: center; margin: 0 0 18px; font-size: 1.15rem; font-weight: 300;
+  text-align: center; margin: 0 0 var(--spacer-sm); font-size: 1.15rem; font-weight: 300;
   letter-spacing: .01em; color: var(--text);
 }
 .device-row {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-  width: 100%; padding: 13px 14px; margin: 6px 0; border: 1px solid var(--card-border);
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--spacer-xs);
+  width: 100%; padding: var(--spacer-xs); margin: var(--spacer-2xs) 0;
+  border: 1px solid var(--card-border);
   border-radius: 12px; background: var(--panel, transparent); color: var(--text);
   cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent;
 }
 .device-row:disabled { opacity: .55; }
 .device-name { font-size: 1rem; }
 .device-addr { font-size: .82rem; }
-.connect-manual-label { text-align: center; margin: 18px 0 8px; font-size: .85rem; }
-.connect-manual { display: flex; gap: 8px; }
+.connect-manual-label { text-align: center; margin: var(--spacer-sm) 0 var(--spacer-2xs); font-size: .85rem; }
+.connect-manual { display: flex; gap: var(--spacer-2xs); }
 .connect-manual .in {
-  flex: 1 1 auto; min-width: 0; padding: 11px 12px; border-radius: 10px;
+  flex: 1 1 auto; min-width: 0; padding: var(--spacer-xs); border-radius: 10px;
   border: 1px solid var(--card-border); background: var(--panel, transparent);
   color: var(--text); font-size: 1rem;
 }
 .connect-manual .btn { flex: none; }
-.connect-err { text-align: center; color: var(--hot, #e66); margin: 10px 0 0; font-size: .88rem; }
+.connect-err { text-align: center; color: var(--hot, #e66); margin: var(--spacer-xs) 0 0; font-size: .88rem; }
+
+/* LMS radio browser — icon list of folders/stations with a back row. */
+.lms { margin-top: var(--spacer-3xs); }
+.lms-note { text-align: center; padding: var(--spacer-sm) 0; }
+.lms-search {
+  width: 100%; box-sizing: border-box; margin: 0 0 var(--spacer-xs);
+  padding: var(--spacer-xs); border-radius: 10px; border: 1px solid var(--card-border);
+  background: var(--panel, transparent); color: var(--text); font-size: 1rem;
+}
+.lms-back {
+  display: inline-flex; align-items: center; gap: var(--spacer-3xs);
+  margin: 0 0 var(--spacer-2xs); padding: var(--spacer-2xs) var(--spacer-xs) var(--spacer-2xs) var(--spacer-3xs);
+  border: 0; background: none; cursor: pointer;
+  color: var(--muted); font-size: .95rem; -webkit-tap-highlight-color: transparent;
+}
+.lms-back:active { color: var(--text); }
+.lms-list { display: flex; flex-direction: column; }
+.lms-row {
+  display: flex; align-items: center; gap: var(--spacer-xs); width: 100%;
+  padding: var(--spacer-2xs) var(--spacer-3xs); border: 0;
+  border-bottom: 1px solid var(--card-border);
+  background: none; color: var(--text); cursor: pointer; text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.lms-row:active { background: var(--card-border); border-radius: 8px; }
+.lms-ico {
+  flex: none; width: 38px; height: 38px; border-radius: 7px; object-fit: cover;
+  background: var(--card-border);
+}
+.lms-ico-ph {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; color: var(--muted);
+}
+.lms-title {
+  flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-size: .98rem;
+}
+.lms-act {
+  flex: none; border: 0; background: none; cursor: pointer; font-size: 1.15rem;
+  padding: var(--spacer-3xs) var(--spacer-2xs); color: var(--muted); line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+.lms-act:active { color: var(--text); }
+.lms-chev { flex: none; color: var(--muted); font-size: 1.2rem; padding-right: 2px; }
 
 /* Empty / unavailable state: big centered icon + thin larger text. */
 .empty {

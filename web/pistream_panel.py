@@ -23,6 +23,7 @@ import sys
 import threading
 import time
 import urllib.request
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # ---------------------------------------------------------------------------
@@ -105,6 +106,18 @@ STR = {
         "settings_link_title": "Settings",
         "tab_now": "Now playing",
         "tab_viz": "Visualizer",
+        "tab_radio": "Radio",
+        "radio_browse": "Browse",
+        "radio_search": "Search",
+        "radio_fav": "Favorites",
+        "radio_search_ph": "Search stations, genres…",
+        "radio_empty": "Nothing here.",
+        "radio_fav_empty": "No favorites yet. Tap the star on a station to add it.",
+        "radio_loading": "Loading…",
+        "radio_added": "Added to favorites",
+        "radio_removed": "Removed from favorites",
+        "radio_play_err": "Could not play that station",
+        "radio_unavailable": "Lyrion Music Server is not reachable.",
         "pair_short": "Pair",
         "wifi_none_short": "Wi-Fi",
         "wifi_header_title": "Wi-Fi — open network settings",
@@ -355,6 +368,18 @@ STR = {
         "settings_link_title": "Ustawienia",
         "tab_now": "Teraz gra",
         "tab_viz": "Wizualizer",
+        "tab_radio": "Radio",
+        "radio_browse": "Przeglądaj",
+        "radio_search": "Szukaj",
+        "radio_fav": "Ulubione",
+        "radio_search_ph": "Szukaj stacji, gatunków…",
+        "radio_empty": "Nic tu nie ma.",
+        "radio_fav_empty": "Brak ulubionych. Tapnij gwiazdkę przy stacji, żeby dodać.",
+        "radio_loading": "Ładowanie…",
+        "radio_added": "Dodano do ulubionych",
+        "radio_removed": "Usunięto z ulubionych",
+        "radio_play_err": "Nie udało się odtworzyć tej stacji",
+        "radio_unavailable": "Lyrion Music Server jest nieosiągalny.",
         "pair_short": "Paruj",
         "wifi_none_short": "Wi-Fi",
         "wifi_header_title": "Wi-Fi — otwórz ustawienia sieci",
@@ -1976,6 +2001,144 @@ def _lms_state():
         return None
 
 
+# --- LMS radio browsing (TuneIn) --------------------------------------------
+# TuneIn is a SlimBrowse/OPML tree. `radios` lists the top menu (Local Radio,
+# Music, Podcasts, ...); `<verb> items ... menu:radio` walks each branch. Items
+# are folders (browse deeper by item_id) or stations (type:audio, play by
+# item_id). A station carries presetParams.favorites_url/_title/icon, which is
+# exactly what `favorites add` needs — so stations can be starred.
+_LMS_VERBS = {"presets", "local", "music", "sports", "news", "talk",
+              "location", "language", "podcast", "search"}
+
+
+def _lms_pid():
+    global _lms_playerid
+    if not _lms_playerid:
+        loop = _lms_request(["", ["players", "0", "10"]]).get("players_loop", [])
+        if loop:
+            _lms_playerid = loop[0]["playerid"]
+    return _lms_playerid or ""
+
+
+def _lms_item_id(it):
+    """item_id lives in params (stations) or in the go/play action (folders)."""
+    p = it.get("params") or {}
+    if p.get("item_id"):
+        return str(p["item_id"])
+    actions = it.get("actions") or {}
+    for k in ("go", "play"):
+        ap = (actions.get(k) or {}).get("params") or {}
+        if ap.get("item_id"):
+            return str(ap["item_id"])
+    return ""
+
+
+def _lms_icon(it):
+    pp = it.get("presetParams") or {}
+    return it.get("icon") or it.get("image") or pp.get("icon") or ""
+
+
+def _lms_norm_items(result):
+    items = []
+    for it in result.get("item_loop", []):
+        text = it.get("text") or it.get("name") or ""
+        is_audio = it.get("type") == "audio" or str(it.get("isaudio")) == "1"
+        pp = it.get("presetParams") or {}
+        fav = None
+        if pp.get("favorites_url"):
+            fav = {"url": pp["favorites_url"],
+                   "title": pp.get("favorites_title") or text.split("\n", 1)[0].strip(),
+                   "icon": pp.get("icon") or ""}
+        items.append({
+            "title": text.split("\n", 1)[0].strip(),
+            "icon": _lms_icon(it),
+            "playable": bool(is_audio),
+            "browsable": not is_audio,
+            "item_id": _lms_item_id(it),
+            "fav": fav,
+        })
+    return {"title": result.get("title", ""), "items": items}
+
+
+def _lms_radio_root():
+    res = _lms_request([_lms_pid(), ["radios", "0", "50"]])
+    items = []
+    for it in res.get("radioss_loop", []):
+        verb = it.get("cmd")
+        if verb not in _LMS_VERBS or verb == "search":   # search has its own box
+            continue
+        items.append({"title": it.get("name", ""), "icon": it.get("icon", ""),
+                      "verb": verb, "browsable": True, "playable": False})
+    return {"title": "Radio", "items": items}
+
+
+def _lms_radio_browse(verb, item_id="", start=0, count=300):
+    if verb not in _LMS_VERBS:
+        return {"title": "", "items": []}
+    params = [verb, "items", str(start), str(count), "menu:radio"]
+    if item_id:
+        params.append("item_id:" + item_id)
+    out = _lms_norm_items(_lms_request([_lms_pid(), params]))
+    out["verb"] = verb
+    return out
+
+
+def _lms_radio_search(q, start=0, count=100):
+    if not q.strip():
+        return {"title": "", "items": [], "verb": "search"}
+    params = ["search", "items", str(start), str(count), "menu:radio", "search:" + q]
+    out = _lms_norm_items(_lms_request([_lms_pid(), params]))
+    out["verb"] = "search"
+    return out
+
+
+def _lms_radio_play(verb, item_id, add=False):
+    if verb not in _LMS_VERBS or not item_id:
+        return {"ok": False}
+    action = "add" if add else "play"
+    _lms_request([_lms_pid(), [verb, "playlist", action,
+                               "menu:" + verb, "item_id:" + item_id]])
+    return {"ok": True}
+
+
+def _lms_favorites(item_id="", start=0, count=300):
+    params = ["favorites", "items", str(start), str(count)]
+    if item_id:
+        params.append("item_id:" + item_id)
+    res = _lms_request(["", params])
+    items = []
+    for it in res.get("loop_loop", []):
+        is_audio = str(it.get("isaudio")) == "1" or it.get("type") == "audio"
+        items.append({"title": it.get("name", ""), "icon": _lms_icon(it),
+                      "playable": bool(is_audio), "browsable": bool(it.get("hasitems")),
+                      "id": str(it.get("id", "")), "url": it.get("url", "")})
+    return {"title": res.get("title", ""), "items": items}
+
+
+def _lms_fav_play(fav_id):
+    if not fav_id:
+        return {"ok": False}
+    _lms_request([_lms_pid(), ["favorites", "playlist", "play", "item_id:" + fav_id]])
+    return {"ok": True}
+
+
+def _lms_fav_add(url, title, icon=""):
+    if not url:
+        return {"ok": False}
+    params = ["favorites", "add", "url:" + url, "title:" + (title or url)]
+    if icon:
+        params.append("icon:" + icon)
+    _lms_request(["", params])
+    return {"ok": True}
+
+
+def _lms_fav_remove(fav_id):
+    if not fav_id:
+        return {"ok": False}
+    _lms_request(["", ["favorites", "delete", "item_id:" + fav_id]])
+    return {"ok": True}
+
+
 def _bt_streams():
     """List of A2DP streams: [{'mac','running'}] (Running=true => actually playing)."""
     streams = []
@@ -2436,10 +2599,33 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/i18n":
             self._send(200, json.dumps(_i18n_payload(self.headers.get("Host", ""))),
                        "application/json")
+        elif self.path.startswith("/api/lms/"):
+            self._send(200, json.dumps(self._lms_get()), "application/json",
+                       no_cache=True)
         elif self.path == "/healthz":
             self._send(200, "ok", "text/plain")
         else:
             self._send(404, "not found", "text/plain")
+
+    def _lms_get(self):
+        u = urllib.parse.urlparse(self.path)
+        q = urllib.parse.parse_qs(u.query)
+
+        def g(key, default=""):
+            return (q.get(key) or [default])[0]
+
+        try:
+            if u.path == "/api/lms/radio":
+                return _lms_radio_root()
+            if u.path == "/api/lms/radio/browse":
+                return _lms_radio_browse(g("verb"), g("item_id"))
+            if u.path == "/api/lms/radio/search":
+                return _lms_radio_search(g("q"))
+            if u.path == "/api/lms/favorites":
+                return _lms_favorites(g("item_id"))
+        except Exception:  # noqa: BLE001 — LMS down / unexpected shape
+            return {"items": [], "error": "lms"}
+        return {"items": [], "error": "unknown"}
 
     def do_POST(self):
         if self.path == "/api/pair":
@@ -2551,8 +2737,27 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps({"ok": ok, "lang": _lang,
                                         "message": T("lang_set") if ok else ""}),
                        "application/json")
+        elif self.path.startswith("/api/lms/"):
+            self._send(200, json.dumps(self._lms_post(self.path, self._json_body())),
+                       "application/json")
         else:
             self._send(404, "not found", "text/plain")
+
+    def _lms_post(self, path, b):
+        try:
+            if path == "/api/lms/radio/play":
+                return _lms_radio_play(str(b.get("verb", "")), str(b.get("item_id", "")),
+                                       bool(b.get("add")))
+            if path == "/api/lms/favorites/play":
+                return _lms_fav_play(str(b.get("id", "")))
+            if path == "/api/lms/favorites/add":
+                return _lms_fav_add(str(b.get("url", "")), str(b.get("title", "")),
+                                    str(b.get("icon", "")))
+            if path == "/api/lms/favorites/remove":
+                return _lms_fav_remove(str(b.get("id", "")))
+        except Exception:  # noqa: BLE001 — LMS down / unexpected shape
+            return {"ok": False, "error": "lms"}
+        return {"ok": False, "error": "unknown"}
 
     def log_message(self, *args):  # keep the logs quiet
         pass

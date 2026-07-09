@@ -2,17 +2,21 @@ import { useEffect, useState } from 'preact/hooks';
 import { useStatus } from '../status.jsx';
 import { useI18n } from '../i18n.jsx';
 import { apiGet, apiPost } from '../api.js';
+import { lmsBase } from '../host.js';
 import { primary, srcSub } from '../util.js';
 import { Eq } from '../components/Eq.jsx';
 import { Collapsible } from '../components/Collapsible.jsx';
 import { Tabs } from '../components/Tabs.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
+import { RadioTab } from './Radio.jsx';
 
-// Main view: the Now / Visualizer tabs. Ported from panel.js.
+// Main view: the Now / Radio / Visualizer tabs. Ported from panel.js.
+const TABS = new Set(['now', 'radio', 'viz']);
+
 export function Panel() {
   const { t } = useI18n();
   const [tab, setTab] = useState(() => {
-    try { return localStorage.getItem('paneltab') === 'viz' ? 'viz' : 'now'; }
+    try { const s = localStorage.getItem('paneltab'); return TABS.has(s) ? s : 'now'; }
     catch { return 'now'; }
   });
   const pick = (name) => {
@@ -22,9 +26,13 @@ export function Panel() {
 
   return (
     <>
-      <Tabs items={[{ id: 'now', label: t('tab_now') }, { id: 'viz', label: t('tab_viz') }]}
-            active={tab} onChange={pick} />
-      {tab === 'now' ? <NowTab /> : <VizTab />}
+      <Tabs active={tab} onChange={pick}
+            items={[{ id: 'now', label: t('tab_now') },
+                    { id: 'radio', label: t('tab_radio') },
+                    { id: 'viz', label: t('tab_viz') }]} />
+      {tab === 'now' && <NowTab />}
+      {tab === 'radio' && <RadioTab />}
+      {tab === 'viz' && <VizTab />}
     </>
   );
 }
@@ -37,7 +45,7 @@ function NowTab() {
 
   // LMS serves the current track cover itself; other sources have no art.
   const artUrl = (p && p.id === 'lms' && p.playing && status && status.lms_playerid)
-    ? `http://${location.hostname}:${lmsPort}/music/current/cover.jpg`
+    ? `${lmsBase(lmsPort)}/music/current/cover.jpg`
       + `?player=${encodeURIComponent(status.lms_playerid)}`
       + `&_t=${encodeURIComponent(p.detail || '')}`
     : '';
