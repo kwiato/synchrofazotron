@@ -15,7 +15,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI (release-play.yml) injects a monotonic code + the tag as the name;
         // local/debug builds fall back to 1 / 1.0.
-        versionCode (System.getenv("ANDROID_VERSION_CODE") ?: "1").toInteger()
+        def envVersionCode = System.getenv("ANDROID_VERSION_CODE")
+        versionCode envVersionCode ? envVersionCode.toInteger() : 1
         versionName System.getenv("ANDROID_VERSION_NAME") ?: "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
