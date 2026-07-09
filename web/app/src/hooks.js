@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { apiGet, apiPost } from './api.js';
+import { apiUrl } from './host.js';
 
 // Fetch a JSON endpoint on mount and (optionally) on an interval. Returns the
 // last payload plus a manual reload(). Last value is kept on error, matching the
@@ -25,7 +26,7 @@ export function watchComeBack(done) {
   const started = Date.now();
   const iv = setInterval(async () => {
     try {
-      const r = await fetch('/healthz', { cache: 'no-store' });
+      const r = await fetch(apiUrl('/healthz'), { cache: 'no-store' });
       if (r.ok && wentDown) { clearInterval(iv); done(); return; }
     } catch { wentDown = true; }        // unreachable -> restarting
     if (Date.now() - started > 240000) { clearInterval(iv); done(); }

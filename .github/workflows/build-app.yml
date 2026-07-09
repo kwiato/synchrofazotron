@@ -1,0 +1,79 @@
+# Builds the Android APK for the mobile shell (web/app + Capacitor). This
+# machine and the Pi have no Android toolchain, so — like build-panel.yml builds
+# the web bundle here — the APK is built in CI. Every run uploads the APK as a
+# workflow artifact; pushes to main also publish it to the `android-latest`
+# prerelease so it can be installed straight from the phone (stable URL).
+name: Build app (Android APK)
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main, mobile-app]
+    paths:
+      - 'web/app/src/**'
+      - 'web/app/android/**'
+      - 'web/app/index.html'
+      - 'web/app/vite.config.js'
+      - 'web/app/capacitor.config.json'
+      - 'web/app/.env.capacitor'
+      - 'web/app/package.json'
+      - 'web/app/package-lock.json'
+      - 'web/ui/style.scss'
+      - '.github/workflows/build-app.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'   # Capacitor 7 compiles its libs against Java 21
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web/app
+        run: npm ci
+
+      - name: Build the web bundle + sync into the native project
+        working-directory: web/app
+        run: npm run cap:sync
+
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
+      - name: Assemble debug APK
+        working-directory: web/app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: synchrofazotron-debug-apk
+          path: web/app/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Publish to the android-latest prerelease (main only)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Android app (latest)
+          prerelease: true
+          files: web/app/android/app/build/outputs/apk/debug/app-debug.apk

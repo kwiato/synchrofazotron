@@ -1,6 +1,7 @@
 import { useRef, useState } from 'preact/hooks';
 import { useI18n } from '../../i18n.jsx';
 import { apiPost } from '../../api.js';
+import { apiUrl } from '../../host.js';
 import { useApi } from '../../hooks.js';
 import { Collapsible } from '../../components/Collapsible.jsx';
 import { Tabs } from '../../components/Tabs.jsx';
@@ -72,7 +73,7 @@ export function VisualizerSection() {
         <div class="card">
           <h2><i class="ico ico-brush"></i> {t('viz_studio_head')}</h2>
           <p class="muted">{t('viz_studio_note')}</p>
-          <a class="btn sec" href="/studio" target="_blank" style="text-align:center;text-decoration:none;">
+          <a class="btn sec" href={apiUrl('/studio')} target="_blank" style="text-align:center;text-decoration:none;">
             {t('viz_studio_btn')}
           </a>
         </div>

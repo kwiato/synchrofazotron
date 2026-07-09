@@ -61,6 +61,26 @@ else
   echo "    bluetooth.service not present yet — bt-agent will start after reboot"
 fi
 
+echo "==> Advertising the panel over mDNS (_pistream._tcp) via avahi"
+if ! command -v avahi-daemon >/dev/null 2>&1; then
+  DEBIAN_FRONTEND=noninteractive apt-get install -y avahi-daemon
+fi
+MDNS_PORT="$(grep -oP 'PISTREAM_PANEL_PORT=\K[0-9]+' /etc/systemd/system/pistream-panel.service || echo 8787)"
+install -d /etc/avahi/services
+cat > /etc/avahi/services/pistream.service <<EOF
+<?xml version="1.0" standalone='no'?>
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+  <name replace-wildcards="yes">Synchrofazotron on %h</name>
+  <service>
+    <type>_pistream._tcp</type>
+    <port>${MDNS_PORT}</port>
+  </service>
+</service-group>
+EOF
+systemctl enable avahi-daemon >/dev/null 2>&1 || true
+systemctl restart avahi-daemon || true
+
 sleep 1
 systemctl --no-pager --full status pistream-panel.service | head -n 8 || true
 
