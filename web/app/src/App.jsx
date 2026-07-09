@@ -2,7 +2,6 @@ import { useState } from 'preact/hooks';
 import { I18nProvider } from './i18n.jsx';
 import { StatusProvider } from './status.jsx';
 import { ToastProvider } from './components/Toast.jsx';
-import { IslandProvider } from './components/Island.jsx';
 import { Shell } from './Shell.jsx';
 import { Connect } from './views/Connect.jsx';
 import { IS_APP, apiBase } from './host.js';
@@ -18,11 +17,9 @@ export function App() {
   return (
     <I18nProvider>
       <ToastProvider>
-        <IslandProvider>
-          <StatusProvider>
-            <Shell />
-          </StatusProvider>
-        </IslandProvider>
+        <StatusProvider>
+          <Shell />
+        </StatusProvider>
       </ToastProvider>
     </I18nProvider>
   );

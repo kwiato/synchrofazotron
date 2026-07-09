@@ -811,50 +811,27 @@ pre {
   display: flex; align-items: center; gap: var(--spacer-2xs);
   transition: opacity .25s, transform .25s;
   &.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-  // tone-tinted border for good/warn/danger results
-  &.good   { border-color: var(--good); }
-  &.warn   { border-color: var(--warn); }
-  &.danger { border-color: var(--danger); }
-}
-.toast-ico {
-  width: 18px; height: 18px; flex: none; display: inline-flex;
-  .toast.good & { color: var(--good); }
-  svg { width: 100%; height: 100%; }
-}
-
-// Inline variant: flows in the DOM under whatever fired it (e.g. an update
-// check result beneath its buttons) instead of floating at the top.
-.toast-inline {
-  position: static; left: auto; top: auto; z-index: auto;
-  transform: none; opacity: 1; pointer-events: auto;
-  display: inline-flex; max-width: 100%; text-align: left;
-  margin: var(--spacer-xs) 0 0; box-shadow: none;
-  font-weight: 500; font-size: .9rem;
-  animation: toast-in .25s ease;
-  .toast-ico { color: var(--good); }
-}
-@keyframes toast-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: none; }
 }
 
 // ---------------------------------------------------------------------------
-// Island — Dynamic-Island-style alert. A neutral dot drops in from the top,
-// expands sideways into a pill to reveal the message, takes on its tone colour
-// only near the END of the expansion, holds, then collapses in place and
-// "merges into the surface" leaving a single expanding ripple behind.
-// Fired imperatively via useIsland(); see app/src/components/Island.jsx.
+// Droplet — a morphing notification. A neutral dot expands sideways into a pill
+// to reveal its message, takes on its tone colour only near the END, then (on
+// close) collapses in place and "merges into the surface" leaving a ripple.
+// Controlled component; see app/src/components/Droplet.jsx. Two placements:
+// pinned centered at the top (default) or `.droplet-inline` flowing in the DOM.
+// Neutral (no tone) == a dark slate pill (readable in both themes) — used for
+// the "Updating…" spinner state before it resolves to a colour.
 // ---------------------------------------------------------------------------
-.island {
-  position: fixed; top: 16px; left: 50%; z-index: 70;
+.droplet {
+  --tone: #1b212c;                         // neutral pill (e.g. while "Updating…")
+  position: fixed; top: 16px; left: 0; right: 0; margin: 0 auto; z-index: 70;
   width: 13px; height: 13px; border-radius: 999px;
-  background: var(--text);                 // black on light themes, white on dark
-  color: #fff;                             // ink shown once it takes on a tone
+  background: var(--text);                 // dot: black on light themes, white on dark
+  color: #fff;
   overflow: hidden; white-space: nowrap;
   display: flex; align-items: center; justify-content: center;
   opacity: 0;
-  transform: translateX(-50%) translateY(-22px) scale(.5);
+  transform: translateY(-22px) scale(.5);
   box-shadow: 0 10px 30px rgba(0, 0, 0, .32);
   will-change: width, height, transform, background-color;
   transition:
@@ -869,50 +846,66 @@ pre {
   &[data-tone="warn"]   { --tone: var(--warn); }
   &[data-tone="danger"] { --tone: var(--danger); }
 
-  &.active { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  &.active { opacity: 1; transform: translateY(0) scale(1); }
   &.open {
-    width: var(--island-w, 200px); height: 42px; background: var(--tone);
+    width: var(--droplet-w, 200px); height: 42px; background: var(--tone);
     box-shadow: 0 12px 34px rgba(0, 0, 0, .38), 0 0 26px -4px var(--tone);
   }
-  &.leaving { width: 13px; height: 13px; background: var(--tone); }   // collapse in place
-  &.sinking { animation: island-merge .5s cubic-bezier(.4, 0, .2, 1) forwards; }
+  &.leaving { width: 13px; height: 13px; background: var(--tone); }
+  &.sinking { animation: droplet-merge .5s cubic-bezier(.4, 0, .2, 1) forwards; }
 }
-.island-inner {
+
+// Inline placement: sits in normal flow under whatever rendered it, left-
+// aligned, with a gentler drop-in (no fall from the top of the screen).
+.droplet-inline {
+  position: static; margin: var(--spacer-xs) 0 0;
+  transform: translateY(-6px) scale(.5);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
+  &.active { transform: translateY(0) scale(1); }
+}
+
+.droplet-inner {
   display: flex; align-items: center; gap: var(--spacer-2xs);
   padding: 0 var(--spacer-sm); font-weight: 600; font-size: .95rem;
   opacity: 0; transform: scale(.8);
   transition: opacity .2s ease .16s, transform .28s cubic-bezier(.34, 1.5, .5, 1) .16s;
 }
-.island.open .island-inner    { opacity: 1; transform: scale(1); }
-.island.leaving .island-inner { opacity: 0; transform: scale(.8); transition: opacity .12s ease; }
+.droplet.open .droplet-inner    { opacity: 1; transform: scale(1); }
+.droplet.leaving .droplet-inner { opacity: 0; transform: scale(.8); transition: opacity .12s ease; }
 
-.island-icon {
+.droplet-icon {
   width: 20px; height: 20px; flex: 0 0 auto;
   display: flex; align-items: center; justify-content: center;
 }
-.island-icon svg { width: 100%; height: 100%; stroke: #fff; }
-.island-icon .draw {                       // the mark draws itself once open
+.droplet-icon svg { width: 100%; height: 100%; stroke: #fff; }
+.droplet-icon .draw {                      // the mark draws itself once open
   stroke-dasharray: 22; stroke-dashoffset: 22;
   transition: stroke-dashoffset .34s ease .26s;
 }
-.island.open .island-icon .draw { stroke-dashoffset: 0; }
+.droplet.open .droplet-icon .draw { stroke-dashoffset: 0; }
 
-@keyframes island-merge {                  // the drop flattens on contact, then vanishes
-  0%   { transform: translateX(-50%) translateY(0)   scale(1);         opacity: 1; }
-  28%  { transform: translateX(-50%) translateY(2px) scale(1.35, .55); opacity: 1; }
-  55%  { transform: translateX(-50%) translateY(1px) scale(.7, 1.08);  opacity: .8; }
-  100% { transform: translateX(-50%) translateY(0)   scale(0);         opacity: 0; }
+// spinner swaps in for the icon while busy (the "Updating…" state)
+.droplet-spin { display: none; align-items: center; }
+.droplet.spin .droplet-spin { display: inline-flex; }
+.droplet.spin .droplet-icon { display: none; }
+.droplet-spin .spinner { margin: 0; }
+
+@keyframes droplet-merge {                 // the drop flattens on contact, then vanishes
+  0%   { transform: translateY(0)   scale(1);         opacity: 1; }
+  28%  { transform: translateY(2px) scale(1.35, .55); opacity: 1; }
+  55%  { transform: translateY(1px) scale(.7, 1.08);  opacity: .8; }
+  100% { transform: translateY(0)   scale(0);         opacity: 0; }
 }
 
-.island-ripple {                           // the wave it leaves on the "surface"
-  position: fixed; top: 22px; left: 50%; z-index: 69;
+.droplet-ripple {                          // the wave it leaves on the "surface"
+  position: fixed; z-index: 69;            // left/top set inline from the droplet's rect
   width: 20px; height: 20px; border-radius: 999px;
   border: 1px solid var(--text);
   transform: translate(-50%, -50%) scale(.35);
   opacity: 0; pointer-events: none;
-  animation: island-ripple .62s cubic-bezier(.22, .7, .3, 1) forwards;
+  animation: droplet-ripple .62s cubic-bezier(.22, .7, .3, 1) forwards;
 }
-@keyframes island-ripple {
+@keyframes droplet-ripple {
   0%   { opacity: .5; transform: translate(-50%, -50%) scale(.35); }
   100% { opacity: 0;  transform: translate(-50%, -50%) scale(3.4); }
 }

@@ -3,7 +3,8 @@ import { Browser } from '@capacitor/browser';
 import { useI18n } from '../../i18n.jsx';
 import { apiGet, apiPost } from '../../api.js';
 import { useApi, doReboot } from '../../hooks.js';
-import { useToast, InlineToast } from '../../components/Toast.jsx';
+import { useToast } from '../../components/Toast.jsx';
+import { Droplet } from '../../components/Droplet.jsx';
 import { WifiModal } from '../../components/WifiModal.jsx';
 import { IS_APP, apiBase, switchDevice } from '../../host.js';
 import { APP_SHA_SHORT, APK_URL, RELEASE_API } from '../../appversion.js';
@@ -321,14 +322,21 @@ export function AppearanceCard() {
   );
 }
 
+const iconFor = (tone) => (tone === 'danger' ? 'x' : tone === 'warn' ? 'dot' : 'check');
+
 function UpdateCard() {
   const { t } = useI18n();
-  const toast = useToast();
   const [msg, setMsg] = useState('');
   const [msgTone, setMsgTone] = useState('');
   const [checking, setChecking] = useState(false);
   const [running, setRunning] = useState(false);
+  const [topDrop, setTopDrop] = useState(null);        // top droplet {open,text,tone,icon,spinner}
   const timer = useRef(null);
+  const runTimers = useRef([]);
+  const closeTopLater = (closeMs, reloadMs) => {
+    runTimers.current.push(setTimeout(() => setTopDrop((d) => (d ? { ...d, open: false } : d)), closeMs));
+    if (reloadMs) runTimers.current.push(setTimeout(() => location.reload(), reloadMs));
+  };
   // App-update half (mobile shell only): compares the installed build's SHA
   // against the latest release's version.json; "install" hands the APK to the
   // system browser (which downloads it and fires the package installer).
@@ -359,8 +367,8 @@ function UpdateCard() {
   const poll = () => {
     if (timer.current) return;
     setRunning(true);
-    setMsg(''); setMsgTone('');                       // the run lives in the top toast
-    toast(t('js_upd_running'), { spinner: true, sticky: true });
+    setMsg(''); setMsgTone('');                       // the run lives in the top droplet
+    setTopDrop({ open: true, text: t('js_upd_running'), tone: '', icon: 'check', spinner: true });
     timer.current = setInterval(async () => {
       try {
         const j = await apiGet('/api/update');
@@ -369,10 +377,11 @@ function UpdateCard() {
         timer.current = null;
         setRunning(false);
         if (j.failed) {
-          toast(t('js_upd_failed'), { tone: 'danger' });
+          setTopDrop({ open: true, text: t('js_upd_failed'), tone: 'danger', icon: 'x', spinner: false });
+          closeTopLater(2400);
         } else {
-          toast(t('js_upd_done'), { tone: 'good', duration: 1600 });
-          setTimeout(() => location.reload(), 1500);
+          setTopDrop({ open: true, text: t('js_upd_done'), tone: 'good', icon: 'check', spinner: false });
+          closeTopLater(1300, 2300);                  // show the check, ripple away, then reload
         }
       } catch { /* panel restarting mid-update — keep polling */ }
     }, 3000);
@@ -381,7 +390,10 @@ function UpdateCard() {
   // page opened while an update is already running -> resume the poll
   useEffect(() => {
     apiGet('/api/update').then((j) => { if (j.running) poll(); }).catch(() => {});
-    return () => timer.current && clearInterval(timer.current);
+    return () => {
+      if (timer.current) clearInterval(timer.current);
+      runTimers.current.forEach(clearTimeout);
+    };
   }, []);
 
   const check = async () => {
@@ -399,9 +411,16 @@ function UpdateCard() {
     if (!confirm(t('js_upd_confirm'))) return;
     try {
       const j = await apiPost('/api/update/run');
-      if (!j.ok) { toast(j.message || t('js_error'), { tone: 'danger' }); return; }
+      if (!j.ok) {
+        setTopDrop({ open: true, text: j.message || t('js_error'), tone: 'danger', icon: 'x', spinner: false });
+        closeTopLater(2400);
+        return;
+      }
       poll();
-    } catch { toast(t('js_conn_error'), { tone: 'danger' }); }
+    } catch {
+      setTopDrop({ open: true, text: t('js_conn_error'), tone: 'danger', icon: 'x', spinner: false });
+      closeTopLater(2400);
+    }
   };
 
   return (
@@ -412,7 +431,10 @@ function UpdateCard() {
         <button class="btn sec" disabled={checking} onClick={check}>{t('upd_check_btn')}</button>
         <button class="btn sec" disabled={running} onClick={run}>{t('upd_run_btn')}</button>
       </div>
-      {msg && <InlineToast key={msg} tone={msgTone}>{msg}</InlineToast>}
+      {msg && (
+        <Droplet inline open text={msg} tone={msgTone}
+                 spinner={checking} icon={iconFor(msgTone)} />
+      )}
 
       {IS_APP && (
         <>
@@ -422,8 +444,16 @@ function UpdateCard() {
             <button class="btn sec" disabled={appChecking} onClick={appCheck}>{t('upd_check_btn')}</button>
             <button class={'btn' + (appAvail ? '' : ' sec')} onClick={appRun}>{t('appupd_run_btn')}</button>
           </div>
-          {appMsg && <InlineToast key={appMsg} tone={appMsgTone}>{appMsg}</InlineToast>}
+          {appMsg && (
+            <Droplet inline open text={appMsg} tone={appMsgTone}
+                     spinner={appChecking} icon={iconFor(appMsgTone)} />
+          )}
         </>
+      )}
+
+      {topDrop && (
+        <Droplet open={topDrop.open} text={topDrop.text} tone={topDrop.tone}
+                 spinner={topDrop.spinner} icon={topDrop.icon} />
       )}
     </div>
   );

@@ -1324,65 +1324,14 @@ pre {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
-.toast.good {
-  border-color: var(--good);
-}
-.toast.warn {
-  border-color: var(--warn);
-}
-.toast.danger {
-  border-color: var(--danger);
-}
 
-.toast-ico {
-  width: 18px;
-  height: 18px;
-  flex: none;
-  display: inline-flex;
-}
-.toast.good .toast-ico {
-  color: var(--good);
-}
-.toast-ico svg {
-  width: 100%;
-  height: 100%;
-}
-
-.toast-inline {
-  position: static;
-  left: auto;
-  top: auto;
-  z-index: auto;
-  transform: none;
-  opacity: 1;
-  pointer-events: auto;
-  display: inline-flex;
-  max-width: 100%;
-  text-align: left;
-  margin: var(--spacer-xs) 0 0;
-  box-shadow: none;
-  font-weight: 500;
-  font-size: 0.9rem;
-  animation: toast-in 0.25s ease;
-}
-.toast-inline .toast-ico {
-  color: var(--good);
-}
-
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.island {
+.droplet {
+  --tone: #1b212c;
   position: fixed;
   top: 16px;
-  left: 50%;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
   z-index: 70;
   width: 13px;
   height: 13px;
@@ -1395,40 +1344,50 @@ pre {
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transform: translateX(-50%) translateY(-22px) scale(0.5);
+  transform: translateY(-22px) scale(0.5);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32);
   will-change: width, height, transform, background-color;
   transition: width 0.46s cubic-bezier(0.34, 1.42, 0.5, 1), height 0.4s cubic-bezier(0.34, 1.42, 0.5, 1), transform 0.4s cubic-bezier(0.34, 1.5, 0.5, 1), opacity 0.28s ease, background-color 0.3s ease 0.24s, box-shadow 0.3s ease;
 }
-.island[data-tone=good] {
+.droplet[data-tone=good] {
   --tone: var(--good);
 }
-.island[data-tone=warn] {
+.droplet[data-tone=warn] {
   --tone: var(--warn);
 }
-.island[data-tone=danger] {
+.droplet[data-tone=danger] {
   --tone: var(--danger);
 }
-.island.active {
+.droplet.active {
   opacity: 1;
-  transform: translateX(-50%) translateY(0) scale(1);
+  transform: translateY(0) scale(1);
 }
-.island.open {
-  width: var(--island-w, 200px);
+.droplet.open {
+  width: var(--droplet-w, 200px);
   height: 42px;
   background: var(--tone);
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38), 0 0 26px -4px var(--tone);
 }
-.island.leaving {
+.droplet.leaving {
   width: 13px;
   height: 13px;
   background: var(--tone);
 }
-.island.sinking {
-  animation: island-merge 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+.droplet.sinking {
+  animation: droplet-merge 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-.island-inner {
+.droplet-inline {
+  position: static;
+  margin: var(--spacer-xs) 0 0;
+  transform: translateY(-6px) scale(0.5);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+.droplet-inline.active {
+  transform: translateY(0) scale(1);
+}
+
+.droplet-inner {
   display: flex;
   align-items: center;
   gap: var(--spacer-2xs);
@@ -1440,18 +1399,18 @@ pre {
   transition: opacity 0.2s ease 0.16s, transform 0.28s cubic-bezier(0.34, 1.5, 0.5, 1) 0.16s;
 }
 
-.island.open .island-inner {
+.droplet.open .droplet-inner {
   opacity: 1;
   transform: scale(1);
 }
 
-.island.leaving .island-inner {
+.droplet.leaving .droplet-inner {
   opacity: 0;
   transform: scale(0.8);
   transition: opacity 0.12s ease;
 }
 
-.island-icon {
+.droplet-icon {
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
@@ -1460,44 +1419,59 @@ pre {
   justify-content: center;
 }
 
-.island-icon svg {
+.droplet-icon svg {
   width: 100%;
   height: 100%;
   stroke: #fff;
 }
 
-.island-icon .draw {
+.droplet-icon .draw {
   stroke-dasharray: 22;
   stroke-dashoffset: 22;
   transition: stroke-dashoffset 0.34s ease 0.26s;
 }
 
-.island.open .island-icon .draw {
+.droplet.open .droplet-icon .draw {
   stroke-dashoffset: 0;
 }
 
-@keyframes island-merge {
+.droplet-spin {
+  display: none;
+  align-items: center;
+}
+
+.droplet.spin .droplet-spin {
+  display: inline-flex;
+}
+
+.droplet.spin .droplet-icon {
+  display: none;
+}
+
+.droplet-spin .spinner {
+  margin: 0;
+}
+
+@keyframes droplet-merge {
   0% {
-    transform: translateX(-50%) translateY(0) scale(1);
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
   28% {
-    transform: translateX(-50%) translateY(2px) scale(1.35, 0.55);
+    transform: translateY(2px) scale(1.35, 0.55);
     opacity: 1;
   }
   55% {
-    transform: translateX(-50%) translateY(1px) scale(0.7, 1.08);
+    transform: translateY(1px) scale(0.7, 1.08);
     opacity: 0.8;
   }
   100% {
-    transform: translateX(-50%) translateY(0) scale(0);
+    transform: translateY(0) scale(0);
     opacity: 0;
   }
 }
-.island-ripple {
+.droplet-ripple {
   position: fixed;
-  top: 22px;
-  left: 50%;
   z-index: 69;
   width: 20px;
   height: 20px;
@@ -1506,10 +1480,10 @@ pre {
   transform: translate(-50%, -50%) scale(0.35);
   opacity: 0;
   pointer-events: none;
-  animation: island-ripple 0.62s cubic-bezier(0.22, 0.7, 0.3, 1) forwards;
+  animation: droplet-ripple 0.62s cubic-bezier(0.22, 0.7, 0.3, 1) forwards;
 }
 
-@keyframes island-ripple {
+@keyframes droplet-ripple {
   0% {
     opacity: 0.5;
     transform: translate(-50%, -50%) scale(0.35);
