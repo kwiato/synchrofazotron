@@ -43,7 +43,7 @@ function NowTab() {
     : '';
 
   return (
-    <section>
+    <section class="nowfill">
       {status && status.playing_count >= 2 && (
         <div class="card note">{t('warn_multi')}</div>
       )}

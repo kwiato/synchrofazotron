@@ -194,7 +194,13 @@ body {
   padding: var(--spacer-sm) var(--spacer-xs) var(--spacer-md);
   min-height: 100vh;
 
-  &.has-playerbar { padding-bottom: var(--spacer-xl); }
+  // The SPA lays its chrome out as a column so the routed view can claim the
+  // leftover height — the Now tab uses it to centre the cover in the viewport.
+  &.has-playerbar {
+    display: flex; flex-direction: column;
+
+    .wrap-wide, .stage, .route { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  }
 }
 
 .wrap, .wrap-wide { max-width: 1100px; margin: 0 auto; }
@@ -474,6 +480,9 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
 // ---------------------------------------------------------------------------
 // "Now playing" tab
 // ---------------------------------------------------------------------------
+// The Now tab fills the routed view's leftover height and centres its content,
+// so the cover sits in the middle of the screen rather than under the tabs.
+.nowfill { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
 .now { text-align: center; padding: var(--spacer-2xs) 0 2px; }
 .art {
   width: min(62vw, 250px); aspect-ratio: 1; margin: var(--spacer-xs) auto var(--spacer-sm);
@@ -508,7 +517,7 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
 // Player bar (sticky bottom)
 // ---------------------------------------------------------------------------
 .playerbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  position: sticky; bottom: 0; z-index: 30;
   padding: 0 var(--spacer-xs) calc(var(--spacer-xs) + env(safe-area-inset-bottom, 0px));
   pointer-events: none;
 }
