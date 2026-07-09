@@ -37,7 +37,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'   # Capacitor 7 compiles its libs against Java 21
 
       - uses: actions/setup-node@v4
         with:
