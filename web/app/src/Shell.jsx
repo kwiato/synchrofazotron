@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import { useRoute } from './router.jsx';
 import { Header } from './components/Header.jsx';
 import { PlayerBar } from './components/PlayerBar.jsx';
+import { PullSheet } from './components/PullSheet.jsx';
 import { Panel } from './views/Panel.jsx';
 import { Settings } from './views/Settings.jsx';
 
@@ -19,14 +20,16 @@ export function Shell() {
 
   return (
     <>
-      <div class="wrap-wide">
-        <Header />
-        <div class="stage">
-          <div class={'route route-enter-' + (forward ? 'fwd' : 'back')} key={path}>
-            <View />
+      <PullSheet>
+        <div class="wrap-wide">
+          <Header />
+          <div class="stage">
+            <div class={'route route-enter-' + (forward ? 'fwd' : 'back')} key={path}>
+              <View />
+            </div>
           </div>
         </div>
-      </div>
+      </PullSheet>
       <PlayerBar />
     </>
   );

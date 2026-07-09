@@ -118,6 +118,10 @@ STR = {
         "radio_removed": "Removed from favorites",
         "radio_play_err": "Could not play that station",
         "radio_unavailable": "Lyrion Music Server is not reachable.",
+        "st_wifi_off": "Not connected",
+        "st_bt_ready": "Ready",
+        "st_bt_off": "Off",
+        "st_bt_pairing": "Pairing…",
         "pair_short": "Pair",
         "wifi_none_short": "Wi-Fi",
         "wifi_header_title": "Wi-Fi — open network settings",
@@ -387,6 +391,10 @@ STR = {
         "radio_removed": "Usunięto z ulubionych",
         "radio_play_err": "Nie udało się odtworzyć tej stacji",
         "radio_unavailable": "Lyrion Music Server jest nieosiągalny.",
+        "st_wifi_off": "Brak sieci",
+        "st_bt_ready": "Gotowy",
+        "st_bt_off": "Wyłączony",
+        "st_bt_pairing": "Parowanie…",
         "pair_short": "Paruj",
         "wifi_none_short": "Wi-Fi",
         "wifi_header_title": "Wi-Fi — otwórz ustawienia sieci",
@@ -1554,14 +1562,17 @@ uniform float u_treble;
 void main() {
     vec2 p = (2.0 * gl_FragCoord.xy - u_resolution) / min(u_resolution.x, u_resolution.y);
     float aa = 2.0 / min(u_resolution.x, u_resolution.y);
-    float R = 0.55;
-    float thick = 0.028;
+    float R = 0.40;
+    float thick = 0.016;
     float ring = smoothstep(thick + aa, thick - aa, abs(length(p) - R));
     float a = u_time * 1.6;
     vec2 dc = R * vec2(cos(a), sin(a));
     float d = length(p - dc);
-    float border = smoothstep(0.075 + aa, 0.075 - aa, d);   // black rim = cut-out
-    float core = smoothstep(0.05 + aa, 0.05 - aa, d);        // white dot
+    float beat = 1.0 + 0.30 * u_bass;                       // dot swells on the beat
+    float rb = 0.094 * beat;
+    float rc = 0.066 * beat;
+    float border = smoothstep(rb + aa, rb - aa, d);         // black rim = cut-out
+    float core = smoothstep(rc + aa, rc - aa, d);           // white dot
     vec3 col = vec3(ring);
     col *= (1.0 - border);
     col = mix(col, vec3(1.0), core);
