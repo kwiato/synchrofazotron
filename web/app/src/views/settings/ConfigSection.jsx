@@ -16,8 +16,7 @@ export function ConfigSection() {
     <section class="active">
       <div class="sect-title">{t('nav_config')}</div>
       <div class="cardgrid">
-        {IS_APP && <DeviceCard />}
-        <NameCard />
+        <DeviceCard />
         <TailscaleCard />
         <UpdateCard />
         <RebootCard />
@@ -59,20 +58,10 @@ function ExperimentalCard() {
   );
 }
 
-// Which device the app is pointed at (app-only). Moved here from About; lets you
-// switch the receiving device without leaving Config.
+// One card for everything device: which device the app is pointed at (app-only,
+// with the switch button) and the device's broadcast name — merged from the old
+// separate Device / Name cards.
 function DeviceCard() {
-  const { t } = useI18n();
-  return (
-    <div class="card">
-      <h2><i class="ico ico-link"></i> {t('device_head')}</h2>
-      <p class="muted">{apiBase()}</p>
-      <button class="btn sec" onClick={switchDevice}>{t('switch_device')}</button>
-    </div>
-  );
-}
-
-function NameCard() {
   const { t, device } = useI18n();
   const [name, setName] = useState(device);
   const [msg, setMsg] = useState('');
@@ -94,7 +83,14 @@ function NameCard() {
 
   return (
     <div class="card">
-      <h2><i class="ico ico-cog"></i> {t('name_head')}</h2>
+      <h2><i class="ico ico-link"></i> {t('device_head')}</h2>
+      {IS_APP && (
+        <>
+          <p class="muted">{t('device_connected')}: <code>{apiBase()}</code></p>
+          <button class="btn sec" onClick={switchDevice}>{t('switch_device')}</button>
+          <div class="subhead muted">{t('name_head')}</div>
+        </>
+      )}
       <p class="muted">{t('name_note')}</p>
       <input value={name} maxLength={32} placeholder={t('name_ph')} autocomplete="off"
              onInput={(e) => setName(e.currentTarget.value)} />

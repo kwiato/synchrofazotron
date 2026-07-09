@@ -21,6 +21,9 @@ on:
       - 'web/app/package-lock.json'
       # the shared stylesheet is compiled from SCSS by the same build
       - 'web/ui/style.scss'
+      # panel changes auto-bump VERSION (the bot commit is [skip ci], so the
+      # bump itself cannot retrigger this workflow)
+      - 'web/pistream_panel.py'
       - '.github/workflows/build-panel.yml'
 
 permissions:
@@ -50,14 +53,31 @@ jobs:
         working-directory: web/app
         run: npm run build
 
-      - name: Commit the refreshed bundle / stylesheet if it changed
+      - name: Auto-bump the panel VERSION (patch)
         run: |
-          git add web/app/dist web/ui/style.css
+          # The About version sat frozen for months because bumping was manual.
+          # Every source change now bumps the patch part; minor/major stay a
+          # human decision (edit VERSION in web/pistream_panel.py).
+          python3 - <<'EOF'
+          import re, pathlib
+          p = pathlib.Path("web/pistream_panel.py")
+          src = p.read_text(encoding="utf-8")
+          def bump(m):
+              return f'VERSION = "{m[1]}.{m[2]}.{int(m[3]) + 1}"'
+          new, n = re.subn(r'VERSION = "(\d+)\.(\d+)\.(\d+)"', bump, src, count=1)
+          assert n == 1, "VERSION line not found"
+          p.write_text(new, encoding="utf-8")
+          print("bumped to", re.search(r'VERSION = "[^"]+"', new)[0])
+          EOF
+
+      - name: Commit the refreshed bundle / stylesheet / version if changed
+        run: |
+          git add web/app/dist web/ui/style.css web/pistream_panel.py
           if git diff --cached --quiet; then
-            echo "dist + style.css already up to date — nothing to commit"
+            echo "everything already up to date — nothing to commit"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "panel: rebuild /app bundle + style.css [skip ci]"
+          git commit -m "panel: rebuild /app bundle + bump version [skip ci]"
           git push

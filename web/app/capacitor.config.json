@@ -3,6 +3,7 @@
   "appName": "Synchrofazotron",
   "webDir": "dist-cap",
   "server": {
+    "androidScheme": "http",
     "cleartext": true
   },
   "android": {

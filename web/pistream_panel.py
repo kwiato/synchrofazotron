@@ -33,7 +33,8 @@ PORT = int(os.environ.get("PISTREAM_PANEL_PORT", "8787"))
 BIND = os.environ.get("PISTREAM_PANEL_BIND", "0.0.0.0")
 REPO = os.environ.get("PISTREAM_REPO", "kwiato/synchrofazotron")
 BRANCH = os.environ.get("PISTREAM_BRANCH", "main")
-VERSION = "0.70.0"                 # shown in the panel's About; bump on releases
+VERSION = "0.70.0"                 # About version; CI auto-bumps the patch part
+                                   # (build-panel.yml) — bump minor/major by hand
 
 _HOSTNAME = socket.gethostname() or "Synchrofazotron"
 # Runtime-changeable device identity. A name set from /settings is persisted to
@@ -123,6 +124,7 @@ STR = {
         "st_bt_off": "Off",
         "st_bt_pairing": "Pairing…",
         "device_head": "Device",
+        "device_connected": "Connected device",
         "switch_device": "Switch device",
         "pair_short": "Pair",
         "wifi_none_short": "Wi-Fi",
@@ -416,6 +418,7 @@ STR = {
         "st_bt_off": "Wyłączony",
         "st_bt_pairing": "Parowanie…",
         "device_head": "Urządzenie",
+        "device_connected": "Połączone urządzenie",
         "switch_device": "Zmień urządzenie",
         "pair_short": "Paruj",
         "wifi_none_short": "Wi-Fi",
@@ -3109,8 +3112,14 @@ class Handler(BaseHTTPRequestHandler):
             return {"ok": False, "error": "lms"}
         return {"ok": False, "error": "unknown"}
 
-    def log_message(self, *args):  # keep the logs quiet
-        pass
+    # Quiet by default; set PISTREAM_DEBUG_HTTP=1 on the service (systemctl
+    # edit) to log every request — handy when chasing what a phone app
+    # actually fetches (or doesn't).
+    debug_http = bool(os.environ.get("PISTREAM_DEBUG_HTTP"))
+
+    def log_message(self, fmt, *args):
+        if self.debug_http:
+            print(self.address_string() + " " + (fmt % args), flush=True)
 
 
 def main():
