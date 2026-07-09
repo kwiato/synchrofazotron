@@ -8,6 +8,7 @@ import { Droplet } from '../../components/Droplet.jsx';
 import { WifiModal } from '../../components/WifiModal.jsx';
 import { IS_APP, apiBase, switchDevice } from '../../host.js';
 import { APP_SHA_SHORT, APK_URL, RELEASE_API } from '../../appversion.js';
+import { ApkInstaller } from '../../apkinstaller.js';
 
 export function ConfigSection() {
   const { t } = useI18n();
@@ -338,12 +339,13 @@ function UpdateCard() {
     if (reloadMs) runTimers.current.push(setTimeout(() => location.reload(), reloadMs));
   };
   // App-update half (mobile shell only): compares the installed build's SHA
-  // against the latest release's version.json; "install" hands the APK to the
-  // system browser (which downloads it and fires the package installer).
+  // against the latest release; "install" downloads the APK natively (see
+  // apkinstaller.js) and fires the system package installer.
   const [appMsg, setAppMsg] = useState('');
   const [appMsgTone, setAppMsgTone] = useState('');
   const [appChecking, setAppChecking] = useState(false);
   const [appAvail, setAppAvail] = useState(false);
+  const [appBusy, setAppBusy] = useState(false);
 
   const appCheck = async () => {
     setAppChecking(true);
@@ -362,7 +364,33 @@ function UpdateCard() {
     }
     setAppChecking(false);
   };
-  const appRun = async () => { try { await Browser.open({ url: APK_URL }); } catch { /* ignore */ } };
+  const appRun = async () => {
+    setAppBusy(true);
+    let sub = null;
+    try {
+      // Android 8+ needs a one-time per-app "install unknown apps" grant; send
+      // the user to the system screen and let them tap the button again.
+      if (!(await ApkInstaller.canInstall()).allowed) {
+        setAppMsg(t('appupd_allow')); setAppMsgTone('warn');
+        await ApkInstaller.openInstallSettings();
+        return;
+      }
+      setAppMsg(t('appupd_downloading')); setAppMsgTone('');
+      sub = await ApkInstaller.addListener('progress', ({ received, total }) => {
+        setAppMsg(t('appupd_downloading')
+          + (total > 0 ? ` ${Math.round((received / total) * 100)}%` : ''));
+      });
+      await ApkInstaller.downloadAndInstall({ url: APK_URL });
+      setAppMsg(t('appupd_installing')); setAppMsgTone('good');
+    } catch {
+      // native path failed (or web build) — fall back to the browser download
+      setAppMsg(t('appupd_dl_fail')); setAppMsgTone('danger');
+      try { await Browser.open({ url: APK_URL }); } catch { /* ignore */ }
+    } finally {
+      if (sub) sub.remove();
+      setAppBusy(false);
+    }
+  };
 
   const poll = () => {
     if (timer.current) return;
@@ -441,12 +469,13 @@ function UpdateCard() {
           <div class="subhead muted">{t('appupd_head')} · {APP_SHA_SHORT}</div>
           <p class="muted">{t('appupd_note')}</p>
           <div class="lrow">
-            <button class="btn sec" disabled={appChecking} onClick={appCheck}>{t('upd_check_btn')}</button>
-            <button class={'btn' + (appAvail ? '' : ' sec')} onClick={appRun}>{t('appupd_run_btn')}</button>
+            <button class="btn sec" disabled={appChecking || appBusy} onClick={appCheck}>{t('upd_check_btn')}</button>
+            <button class={'btn' + (appAvail ? '' : ' sec')} disabled={appBusy}
+                    onClick={appRun}>{t('appupd_run_btn')}</button>
           </div>
           {appMsg && (
             <Droplet inline open text={appMsg} tone={appMsgTone}
-                     spinner={appChecking} icon={iconFor(appMsgTone)} />
+                     spinner={appChecking || appBusy} icon={iconFor(appMsgTone)} />
           )}
         </>
       )}
