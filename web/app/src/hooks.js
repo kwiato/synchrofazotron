@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { apiGet, apiPost } from './api.js';
 import { apiUrl } from './host.js';
+import { nativeAppInfo } from './appversion.js';
+
+// {version, build} of the installed native app (matches Google Play), or null on
+// the web build / before it resolves. Read once on mount.
+export function useNativeAppInfo() {
+  const [info, setInfo] = useState(null);
+  useEffect(() => { nativeAppInfo().then(setInfo); }, []);
+  return info;
+}
 
 // Lightweight touch-swipe detector. Spread the returned handlers onto an element
 // ({...useSwipe({ onLeft, onRight, onUp, onDown })}); the matching callback fires

@@ -1,6 +1,8 @@
 import { useI18n } from '../../i18n.jsx';
 import { CardHead } from '../../components/CardHead.jsx';
 import { ConsoleLogo } from '../../components/ConsoleLogo.jsx';
+import { useNativeAppInfo } from '../../hooks.js';
+import { IS_APP } from '../../host.js';
 
 const CREDITS = [
   ['🎚️', 'cava', 'https://github.com/karlstav/cava', 'Karl Stavestrand', 'https://github.com/karlstav'],
@@ -19,6 +21,7 @@ const CREDITS = [
 
 export function AboutSection() {
   const { t, repo, version } = useI18n();
+  const appInfo = useNativeAppInfo();
   return (
     <section class="active">
       <div class="sect-title">{t('nav_about')}</div>
@@ -26,6 +29,9 @@ export function AboutSection() {
         <div class="card">
           <CardHead title="Synchrofazotron">
             {version && <span class="pill on" title={t('about_version')}>v{version}</span>}
+            {IS_APP && appInfo && (
+              <span class="pill on" title={t('about_app_version')}>app v{appInfo.version}</span>
+            )}
           </CardHead>
           <ConsoleLogo />
           <p class="muted">{t('about_desc')}</p>
