@@ -7,7 +7,9 @@ import { Collapsible } from '../../components/Collapsible.jsx';
 import { Tabs } from '../../components/Tabs.jsx';
 import { EmptyState } from '../../components/EmptyState.jsx';
 
-export function VisualizerSection() {
+// The visualizer's cards (enable/engine/presets/shaders + studio link). No
+// section wrapper — they're composed into the Customize section's cardgrid.
+export function VisualizerCards() {
   const { t } = useI18n();
   const [v, reload] = useApi('/api/viz', 0);
   const [msg, setMsg] = useState('');
@@ -31,9 +33,7 @@ export function VisualizerSection() {
   const glsl = v && v.engine === 'glsl';
 
   return (
-    <section class="active">
-      <div class="sect-title">{t('nav_viz')}</div>
-      <div class="cardgrid">
+    <>
         <div class="card">
           <div class="card-head">
             <h2><i class="ico ico-chart"></i> {t('viz_head')}</h2>
@@ -77,8 +77,7 @@ export function VisualizerSection() {
             {t('viz_studio_btn')}
           </a>
         </div>
-      </div>
-    </section>
+    </>
   );
 }
 

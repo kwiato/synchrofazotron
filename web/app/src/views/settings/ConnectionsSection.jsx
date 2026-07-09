@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { useI18n } from '../../i18n.jsx';
 import { apiGet, apiPost } from '../../api.js';
 import { useApi } from '../../hooks.js';
+import { WifiCard } from './ConfigSection.jsx';
 
-export function SourcesSection() {
+export function ConnectionsSection() {
   const { t, lmsPort } = useI18n();
   const [src, reload] = useApi('/api/sources', 10000);
   const groups = (src && src.sources) || [];
@@ -13,8 +14,9 @@ export function SourcesSection() {
 
   return (
     <section class="active">
-      <div class="sect-title">{t('nav_sources')}</div>
+      <div class="sect-title">{t('nav_connections')}</div>
       <div class="cardgrid">
+        <WifiCard />
         <BluetoothCard group={g('bluetooth')} reloadSources={reload} />
 
         <SourceCard group={g('airplay')} reload={reload} icon="ico-airplay" title={t('airplay_head')}>

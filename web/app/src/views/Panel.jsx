@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
+import { useSwipe } from '../hooks.js';
 import { useStatus } from '../status.jsx';
 import { useI18n } from '../i18n.jsx';
 import { apiGet, apiPost } from '../api.js';
@@ -11,7 +12,8 @@ import { EmptyState } from '../components/EmptyState.jsx';
 import { RadioTab } from './Radio.jsx';
 
 // Main view: the Now / Radio / Visualizer tabs. Ported from panel.js.
-const TABS = new Set(['now', 'radio', 'viz']);
+const ORDER = ['now', 'radio', 'viz'];
+const TABS = new Set(ORDER);
 
 export function Panel() {
   const { t } = useI18n();
@@ -23,9 +25,15 @@ export function Panel() {
     setTab(name);
     try { localStorage.setItem('paneltab', name); } catch { /* ignore */ }
   };
+  // swipe left → next tab, right → previous; clamped at the ends
+  const step = (d) => {
+    const j = ORDER.indexOf(tab) + d;
+    if (j >= 0 && j < ORDER.length) pick(ORDER[j]);
+  };
+  const swipe = useSwipe({ onLeft: () => step(1), onRight: () => step(-1) });
 
   return (
-    <>
+    <div class="swipe-col" {...swipe}>
       <Tabs active={tab} onChange={pick}
             items={[{ id: 'now', label: t('tab_now') },
                     { id: 'radio', label: t('tab_radio') },
@@ -33,7 +41,7 @@ export function Panel() {
       {tab === 'now' && <NowTab />}
       {tab === 'radio' && <RadioTab />}
       {tab === 'viz' && <VizTab />}
-    </>
+    </div>
   );
 }
 

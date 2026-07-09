@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks';
+import { useSwipe } from '../hooks.js';
 import { useStatus } from '../status.jsx';
 import { useI18n } from '../i18n.jsx';
 import { apiPost } from '../api.js';
@@ -25,10 +26,11 @@ export function PlayerBar() {
     setTimeout(refresh, 500);
   };
   const ctrlPrimary = (action) => { if (!ctrlOff) ctrl(p.id, action); };
+  const swipe = useSwipe({ onUp: () => setOpen(true), onDown: () => setOpen(false) });
 
   return (
     <div class="playerbar">
-      <div class={'pbwrap' + (open ? ' open' : '')}>
+      <div class={'pbwrap' + (open ? ' open' : '')} {...swipe}>
         <div class="sheet">
           <div class="sheet-head">{t('sheet_sources')}</div>
           <div>

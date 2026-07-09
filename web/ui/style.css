@@ -737,6 +737,13 @@ code {
     height: 100%;
   }
 }
+.swipe-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .nowfill {
   flex: 1;
   display: flex;
@@ -1291,6 +1298,146 @@ pre {
   transform: translateX(-50%) translateY(0);
 }
 
+.island {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  z-index: 70;
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  background: var(--text);
+  color: #fff;
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateX(-50%) translateY(-22px) scale(0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32);
+  will-change: width, height, transform, background-color;
+  transition: width 0.46s cubic-bezier(0.34, 1.42, 0.5, 1), height 0.4s cubic-bezier(0.34, 1.42, 0.5, 1), transform 0.4s cubic-bezier(0.34, 1.5, 0.5, 1), opacity 0.28s ease, background-color 0.3s ease 0.24s, box-shadow 0.3s ease;
+}
+.island[data-tone=good] {
+  --tone: var(--good);
+}
+.island[data-tone=warn] {
+  --tone: var(--warn);
+}
+.island[data-tone=danger] {
+  --tone: var(--danger);
+}
+.island.active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+.island.open {
+  width: var(--island-w, 200px);
+  height: 42px;
+  background: var(--tone);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38), 0 0 26px -4px var(--tone);
+}
+.island.leaving {
+  width: 13px;
+  height: 13px;
+  background: var(--tone);
+}
+.island.sinking {
+  animation: island-merge 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.island-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacer-2xs);
+  padding: 0 var(--spacer-sm);
+  font-weight: 600;
+  font-size: 0.95rem;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.2s ease 0.16s, transform 0.28s cubic-bezier(0.34, 1.5, 0.5, 1) 0.16s;
+}
+
+.island.open .island-inner {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.island.leaving .island-inner {
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.12s ease;
+}
+
+.island-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.island-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: #fff;
+}
+
+.island-icon .draw {
+  stroke-dasharray: 22;
+  stroke-dashoffset: 22;
+  transition: stroke-dashoffset 0.34s ease 0.26s;
+}
+
+.island.open .island-icon .draw {
+  stroke-dashoffset: 0;
+}
+
+@keyframes island-merge {
+  0% {
+    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 1;
+  }
+  28% {
+    transform: translateX(-50%) translateY(2px) scale(1.35, 0.55);
+    opacity: 1;
+  }
+  55% {
+    transform: translateX(-50%) translateY(1px) scale(0.7, 1.08);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(-50%) translateY(0) scale(0);
+    opacity: 0;
+  }
+}
+.island-ripple {
+  position: fixed;
+  top: 22px;
+  left: 50%;
+  z-index: 69;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid var(--text);
+  transform: translate(-50%, -50%) scale(0.35);
+  opacity: 0;
+  pointer-events: none;
+  animation: island-ripple 0.62s cubic-bezier(0.22, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes island-ripple {
+  0% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(3.4);
+  }
+}
 .overlay {
   position: fixed;
   inset: 0;

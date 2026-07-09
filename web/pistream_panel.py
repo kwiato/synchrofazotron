@@ -131,6 +131,8 @@ STR = {
         "viz_more": "Preset editing and shader upload live in settings.",
         "how_connect_head": "How to connect sources",
         # settings v2 (sections / tailscale / source switches)
+        "nav_customize": "Customize",
+        "nav_connections": "Connections",
         "nav_config": "Config",
         "nav_sources": "Sources",
         "nav_viz": "Visualizer",
@@ -409,6 +411,8 @@ STR = {
         "sheet_sources": "Źródła",
         "viz_more": "Edycja presetów i wgrywanie shaderów są w ustawieniach.",
         "how_connect_head": "Jak podłączyć źródła",
+        "nav_customize": "Personalizacja",
+        "nav_connections": "Połączenia",
         "nav_config": "Konfiguracja",
         "nav_sources": "Źródła",
         "nav_viz": "Wizualizer",

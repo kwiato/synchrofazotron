@@ -1,6 +1,31 @@
-import { useCallback, useEffect, useState } from 'preact/hooks';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { apiGet, apiPost } from './api.js';
 import { apiUrl } from './host.js';
+
+// Lightweight touch-swipe detector. Spread the returned handlers onto an element
+// ({...useSwipe({ onLeft, onRight, onUp, onDown })}); the matching callback fires
+// on a deliberate flick. Axis dominance (1.4×) + a distance threshold keep it
+// from stealing vertical scrolls or firing on taps. We never preventDefault, so
+// native scrolling and clicks still work.
+export function useSwipe({ onLeft, onRight, onUp, onDown, threshold = 50 } = {}) {
+  const start = useRef(null);
+  const onTouchStart = (e) => {
+    const t = e.touches[0];
+    start.current = t ? { x: t.clientX, y: t.clientY, at: Date.now() } : null;
+  };
+  const onTouchEnd = (e) => {
+    const s = start.current;
+    start.current = null;
+    const t = e.changedTouches[0];
+    if (!s || !t || Date.now() - s.at > 700) return;   // stale or too slow to be a flick
+    const dx = t.clientX - s.x, dy = t.clientY - s.y;
+    const ax = Math.abs(dx), ay = Math.abs(dy);
+    const fire = (fn) => { if (fn) fn(); };
+    if (ax > ay * 1.4 && ax > threshold) fire(dx < 0 ? onLeft : onRight);
+    else if (ay > ax * 1.4 && ay > threshold) fire(dy < 0 ? onUp : onDown);
+  };
+  return { onTouchStart, onTouchEnd };
+}
 
 // Fetch a JSON endpoint on mount and (optionally) on an interval. Returns the
 // last payload plus a manual reload(). Last value is kept on error, matching the

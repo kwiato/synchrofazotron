@@ -4,26 +4,37 @@ import { useI18n } from '../../i18n.jsx';
 import { apiGet, apiPost } from '../../api.js';
 import { useApi, doReboot } from '../../hooks.js';
 import { useToast } from '../../components/Toast.jsx';
+import { useIsland } from '../../components/Island.jsx';
 import { WifiModal } from '../../components/WifiModal.jsx';
-import { IS_APP } from '../../host.js';
+import { IS_APP, apiBase, switchDevice } from '../../host.js';
 import { APP_SHA_SHORT, APK_URL, RELEASE_API } from '../../appversion.js';
 
 export function ConfigSection() {
   const { t } = useI18n();
-  const [w, reloadW] = useApi('/api/wifi', 8000);
   return (
     <section class="active">
       <div class="sect-title">{t('nav_config')}</div>
       <div class="cardgrid">
+        {IS_APP && <DeviceCard />}
         <NameCard />
-        <WifiCard w={w} reload={reloadW} />
         <TailscaleCard />
-        <AudioOutputCard />
-        <AppearanceCard />
         <UpdateCard />
         <RebootCard />
       </div>
     </section>
+  );
+}
+
+// Which device the app is pointed at (app-only). Moved here from About; lets you
+// switch the receiving device without leaving Config.
+function DeviceCard() {
+  const { t } = useI18n();
+  return (
+    <div class="card">
+      <h2><i class="ico ico-link"></i> {t('device_head')}</h2>
+      <p class="muted">{apiBase()}</p>
+      <button class="btn sec" onClick={switchDevice}>{t('switch_device')}</button>
+    </div>
   );
 }
 
@@ -59,9 +70,11 @@ function NameCard() {
   );
 }
 
-// Wi-Fi: current connection + saved networks + add, in one card.
-function WifiCard({ w, reload }) {
+// Wi-Fi: current connection + saved networks + add, in one card. Self-contained
+// (fetches its own state) so any section can drop it in.
+export function WifiCard() {
   const { t } = useI18n();
+  const [w, reload] = useApi('/api/wifi', 8000);
   const [modal, setModal] = useState(false);
   const [msg, setMsg] = useState('');
   const cur = w && w.current;
@@ -154,7 +167,7 @@ function TailscaleCard() {
   );
 }
 
-function AudioOutputCard() {
+export function AudioOutputCard() {
   const { t } = useI18n();
   const toast = useToast();
   const [a, reload] = useApi('/api/audio', 0);
@@ -232,7 +245,7 @@ function applyTheme(v) {
 
 // Appearance & language in one card: language (server-side, reloads) + theme
 // (client-only: sets data-theme on <html>, live, no round-trip).
-function AppearanceCard() {
+export function AppearanceCard() {
   const { t, lang } = useI18n();
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('theme') || 'system'; } catch { return 'system'; }
@@ -279,6 +292,7 @@ function AppearanceCard() {
 function UpdateCard() {
   const { t } = useI18n();
   const toast = useToast();
+  const island = useIsland();
   const [msg, setMsg] = useState('');
   const [checking, setChecking] = useState(false);
   const [running, setRunning] = useState(false);
@@ -301,7 +315,13 @@ function UpdateCard() {
       const isNew = !!latest && latest !== APP_SHA_SHORT;
       setAppAvail(isNew);
       setAppMsg(isNew ? t('appupd_available') : t('appupd_current'));
-    } catch { setAppMsg(t('js_upd_checkfail')); }
+      island(isNew
+        ? { text: t('appupd_available'), tone: 'warn', icon: 'dot' }
+        : { text: t('appupd_current'), tone: 'good', icon: 'check' });
+    } catch {
+      setAppMsg(t('js_upd_checkfail'));
+      island({ text: t('js_upd_checkfail'), tone: 'danger', icon: 'x' });
+    }
     setAppChecking(false);
   };
   const appRun = async () => { try { await Browser.open({ url: APK_URL }); } catch { /* ignore */ } };
@@ -339,9 +359,20 @@ function UpdateCard() {
     setMsg(t('js_upd_checking'));
     try {
       const j = await apiGet('/api/update/check');
-      setMsg(!j.ok ? t('js_upd_checkfail')
-        : (j.update_available ? t('js_upd_available') : t('js_upd_current')));
-    } catch { setMsg(t('js_conn_error')); }
+      if (!j.ok) {
+        setMsg(t('js_upd_checkfail'));
+        island({ text: t('js_upd_checkfail'), tone: 'danger', icon: 'x' });
+      } else if (j.update_available) {
+        setMsg(t('js_upd_available'));
+        island({ text: t('js_upd_available'), tone: 'warn', icon: 'dot' });
+      } else {
+        setMsg(t('js_upd_current'));
+        island({ text: t('js_upd_current'), tone: 'good', icon: 'check' });
+      }
+    } catch {
+      setMsg(t('js_conn_error'));
+      island({ text: t('js_conn_error'), tone: 'danger', icon: 'x' });
+    }
     setChecking(false);
   };
   const run = async () => {

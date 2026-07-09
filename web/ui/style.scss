@@ -508,6 +508,10 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
 // ---------------------------------------------------------------------------
 // The Now tab fills the routed view's leftover height and centres its content,
 // so the cover sits in the middle of the screen rather than under the tabs.
+// Swipe-gesture wrapper for the Panel view — fills the route slot like .route
+// does so the now-playing screen keeps its flex-column centring.
+.swipe-col { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
 .nowfill { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
 .now { text-align: center; padding: var(--spacer-2xs) 0 2px; }
 .art {
@@ -795,6 +799,84 @@ pre {
   display: flex; align-items: center; gap: var(--spacer-2xs);
   transition: opacity .25s, transform .25s;
   &.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+// ---------------------------------------------------------------------------
+// Island — Dynamic-Island-style alert. A neutral dot drops in from the top,
+// expands sideways into a pill to reveal the message, takes on its tone colour
+// only near the END of the expansion, holds, then collapses in place and
+// "merges into the surface" leaving a single expanding ripple behind.
+// Fired imperatively via useIsland(); see app/src/components/Island.jsx.
+// ---------------------------------------------------------------------------
+.island {
+  position: fixed; top: 16px; left: 50%; z-index: 70;
+  width: 13px; height: 13px; border-radius: 999px;
+  background: var(--text);                 // black on light themes, white on dark
+  color: #fff;                             // ink shown once it takes on a tone
+  overflow: hidden; white-space: nowrap;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transform: translateX(-50%) translateY(-22px) scale(.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .32);
+  will-change: width, height, transform, background-color;
+  transition:
+    width .46s cubic-bezier(.34, 1.42, .5, 1),
+    height .40s cubic-bezier(.34, 1.42, .5, 1),
+    transform .40s cubic-bezier(.34, 1.5, .5, 1),
+    opacity .28s ease,
+    background-color .30s ease .24s,       // delayed, so colour arrives at the end
+    box-shadow .30s ease;
+
+  &[data-tone="good"]   { --tone: var(--good); }
+  &[data-tone="warn"]   { --tone: var(--warn); }
+  &[data-tone="danger"] { --tone: var(--danger); }
+
+  &.active { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  &.open {
+    width: var(--island-w, 200px); height: 42px; background: var(--tone);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, .38), 0 0 26px -4px var(--tone);
+  }
+  &.leaving { width: 13px; height: 13px; background: var(--tone); }   // collapse in place
+  &.sinking { animation: island-merge .5s cubic-bezier(.4, 0, .2, 1) forwards; }
+}
+.island-inner {
+  display: flex; align-items: center; gap: var(--spacer-2xs);
+  padding: 0 var(--spacer-sm); font-weight: 600; font-size: .95rem;
+  opacity: 0; transform: scale(.8);
+  transition: opacity .2s ease .16s, transform .28s cubic-bezier(.34, 1.5, .5, 1) .16s;
+}
+.island.open .island-inner    { opacity: 1; transform: scale(1); }
+.island.leaving .island-inner { opacity: 0; transform: scale(.8); transition: opacity .12s ease; }
+
+.island-icon {
+  width: 20px; height: 20px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+}
+.island-icon svg { width: 100%; height: 100%; stroke: #fff; }
+.island-icon .draw {                       // the mark draws itself once open
+  stroke-dasharray: 22; stroke-dashoffset: 22;
+  transition: stroke-dashoffset .34s ease .26s;
+}
+.island.open .island-icon .draw { stroke-dashoffset: 0; }
+
+@keyframes island-merge {                  // the drop flattens on contact, then vanishes
+  0%   { transform: translateX(-50%) translateY(0)   scale(1);         opacity: 1; }
+  28%  { transform: translateX(-50%) translateY(2px) scale(1.35, .55); opacity: 1; }
+  55%  { transform: translateX(-50%) translateY(1px) scale(.7, 1.08);  opacity: .8; }
+  100% { transform: translateX(-50%) translateY(0)   scale(0);         opacity: 0; }
+}
+
+.island-ripple {                           // the wave it leaves on the "surface"
+  position: fixed; top: 22px; left: 50%; z-index: 69;
+  width: 20px; height: 20px; border-radius: 999px;
+  border: 1px solid var(--text);
+  transform: translate(-50%, -50%) scale(.35);
+  opacity: 0; pointer-events: none;
+  animation: island-ripple .62s cubic-bezier(.22, .7, .3, 1) forwards;
+}
+@keyframes island-ripple {
+  0%   { opacity: .5; transform: translate(-50%, -50%) scale(.35); }
+  100% { opacity: 0;  transform: translate(-50%, -50%) scale(3.4); }
 }
 
 // ---------------------------------------------------------------------------
