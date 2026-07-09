@@ -15,6 +15,12 @@ ENGINE=cava SHADER=plasma
 [[ -r $DIR/engine ]] && read -r ENGINE SHADER < "$DIR/engine" || true
 [[ -n ${SHADER:-} ]] || SHADER=plasma
 
+# Render scale for viz-glsl (glsl engine only): 1 / 0.75 / 0.5 / 0.25. Lower =
+# fewer fragments = higher fps on the Pi's GPU. Written by the panel.
+SCALE=1
+[[ -r $DIR/scale ]] && read -r SCALE < "$DIR/scale" || true
+export VIZ_SCALE="${SCALE:-1}"
+
 # On any bail-out the reason lands in $DIR/glsl-error — the panel shows it
 # (a silent fallback to cava looks like "the feature just doesn't work").
 GLSL_BIN="$(command -v viz-glsl || command -v glslViewer || command -v glslviewer || true)"

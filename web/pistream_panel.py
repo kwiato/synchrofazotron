@@ -259,6 +259,10 @@ STR = {
         "viz_eng_cava": "Bars (cava)",
         "viz_eng_glsl": "Shaders (glslViewer)",
         "viz_engine_set": "Visualizer switched to {engine}.",
+        "viz_edit": "Edit",
+        "viz_scale_head": "Render scale",
+        "viz_scale_note": "Lower = smoother on the Pi's GPU (renders at a fraction of the resolution, then upscales).",
+        "viz_scale_set": "Render scale: {scale}×",
         "js_glsl_err": "⚠ Shader engine failed, showing cava instead. Reason: ",
         "viz_engine_bad": "Unknown engine.",
         "viz_glsl_missing": "glslViewer is not installed on the device (re-run the visualizer installer).",
@@ -530,6 +534,10 @@ STR = {
         "viz_eng_cava": "Słupki (cava)",
         "viz_eng_glsl": "Shadery (glslViewer)",
         "viz_engine_set": "Wizualizer przełączony na {engine}.",
+        "viz_edit": "Edytuj",
+        "viz_scale_head": "Skala renderowania",
+        "viz_scale_note": "Niżej = płynniej na GPU Pi (renderuje w ułamku rozdzielczości, potem skaluje w górę).",
+        "viz_scale_set": "Skala renderowania: {scale}×",
         "js_glsl_err": "⚠ Silnik shaderów nie wystartował, gra cava. Powód: ",
         "viz_engine_bad": "Nieznany silnik.",
         "viz_glsl_missing": "glslViewer nie jest zainstalowany na urządzeniu (odpal ponownie instalator wizualizera).",
@@ -1205,6 +1213,10 @@ VIZ_SERVICE = "pistream-visualizer"
 VIZ_ENGINE_FILE = "/opt/pistream-visualizer/engine"
 VIZ_GLSL_DIR = "/opt/pistream-visualizer/glsl"
 VIZ_GLSL_ERR = "/opt/pistream-visualizer/glsl-error"
+# glsl render scale (viz-run.sh -> viz-glsl VIZ_SCALE): lower = fewer fragments
+# = higher fps on the Pi GPU. One of VIZ_SCALES; "1" = native.
+VIZ_SCALE_FILE = "/opt/pistream-visualizer/scale"
+VIZ_SCALES = ("1", "0.75", "0.5", "0.25")
 # Manual off-switch. When this flag exists the visualizer stays off even with a
 # monitor attached — hdmi-watch.sh honours it instead of auto-starting. It is
 # the user's intent (the panel toggle); the service's live state can differ
@@ -1336,6 +1348,21 @@ def _viz_engine():
     engine = parts[0] if parts and parts[0] in ("cava", "glsl") else "cava"
     shader = parts[1] if len(parts) > 1 else "plasma"
     return engine, shader
+
+
+def _viz_scale():
+    """Current glsl render scale as a string ('1' when unset/native)."""
+    v = _file_read(VIZ_SCALE_FILE).strip()
+    return v if v in VIZ_SCALES else "1"
+
+
+def _viz_set_scale(scale):
+    """(ok, message). Sets the glsl render scale and restarts the visualizer."""
+    if scale not in VIZ_SCALES:
+        return False, T("viz_engine_bad")
+    _file_write(VIZ_SCALE_FILE, scale + "\n")
+    _run(["systemctl", "try-restart", VIZ_SERVICE])
+    return True, T("viz_scale_set").format(scale=scale)
 
 
 def _shader_label(sid):
@@ -1475,7 +1502,8 @@ def _viz_state():
             "params": _viz_params() if installed else None,
             "presets": [{"id": p["id"], "label": p["label"], "params": p["params"]}
                         for p in _viz_presets_list()],
-            "engine": engine, "shader": shader,
+            "engine": engine, "shader": shader, "scale": _viz_scale(),
+            "scales": list(VIZ_SCALES),
             "glsl_error": _file_read(VIZ_GLSL_ERR).strip(),
             "glsl_available": bool(_viz_glsl_ok() and _viz_shaders()),
             "shaders": [{"id": s, "label": _shader_label(s)}
@@ -2848,6 +2876,10 @@ class Handler(BaseHTTPRequestHandler):
                        "application/json")
         elif self.path == "/api/viz/toggle":
             ok, message = _viz_toggle()
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/viz/scale":
+            ok, message = _viz_set_scale(str(self._json_body().get("scale", "")))
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/audio/set":

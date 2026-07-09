@@ -139,6 +139,17 @@ static const char *VERT =
     "attribute vec2 a_pos;\n"
     "void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }\n";
 
+/* Upscale pass: samples the offscreen render into the display (see VIZ_SCALE). */
+static const char *VERT_BLIT =
+    "attribute vec2 a_pos;\n"
+    "varying vec2 v_uv;\n"
+    "void main(){ v_uv = a_pos * 0.5 + 0.5; gl_Position = vec4(a_pos, 0.0, 1.0); }\n";
+static const char *FRAG_BLIT =
+    "precision mediump float;\n"
+    "varying vec2 v_uv;\n"
+    "uniform sampler2D u_tex;\n"
+    "void main(){ gl_FragColor = texture2D(u_tex, v_uv); }\n";
+
 static GLuint make_shader(GLenum type, const char *src) {
     GLuint sh = glCreateShader(type);
     glShaderSource(sh, 1, &src, NULL);
@@ -220,6 +231,52 @@ int main(int argc, char **argv) {
     GLint loc_uni[N_UNI];
     for (int u = 0; u < N_UNI; u++) loc_uni[u] = glGetUniformLocation(prog, uni_names[u]);
 
+    /* Render-scale: draw the shader into a smaller offscreen texture and upscale
+       it to the display, so a heavy fragment shader touches fewer pixels. Any
+       FBO problem falls back to full-res. VIZ_SCALE in (0.1, 1]. */
+    float scale = 1.0f;
+    { const char *s = getenv("VIZ_SCALE");
+      if (s) { float v = strtof(s, NULL); if (v > 0.10f && v < 1.0f) scale = v; } }
+    int sw = mode.hdisplay, sh = mode.vdisplay;
+    GLuint fbo = 0, tex = 0, blit = 0; GLint blit_tex = -1;
+    int scaled = 0;
+    if (scale < 0.999f) {
+        sw = (int)(mode.hdisplay * scale + 0.5f);
+        sh = (int)(mode.vdisplay * scale + 0.5f);
+        glGenTextures(1, &tex);
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sw, sh, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glGenFramebuffers(1, &fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+        GLenum st = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        if (st != GL_FRAMEBUFFER_COMPLETE) {
+            fprintf(stderr, "viz-glsl: FBO incomplete (0x%x) — full-res render\n", st);
+            sw = mode.hdisplay; sh = mode.vdisplay;
+        } else {
+            blit = glCreateProgram();
+            glAttachShader(blit, make_shader(GL_VERTEX_SHADER, VERT_BLIT));
+            glAttachShader(blit, make_shader(GL_FRAGMENT_SHADER, FRAG_BLIT));
+            glBindAttribLocation(blit, 0, "a_pos");
+            glLinkProgram(blit);
+            GLint bok = 0; glGetProgramiv(blit, GL_LINK_STATUS, &bok);
+            if (!bok) {
+                fprintf(stderr, "viz-glsl: blit link failed — full-res render\n");
+                sw = mode.hdisplay; sh = mode.vdisplay;
+            } else {
+                blit_tex = glGetUniformLocation(blit, "u_tex");
+                scaled = 1;
+            }
+        }
+        fprintf(stderr, "viz-glsl: render scale %.2f (%dx%d)\n",
+                scaled ? scale : 1.0f, sw, sh);
+    }
+
     glViewport(0, 0, mode.hdisplay, mode.vdisplay);
     struct timespec t0, t; clock_gettime(CLOCK_MONOTONIC, &t0);
 
@@ -240,12 +297,24 @@ int main(int argc, char **argv) {
             fps_n = 0; fps_t = t;
         }
 
-        if (loc_res  >= 0) glUniform2f(loc_res, mode.hdisplay, mode.vdisplay);
+        if (scaled) { glBindFramebuffer(GL_FRAMEBUFFER, fbo); glViewport(0, 0, sw, sh); }
+
+        glUseProgram(prog);
+        if (loc_res  >= 0) glUniform2f(loc_res, (float)sw, (float)sh);
         if (loc_time >= 0) glUniform1f(loc_time, tt);
         for (int u = 0; u < N_UNI; u++)
             if (loc_uni[u] >= 0) glUniform1f(loc_uni[u], uni_vals[u]);
-
         glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        if (scaled) {                              /* upscale the offscreen texture */
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, mode.hdisplay, mode.vdisplay);
+            glUseProgram(blit);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, tex);
+            if (blit_tex >= 0) glUniform1i(blit_tex, 0);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+        }
         eglSwapBuffers(egl_dpy, egl_surf);
 
         struct gbm_bo *bo = gbm_surface_lock_front_buffer(gbm_surf);

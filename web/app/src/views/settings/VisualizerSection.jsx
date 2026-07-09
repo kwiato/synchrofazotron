@@ -195,7 +195,14 @@ function CavaControls({ v, reload, setMsg }) {
 function ShaderPanel({ v, reload, setMsg, onPick }) {
   const { t } = useI18n();
   const [over, setOver] = useState(false);
+  const [edit, setEdit] = useState(false);
   const fileRef = useRef(null);
+
+  const setScale = async (s) => {
+    try { setMsg((await apiPost('/api/viz/scale', { scale: s })).message || ''); }
+    catch { setMsg(t('js_conn_error')); }
+    reload();
+  };
 
   const upload = async (files) => {
     for (const f of files) {
@@ -238,6 +245,22 @@ function ShaderPanel({ v, reload, setMsg, onPick }) {
       </div>
       <input ref={fileRef} type="file" accept=".frag,.glsl,.fs" multiple style="display:none;"
              onChange={(e) => upload(e.currentTarget.files)} />
+
+      <button class="btn sec" onClick={() => setEdit(!edit)}>
+        {t('viz_edit')}{v.scale && v.scale !== '1' ? ` (${v.scale}×)` : ''}
+      </button>
+      <Collapsible open={edit}>
+        <div class="subhead muted">{t('viz_scale_head')}</div>
+        <p class="muted small">{t('viz_scale_note')}</p>
+        <div class="lrow">
+          {(v.scales || ['1', '0.75', '0.5', '0.25']).map((s) => (
+            <button key={s} class={'btn ' + (s === (v.scale || '1') ? '' : 'sec')}
+                    onClick={() => setScale(s)}>
+              {s}×{s === (v.scale || '1') ? ' ✓' : ''}
+            </button>
+          ))}
+        </div>
+      </Collapsible>
     </div>
   );
 }
