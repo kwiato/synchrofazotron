@@ -811,6 +811,32 @@ pre {
   display: flex; align-items: center; gap: var(--spacer-2xs);
   transition: opacity .25s, transform .25s;
   &.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  // tone-tinted border for good/warn/danger results
+  &.good   { border-color: var(--good); }
+  &.warn   { border-color: var(--warn); }
+  &.danger { border-color: var(--danger); }
+}
+.toast-ico {
+  width: 18px; height: 18px; flex: none; display: inline-flex;
+  .toast.good & { color: var(--good); }
+  svg { width: 100%; height: 100%; }
+}
+
+// Inline variant: flows in the DOM under whatever fired it (e.g. an update
+// check result beneath its buttons) instead of floating at the top.
+.toast-inline {
+  position: static; left: auto; top: auto; z-index: auto;
+  transform: none; opacity: 1; pointer-events: auto;
+  display: inline-flex; max-width: 100%; text-align: left;
+  margin: var(--spacer-xs) 0 0; box-shadow: none;
+  font-weight: 500; font-size: .9rem;
+  animation: toast-in .25s ease;
+  .toast-ico { color: var(--good); }
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
 }
 
 // ---------------------------------------------------------------------------

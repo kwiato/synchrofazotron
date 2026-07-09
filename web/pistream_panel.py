@@ -194,8 +194,6 @@ STR = {
         "lms_2": "Pick the <b>{{PLAYER}}</b> player and play TIDAL, internet radio, playlists.",
         "lms_web": "Or from a browser:",
         "lms_web2": "(Material Skin).",
-        "audio_note_head": "A note about audio",
-        "audio_note": "Audio goes out through the <b>DAC</b> (BossDAC). A playing source owns the DAC exclusively — when a new source starts, the previous one is paused automatically (Bluetooth may take a few seconds to take over; Spotify cannot be paused remotely). If something refuses to play, check above what else is playing.",
         "players_label": "Players:",
         # main page JS
         "js_pairing": "pairing: ",
@@ -483,8 +481,6 @@ STR = {
         "lms_2": "Wybierz odtwarzacz <b>{{PLAYER}}</b> i graj TIDAL, radio internetowe, playlisty.",
         "lms_web": "Albo z przeglądarki:",
         "lms_web2": "(Material Skin).",
-        "audio_note_head": "Uwaga o dźwięku",
-        "audio_note": "Dźwięk wychodzi przez <b>DAC</b> (BossDAC). Grające źródło zajmuje DAC na wyłączność — gdy startuje nowe źródło, poprzednie jest pauzowane automatycznie (przejęcie przez Bluetooth może potrwać kilka sekund; Spotify nie da się spauzować zdalnie). Jeśli coś nie chce zagrać, sprawdź wyżej, co jeszcze gra.",
         "players_label": "Odtwarzacze:",
         "js_pairing": "parowanie: ",
         "js_ready": "gotowy",

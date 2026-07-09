@@ -3,8 +3,7 @@ import { Browser } from '@capacitor/browser';
 import { useI18n } from '../../i18n.jsx';
 import { apiGet, apiPost } from '../../api.js';
 import { useApi, doReboot } from '../../hooks.js';
-import { useToast } from '../../components/Toast.jsx';
-import { useIsland } from '../../components/Island.jsx';
+import { useToast, InlineToast } from '../../components/Toast.jsx';
 import { WifiModal } from '../../components/WifiModal.jsx';
 import { IS_APP, apiBase, switchDevice } from '../../host.js';
 import { APP_SHA_SHORT, APK_URL, RELEASE_API } from '../../appversion.js';
@@ -325,8 +324,8 @@ export function AppearanceCard() {
 function UpdateCard() {
   const { t } = useI18n();
   const toast = useToast();
-  const island = useIsland();
   const [msg, setMsg] = useState('');
+  const [msgTone, setMsgTone] = useState('');
   const [checking, setChecking] = useState(false);
   const [running, setRunning] = useState(false);
   const timer = useRef(null);
@@ -334,12 +333,13 @@ function UpdateCard() {
   // against the latest release's version.json; "install" hands the APK to the
   // system browser (which downloads it and fires the package installer).
   const [appMsg, setAppMsg] = useState('');
+  const [appMsgTone, setAppMsgTone] = useState('');
   const [appChecking, setAppChecking] = useState(false);
   const [appAvail, setAppAvail] = useState(false);
 
   const appCheck = async () => {
     setAppChecking(true);
-    setAppMsg(t('js_upd_checking'));
+    setAppMsg(t('js_upd_checking')); setAppMsgTone('');
     try {
       const r = await fetch(`${RELEASE_API}?_=${Date.now()}`, { cache: 'no-store' });
       if (!r.ok) throw new Error(String(r.status));
@@ -348,12 +348,9 @@ function UpdateCard() {
       const isNew = !!latest && latest !== APP_SHA_SHORT;
       setAppAvail(isNew);
       setAppMsg(isNew ? t('appupd_available') : t('appupd_current'));
-      island(isNew
-        ? { text: t('appupd_available'), tone: 'warn', icon: 'dot' }
-        : { text: t('appupd_current'), tone: 'good', icon: 'check' });
+      setAppMsgTone(isNew ? 'warn' : 'good');
     } catch {
-      setAppMsg(t('js_upd_checkfail'));
-      island({ text: t('js_upd_checkfail'), tone: 'danger', icon: 'x' });
+      setAppMsg(t('js_upd_checkfail')); setAppMsgTone('danger');
     }
     setAppChecking(false);
   };
@@ -362,7 +359,8 @@ function UpdateCard() {
   const poll = () => {
     if (timer.current) return;
     setRunning(true);
-    setMsg(t('js_upd_running'));
+    setMsg(''); setMsgTone('');                       // the run lives in the top toast
+    toast(t('js_upd_running'), { spinner: true, sticky: true });
     timer.current = setInterval(async () => {
       try {
         const j = await apiGet('/api/update');
@@ -371,10 +369,9 @@ function UpdateCard() {
         timer.current = null;
         setRunning(false);
         if (j.failed) {
-          setMsg(t('js_upd_failed'));
+          toast(t('js_upd_failed'), { tone: 'danger' });
         } else {
-          setMsg(t('js_upd_done'));
-          toast(t('upd_done_toast'));
+          toast(t('js_upd_done'), { tone: 'good', duration: 1600 });
           setTimeout(() => location.reload(), 1500);
         }
       } catch { /* panel restarting mid-update — keep polling */ }
@@ -389,32 +386,22 @@ function UpdateCard() {
 
   const check = async () => {
     setChecking(true);
-    setMsg(t('js_upd_checking'));
+    setMsg(t('js_upd_checking')); setMsgTone('');
     try {
       const j = await apiGet('/api/update/check');
-      if (!j.ok) {
-        setMsg(t('js_upd_checkfail'));
-        island({ text: t('js_upd_checkfail'), tone: 'danger', icon: 'x' });
-      } else if (j.update_available) {
-        setMsg(t('js_upd_available'));
-        island({ text: t('js_upd_available'), tone: 'warn', icon: 'dot' });
-      } else {
-        setMsg(t('js_upd_current'));
-        island({ text: t('js_upd_current'), tone: 'good', icon: 'check' });
-      }
-    } catch {
-      setMsg(t('js_conn_error'));
-      island({ text: t('js_conn_error'), tone: 'danger', icon: 'x' });
-    }
+      if (!j.ok) { setMsg(t('js_upd_checkfail')); setMsgTone('danger'); }
+      else if (j.update_available) { setMsg(t('js_upd_available')); setMsgTone('warn'); }
+      else { setMsg(t('js_upd_current')); setMsgTone('good'); }
+    } catch { setMsg(t('js_conn_error')); setMsgTone('danger'); }
     setChecking(false);
   };
   const run = async () => {
     if (!confirm(t('js_upd_confirm'))) return;
     try {
       const j = await apiPost('/api/update/run');
-      if (!j.ok) { setMsg(j.message || t('js_error')); return; }
+      if (!j.ok) { toast(j.message || t('js_error'), { tone: 'danger' }); return; }
       poll();
-    } catch { setMsg(t('js_conn_error')); }
+    } catch { toast(t('js_conn_error'), { tone: 'danger' }); }
   };
 
   return (
@@ -425,7 +412,7 @@ function UpdateCard() {
         <button class="btn sec" disabled={checking} onClick={check}>{t('upd_check_btn')}</button>
         <button class="btn sec" disabled={running} onClick={run}>{t('upd_run_btn')}</button>
       </div>
-      <p class="muted">{running && <span class="spinner"></span>}{' '}{msg}</p>
+      {msg && <InlineToast key={msg} tone={msgTone}>{msg}</InlineToast>}
 
       {IS_APP && (
         <>
@@ -435,7 +422,7 @@ function UpdateCard() {
             <button class="btn sec" disabled={appChecking} onClick={appCheck}>{t('upd_check_btn')}</button>
             <button class={'btn' + (appAvail ? '' : ' sec')} onClick={appRun}>{t('appupd_run_btn')}</button>
           </div>
-          {appMsg && <p class="muted">{appMsg}</p>}
+          {appMsg && <InlineToast key={appMsg} tone={appMsgTone}>{appMsg}</InlineToast>}
         </>
       )}
     </div>

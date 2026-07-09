@@ -37,11 +37,6 @@ export function ConnectionsSection() {
             <p class="muted">{t('spotify_note')}</p>
           </SourceCard>
         )}
-
-        <div class="card note">
-          <h2><i class="ico ico-info"></i> {t('audio_note_head')}</h2>
-          <p class="muted">{t('audio_note')}</p>
-        </div>
       </div>
     </section>
   );
