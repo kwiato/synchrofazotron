@@ -1567,14 +1567,14 @@ void main() {
     vec2 p = (2.0 * gl_FragCoord.xy - u_resolution) / min(u_resolution.x, u_resolution.y);
     float aa = 2.0 / min(u_resolution.x, u_resolution.y);
     float R = 0.40;
-    float thick = 0.016;
+    float thick = 0.012;
     float ring = smoothstep(thick + aa, thick - aa, abs(length(p) - R));
-    float a = u_time * 1.6;
+    float a = -u_time * 1.6;                                // reversed direction
     vec2 dc = R * vec2(cos(a), sin(a));
     float d = length(p - dc);
-    float beat = 1.0 + 0.30 * u_bass;                       // dot swells on the beat
-    float rb = 0.094 * beat;
-    float rc = 0.066 * beat;
+    float beat = 1.0 + 0.55 * u_bass;                       // swells more to the beat
+    float rb = 0.112 * beat;                                // bigger black rim
+    float rc = 0.060 * beat;
     float border = smoothstep(rb + aa, rb - aa, d);         // black rim = cut-out
     float core = smoothstep(rc + aa, rc - aa, d);           // white dot
     vec3 col = vec3(ring);
