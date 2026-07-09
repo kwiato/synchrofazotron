@@ -186,6 +186,7 @@ body {
 body.has-playerbar {
   display: flex;
   flex-direction: column;
+  padding: 0;
 }
 body.has-playerbar > #app {
   flex: 1;

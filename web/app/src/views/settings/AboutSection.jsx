@@ -26,9 +26,9 @@ export function AboutSection() {
       <div class="cardgrid">
         {IS_APP && (
           <div class="card">
-            <h2>{t('nav_device') || 'Device'}</h2>
+            <h2><i class="ico ico-link"></i> {t('device_head')}</h2>
             <p class="muted">{apiBase()}</p>
-            <button class="btn sec" onClick={switchDevice}>{t('switch_device') || 'Switch device'}</button>
+            <button class="btn sec" onClick={switchDevice}>{t('switch_device')}</button>
           </div>
         )}
         <div class="card">

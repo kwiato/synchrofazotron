@@ -119,14 +119,17 @@ html, body { overscroll-behavior-y: contain; }
 .pulltray {
   position: fixed; top: 0; left: 0; right: 0; z-index: 1; height: 128px;
   box-sizing: border-box;
-  padding: calc(env(safe-area-inset-top, 0px) + var(--spacer-2xs)) var(--spacer-md) var(--spacer-xs);
+  padding: calc(env(safe-area-inset-top, 0px) + var(--spacer-2xs)) var(--spacer-xs) var(--spacer-xs);
   display: flex; flex-direction: column; justify-content: center; gap: var(--spacer-2xs);
-  background: #04060a;                       /* deeper than --bg, reads as "behind" */
-  box-shadow: inset 0 calc(-1 * var(--spacer-xs)) var(--spacer-md) rgba(0, 0, 0, .45);
+  /* an elevated surface, not a darker one: on dark themes --card-2 is lighter
+     than the sheet's --bg, which reads better than "deeper" behind it. */
+  background: var(--card-2);
+  box-shadow: inset 0 calc(-1 * var(--spacer-xs)) var(--spacer-md) rgba(0, 0, 0, .35);
 }
 .pullsheet {
-  position: relative; z-index: 2; background: var(--bg);
-  box-shadow: 0 calc(-1 * var(--spacer-2xs)) var(--spacer-md) rgba(0, 0, 0, .55);
+  position: relative; z-index: 2; background: var(--bg); box-sizing: border-box;
+  padding: var(--spacer-sm) var(--spacer-xs) var(--spacer-md);
+  box-shadow: 0 calc(-1 * var(--spacer-2xs)) var(--spacer-md) rgba(0, 0, 0, .35);
   transition: transform .28s cubic-bezier(.22, 1, .36, 1);
 }
 .pullsheet.dragging { transition: none; }

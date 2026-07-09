@@ -14,7 +14,6 @@ export function Header() {
   const left = (status && status.pair_seconds_left) || 0;
   const onSettings = route === '/settings';
   const btName = (status && status.connected && status.connected[0] && status.connected[0].name) || '';
-  const wifi = (status && status.wifi_ssid) || '';
 
   const pair = async () => {
     setBusy(true);
@@ -33,14 +32,9 @@ export function Header() {
       </h1>
       <div class="topbtns">
         <button class={'iconbtn' + (left > 0 || btName ? ' active' : '')} disabled={busy}
-                onClick={pair} title={t('bt_button')}>
+                onClick={pair} title={t('bt_button')} aria-label={t('bt_button')}>
           <i class="ico ico-bt" aria-hidden="true"></i>
-          <span class="lbl">{left > 0 ? left + 's' : (btName || t('pair_short'))}</span>
-        </button>
-        <button class="iconbtn" onClick={() => navigate('/settings')}
-                title={t('wifi_header_title')}>
-          <i class="ico ico-wifi" aria-hidden="true"></i>
-          <span class="lbl">{wifi || t('wifi_none_short')}</span>
+          {left > 0 && <span class="lbl">{left}s</span>}
         </button>
         <button class={'iconbtn' + (onSettings ? ' active' : '')}
                 onClick={() => navigate(onSettings ? '/' : '/settings')}

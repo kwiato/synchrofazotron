@@ -198,6 +198,10 @@ body {
   // leftover height — the Now tab uses it to centre the cover in the viewport.
   &.has-playerbar {
     display: flex; flex-direction: column;
+    // The pull-sheet must cover the status tray edge to edge, so the outer
+    // padding moves off <body> and onto .pullsheet (its background then bleeds
+    // full-width and the content stays inset).
+    padding: 0;
 
     // #app is the Preact mount sitting between <body> and the chrome. Without it
     // in the flex column the flex:1 below has no effect, so on a short page the
