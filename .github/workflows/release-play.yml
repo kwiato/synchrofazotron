@@ -79,6 +79,13 @@ jobs:
           chmod +x gradlew
           ./gradlew bundleRelease --no-daemon
 
+      - name: Upload the signed AAB as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: synchrofazotron-release-aab
+          path: web/app/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
       - name: Upload to Play — internal testing
         uses: r0adkll/upload-google-play@v1
         with:
