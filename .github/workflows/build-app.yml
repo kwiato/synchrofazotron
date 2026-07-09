@@ -58,9 +58,30 @@ jobs:
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
 
+      - name: Restore the signing keystore (stable sideload signature)
+        working-directory: web/app/android
+        env:
+          KEYSTORE_B64: ${{ secrets.PLAY_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.PLAY_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.PLAY_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.PLAY_KEY_PASSWORD }}
+        run: |
+          # The .dev debug APK is signed with the same key on every run so a new
+          # build installs over the last one instead of forcing an uninstall.
+          echo "$KEYSTORE_B64" | base64 -d > upload-keystore.jks
+          cat > keystore.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
       - name: Assemble debug APK
         working-directory: web/app/android
         run: |
+          # Monotonic versionCode so the .dev sideload app updates in place. Kept in
+          # its own band, well clear of the release track's (100 + run_number).
+          export ANDROID_VERSION_CODE=$(( 1000 + GITHUB_RUN_NUMBER ))
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 

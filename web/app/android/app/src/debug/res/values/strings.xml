@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Debug-only overrides. The debug source set is merged over main, so the
+     sideload/dev build (applicationId .dev) shows a distinct name and can sit
+     next to the Play build without confusing the two launcher icons. -->
+<resources>
+    <string name="app_name">Synchrofazotron dev</string>
+    <string name="title_activity_main">Synchrofazotron dev</string>
+</resources>

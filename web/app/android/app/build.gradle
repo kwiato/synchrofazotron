@@ -36,6 +36,18 @@ android {
         }
     }
     buildTypes {
+        debug {
+            // Sideload / dev channel (build-app.yml). A separate applicationId so it
+            // installs side-by-side with the Play build, and — when CI supplies the
+            // keystore — the same stable signing key every run, so a new APK updates
+            // in place instead of forcing an uninstall. versionNameSuffix makes the
+            // About pill read e.g. "1.0-dev".
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
         release {
             signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
             minifyEnabled false
