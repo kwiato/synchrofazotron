@@ -1,5 +1,6 @@
 import { createContext } from 'preact';
 import { useContext, useEffect, useState } from 'preact/hooks';
+import { apiUrl } from './host.js';
 
 // All translated strings + device config come from /api/i18n in one shot at
 // boot. Python's STR dict stays the single source of truth; the bundle carries
@@ -16,7 +17,7 @@ const FALLBACK = {
 export function I18nProvider({ children }) {
   const [data, setData] = useState(null);
   useEffect(() => {
-    fetch('/api/i18n', { cache: 'no-store' })
+    fetch(apiUrl('/api/i18n'), { cache: 'no-store' })
       .then((r) => r.json())
       .then(setData)
       .catch(() => setData(FALLBACK));

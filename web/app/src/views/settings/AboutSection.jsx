@@ -1,6 +1,7 @@
 import { useI18n } from '../../i18n.jsx';
 import { CardHead } from '../../components/CardHead.jsx';
 import { ConsoleLogo } from '../../components/ConsoleLogo.jsx';
+import { IS_APP, apiBase, switchDevice } from '../../host.js';
 
 const CREDITS = [
   ['🎚️', 'cava', 'https://github.com/karlstav/cava', 'Karl Stavestrand', 'https://github.com/karlstav'],
@@ -23,6 +24,13 @@ export function AboutSection() {
     <section class="active">
       <div class="sect-title">{t('nav_about')}</div>
       <div class="cardgrid">
+        {IS_APP && (
+          <div class="card">
+            <h2>{t('nav_device') || 'Device'}</h2>
+            <p class="muted">{apiBase()}</p>
+            <button class="btn sec" onClick={switchDevice}>{t('switch_device') || 'Switch device'}</button>
+          </div>
+        )}
         <div class="card">
           <CardHead title="Synchrofazotron">
             {version && <span class="pill on" title={t('about_version')}>v{version}</span>}

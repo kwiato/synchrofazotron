@@ -82,6 +82,34 @@
   .seg { animation: none; }
 }
 
+/* Device picker (app build only) — shown before a device is chosen, so it
+   stands alone without the header/player chrome. */
+.connect { padding-top: 32px; }
+.connect-brand { display: flex; justify-content: center; margin-bottom: 10px; }
+.connect-brand .brand-mark { width: 52px; height: 52px; }
+.connect-tag {
+  text-align: center; margin: 0 0 18px; font-size: 1.15rem; font-weight: 300;
+  letter-spacing: .01em; color: var(--text);
+}
+.device-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  width: 100%; padding: 13px 14px; margin: 6px 0; border: 1px solid var(--card-border);
+  border-radius: 12px; background: var(--panel, transparent); color: var(--text);
+  cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent;
+}
+.device-row:disabled { opacity: .55; }
+.device-name { font-size: 1rem; }
+.device-addr { font-size: .82rem; }
+.connect-manual-label { text-align: center; margin: 18px 0 8px; font-size: .85rem; }
+.connect-manual { display: flex; gap: 8px; }
+.connect-manual .in {
+  flex: 1 1 auto; min-width: 0; padding: 11px 12px; border-radius: 10px;
+  border: 1px solid var(--card-border); background: var(--panel, transparent);
+  color: var(--text); font-size: 1rem;
+}
+.connect-manual .btn { flex: none; }
+.connect-err { text-align: center; color: var(--hot, #e66); margin: 10px 0 0; font-size: .88rem; }
+
 /* Empty / unavailable state: big centered icon + thin larger text. */
 .empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;

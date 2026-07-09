@@ -1,15 +1,22 @@
 import { defineConfig } from 'vite';
 import preact from '@preact/preset-vite';
 
-// The bundle is served by the Python panel under /app/ (see pistream_panel.py).
-// Hash routing means we never need a server-side SPA fallback, so /app/ as a
-// flat static mount is enough — and the exact same build drops into a WebView /
-// Capacitor shell later (file:// friendly).
-export default defineConfig({
-  base: '/app/',
+// Two build targets from one source:
+//   * default  -> served by the Python panel under /app/ (base '/app/', outDir
+//     'dist', committed to the repo for install.sh — the Pi has no Node).
+//   * mode 'capacitor' (`vite build --mode capacitor`) -> the Android/WebView
+//     shell. Served from the app root, so base is relative ('./') and it lands
+//     in its own 'dist-cap' (gitignored) that Capacitor syncs into the APK.
+//     `.env.capacitor` sets VITE_CAPACITOR=1 so the bundle can self-host its
+//     CSS instead of linking the panel's /static/style.css (see main.jsx).
+// Hash routing means neither target needs a server-side SPA fallback.
+export default defineConfig(({ mode }) => {
+  const cap = mode === 'capacitor';
+  return {
+  base: cap ? './' : '/app/',
   plugins: [preact()],
   build: {
-    outDir: 'dist',
+    outDir: cap ? 'dist-cap' : 'dist',
     emptyOutDir: true,
     assetsDir: 'assets',
     // Stable, unhashed filenames so install.sh can fetch them from GitHub by a
@@ -17,8 +24,11 @@ export default defineConfig({
     // the panel serving /app with Cache-Control: no-cache instead.
     rollupOptions: {
       output: {
+        // One JS chunk: keeps the Pi's shipped file list a fixed { index.js,
+        // index.css } (install.sh fetches by exact path) and folds in Capacitor
+        // plugins' lazily-imported web stubs instead of emitting stray chunks.
+        inlineDynamicImports: true,
         entryFileNames: 'assets/index.js',
-        chunkFileNames: 'assets/[name].js',
         assetFileNames: 'assets/index.[ext]',
       },
     },
@@ -33,4 +43,5 @@ export default defineConfig({
       '/studio': 'http://127.0.0.1:8787',
     },
   },
+  };
 });

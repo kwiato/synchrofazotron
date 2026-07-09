@@ -1,0 +1,11 @@
+{
+  "appId": "org.synchrofazotron.panel",
+  "appName": "Synchrofazotron",
+  "webDir": "dist-cap",
+  "server": {
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

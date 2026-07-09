@@ -2340,6 +2340,11 @@ class Handler(BaseHTTPRequestHandler):
         data = body.encode("utf-8") if isinstance(body, str) else body
         self.send_response(code)
         self.send_header("Content-Type", ctype)
+        # The Android/WebView shell loads the bundle from the app itself
+        # (capacitor://localhost) and calls the panel cross-origin, so every
+        # response is CORS-open. No auth yet (panel lives behind Tailscale/LAN);
+        # tightening this is tracked with the pairing work.
+        self.send_header("Access-Control-Allow-Origin", "*")
         if no_cache:
             # /app ships with stable (unhashed) filenames, so make the browser
             # revalidate — otherwise a panel update would serve stale JS.
@@ -2368,6 +2373,15 @@ class Handler(BaseHTTPRequestHandler):
             return json.loads(self.rfile.read(length) or b"{}")
         except Exception:  # noqa: BLE001
             return {}
+
+    def do_OPTIONS(self):
+        # CORS preflight for the app's JSON POSTs (Content-Type triggers it).
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def do_GET(self):
         # The Preact SPA is the whole UI: "/" serves its index.html and /app/*
