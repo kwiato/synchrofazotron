@@ -15,6 +15,12 @@ Environment=PISTREAM_PANEL_PORT=8787
 ExecStart=/usr/bin/python3 /opt/pistream-panel/pistream_panel.py
 Restart=on-failure
 RestartSec=3
+# Backstop on a 512 MB Pi: a runaway panel must get OOM-killed and restarted
+# rather than swap-strangle the whole box (which once took the device down).
+MemoryAccounting=yes
+MemoryHigh=120M
+MemoryMax=160M
+MemorySwapMax=100M
 
 [Install]
 WantedBy=multi-user.target

@@ -2331,6 +2331,13 @@ def _lms_fav_remove(fav_id):
     return {"ok": True}
 
 
+# A phone opening the Radio tab fires a burst of icon requests at once; each
+# used to hold its own handler thread + an LMS request (imageproxy fetches the
+# image from the internet per call), which once memory-spiralled the whole Pi.
+# Serve a few at a time and fail fast when saturated — the app retries lazily.
+_art_sem = threading.BoundedSemaphore(4)
+
+
 def _lms_art(path):
     """Fetch an LMS icon/cover so the app can load it from the panel origin
     instead of needing the LMS web port (9000) reachable from the phone — which
@@ -2342,8 +2349,13 @@ def _lms_art(path):
         url = path
     else:
         return None
-    with urllib.request.urlopen(url, timeout=6) as r:
-        return r.read(), r.headers.get("Content-Type", "image/jpeg")
+    if not _art_sem.acquire(timeout=10):
+        return None
+    try:
+        with urllib.request.urlopen(url, timeout=6) as r:
+            return r.read(), r.headers.get("Content-Type", "image/jpeg")
+    finally:
+        _art_sem.release()
 
 
 def _bt_streams():

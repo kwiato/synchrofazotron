@@ -476,6 +476,27 @@ EOF
     ok "squeezelite: auto-retry drop-in installed ($SL_DROPIN)"
   fi
 fi
+
+# LMS (Perl) is the biggest RAM consumer on a 512 MB Pi and it grows over
+# time; once it swap-strangled the whole box into a hard hang. Cap it so the
+# kernel OOM-kills LMS alone (and systemd restarts it) instead of taking the
+# device down. Limits apply on daemon-reload — no LMS restart needed.
+LMS_DROPIN=/etc/systemd/system/lyrionmusicserver.service.d/memory.conf
+if systemctl list-unit-files lyrionmusicserver.service >/dev/null 2>&1 \
+   && [[ ! -f $LMS_DROPIN ]]; then
+  mkdir -p "${LMS_DROPIN%/*}"
+  cat > "$LMS_DROPIN" <<'EOF'
+[Service]
+MemoryAccounting=yes
+MemoryHigh=180M
+MemoryMax=230M
+MemorySwapMax=200M
+Restart=on-failure
+RestartSec=10
+EOF
+  systemctl daemon-reload
+  ok "LMS: memory-cap drop-in installed ($LMS_DROPIN)"
+fi
 # shairport-sync
 SP_CONF=/usr/local/etc/shairport-sync.conf
 [[ -f $SP_CONF ]] || SP_CONF=/etc/shairport-sync.conf
