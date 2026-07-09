@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { Browser } from '@capacitor/browser';
 import { useI18n } from '../../i18n.jsx';
 import { apiGet, apiPost } from '../../api.js';
 import { useApi, doReboot } from '../../hooks.js';
 import { useToast } from '../../components/Toast.jsx';
 import { WifiModal } from '../../components/WifiModal.jsx';
+import { IS_APP } from '../../host.js';
+import { APP_SHA_SHORT, APK_URL, VERSION_URL } from '../../appversion.js';
 
 export function ConfigSection() {
   const { t } = useI18n();
@@ -20,6 +23,7 @@ export function ConfigSection() {
         <LanguageCard />
         <ThemeCard />
         <UpdateCard />
+        {IS_APP && <AppUpdateCard />}
         <RebootCard />
       </div>
     </section>
@@ -353,6 +357,44 @@ function UpdateCard() {
         <button class="btn sec" disabled={running} onClick={run}>{t('upd_run_btn')}</button>
       </div>
       <p class="muted">{running && <span class="spinner"></span>}{' '}{msg}</p>
+    </div>
+  );
+}
+
+// Mirror of UpdateCard for the mobile app itself: check compares the installed
+// build's SHA against the latest release's version.json; "update" hands the APK
+// URL to the system browser, which downloads it and fires the package installer.
+function AppUpdateCard() {
+  const { t } = useI18n();
+  const [msg, setMsg] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [avail, setAvail] = useState(false);
+
+  const check = async () => {
+    setChecking(true);
+    setMsg(t('js_upd_checking'));
+    try {
+      const r = await fetch(`${VERSION_URL}?_=${Date.now()}`, { cache: 'no-store' });
+      if (!r.ok) throw new Error(String(r.status));
+      const latest = ((await r.json()).sha || '').slice(0, 7);
+      const isNew = !!latest && latest !== APP_SHA_SHORT;
+      setAvail(isNew);
+      setMsg(isNew ? t('appupd_available') : t('appupd_current'));
+    } catch { setMsg(t('js_upd_checkfail')); }
+    setChecking(false);
+  };
+  const run = async () => { try { await Browser.open({ url: APK_URL }); } catch { /* ignore */ } };
+
+  return (
+    <div class="card">
+      <h2><i class="ico ico-refresh"></i> {t('appupd_head')}</h2>
+      <p class="muted">{t('appupd_note')}</p>
+      <p class="muted small">{t('appupd_version')}: {APP_SHA_SHORT}</p>
+      <div class="lrow">
+        <button class="btn sec" disabled={checking} onClick={check}>{t('upd_check_btn')}</button>
+        <button class={'btn' + (avail ? '' : ' sec')} onClick={run}>{t('appupd_run_btn')}</button>
+      </div>
+      {msg && <p class="muted">{msg}</p>}
     </div>
   );
 }

@@ -279,6 +279,12 @@ STR = {
         "upd_note": "Fetches the latest Synchrofazotron from GitHub — the same as re-running setup.sh (safe, settings are kept). The check compares the installed panel with the repo.",
         "upd_check_btn": "Check for updates",
         "upd_run_btn": "Update now",
+        "appupd_head": "Mobile app",
+        "appupd_note": "Update the Android app to the latest build. The check compares the installed build with the latest release.",
+        "appupd_version": "Installed",
+        "appupd_run_btn": "Download & install",
+        "appupd_available": "Update available — download it.",
+        "appupd_current": "You have the latest version.",
         "upd_started": "Update started.",
         "upd_already": "An update is already running.",
         "upd_fail": "Could not start the update.",
@@ -537,6 +543,12 @@ STR = {
         "upd_note": "Pobiera najnowszy Synchrofazotron z GitHuba — to samo co ponowne setup.sh (bezpieczne, ustawienia zostają). Sprawdzenie porównuje zainstalowany panel z repo.",
         "upd_check_btn": "Sprawdź aktualizacje",
         "upd_run_btn": "Aktualizuj",
+        "appupd_head": "Aplikacja mobilna",
+        "appupd_note": "Zaktualizuj aplikację Android do najnowszej wersji. Sprawdzenie porównuje zainstalowaną wersję z najnowszym wydaniem.",
+        "appupd_version": "Zainstalowana",
+        "appupd_run_btn": "Pobierz i zainstaluj",
+        "appupd_available": "Dostępna aktualizacja — pobierz.",
+        "appupd_current": "Masz najnowszą wersję.",
         "upd_started": "Aktualizacja wystartowała.",
         "upd_already": "Aktualizacja już trwa.",
         "upd_fail": "Nie udało się wystartować aktualizacji.",
@@ -1295,8 +1307,10 @@ def _viz_glsl_ok():
 
 
 def _viz_shaders():
-    return sorted(os.path.splitext(os.path.basename(f))[0]
-                  for f in glob.glob(os.path.join(VIZ_GLSL_DIR, "*.frag")))
+    # Names starting with "_" are hidden (e.g. the update easter-egg shader).
+    return sorted(n for n in (os.path.splitext(os.path.basename(f))[0]
+                              for f in glob.glob(os.path.join(VIZ_GLSL_DIR, "*.frag")))
+                  if not n.startswith("_"))
 
 
 def _viz_engine():
@@ -1514,6 +1528,80 @@ def _viz_set_engine(engine, shader=""):
     _run(["systemctl", "try-restart", VIZ_SERVICE])
     return True, T("viz_engine_set").format(
         engine=_shader_label(shader) + " (glslViewer)" if engine == "glsl" else "cava")
+
+
+# --- Update easter egg ------------------------------------------------------
+# During a Pi software update the HDMI visualizer flips to a hidden "loading"
+# shader — a white dot orbiting a white ring, its black border punching a moving
+# notch into the ring (like a cut-out sliding around). The pre-update
+# engine/shader is saved to a marker file and restored on the next panel startup
+# (the update restarts the panel). Best-effort: only when the visualizer is
+# installed, enabled and the glsl engine actually works.
+VIZ_UPDATING_SHADER = "_updating"
+VIZ_RESTORE_FILE = "/opt/pistream-visualizer/restore.json"
+_VIZ_UPDATING_FRAG = """#ifdef GL_ES
+precision mediump float;
+#endif
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform float u_level;
+uniform float u_bass;
+uniform float u_mid;
+uniform float u_treble;
+
+void main() {
+    vec2 p = (2.0 * gl_FragCoord.xy - u_resolution) / min(u_resolution.x, u_resolution.y);
+    float aa = 2.0 / min(u_resolution.x, u_resolution.y);
+    float R = 0.55;
+    float thick = 0.028;
+    float ring = smoothstep(thick + aa, thick - aa, abs(length(p) - R));
+    float a = u_time * 1.6;
+    vec2 dc = R * vec2(cos(a), sin(a));
+    float d = length(p - dc);
+    float border = smoothstep(0.075 + aa, 0.075 - aa, d);   // black rim = cut-out
+    float core = smoothstep(0.05 + aa, 0.05 - aa, d);        // white dot
+    vec3 col = vec3(ring);
+    col *= (1.0 - border);
+    col = mix(col, vec3(1.0), core);
+    gl_FragColor = vec4(col, 1.0);
+}
+"""
+
+
+def _viz_updating_on():
+    """Switch the visualizer to the update spinner, saving the state to restore."""
+    try:
+        if (not os.path.isfile(VIZ_CONF) or os.path.isfile(VIZ_DISABLED_FLAG)
+                or not _viz_glsl_ok()):
+            return
+        engine, shader = _viz_engine()
+        _file_write(VIZ_RESTORE_FILE, json.dumps({"engine": engine, "shader": shader}))
+        _file_write(os.path.join(VIZ_GLSL_DIR, VIZ_UPDATING_SHADER + ".frag"),
+                    _VIZ_UPDATING_FRAG)
+        _file_write(VIZ_ENGINE_FILE, f"glsl {VIZ_UPDATING_SHADER}\n")
+        _run(["systemctl", "try-restart", VIZ_SERVICE])
+    except Exception:  # noqa: BLE001 — an easter egg must never break an update
+        pass
+
+
+def _viz_restore():
+    """Restore the pre-update visualizer state (once, on panel startup)."""
+    try:
+        if not os.path.isfile(VIZ_RESTORE_FILE):
+            return
+        st = json.load(open(VIZ_RESTORE_FILE, encoding="utf-8"))
+        os.remove(VIZ_RESTORE_FILE)
+        engine = st.get("engine", "cava")
+        shader = st.get("shader", "plasma")
+        _file_write(VIZ_ENGINE_FILE,
+                    f"glsl {shader}\n" if engine == "glsl" else "cava\n")
+        _run(["systemctl", "try-restart", VIZ_SERVICE])
+        try:
+            os.remove(os.path.join(VIZ_GLSL_DIR, VIZ_UPDATING_SHADER + ".frag"))
+        except OSError:
+            pass
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _viz_set_preset(name):
@@ -1949,6 +2037,7 @@ def _update_run():
     if _update_status()["running"]:
         return False, T("upd_already")
     _run(["systemctl", "reset-failed", f"{UPDATE_UNIT}.service"])
+    _viz_updating_on()   # easter egg: HDMI shows the update spinner meanwhile
     _run(["systemd-run", "--unit", UPDATE_UNIT, "bash", "-c",
           f"curl -fsSL --retry 5 --retry-delay 2 {_RAW_BASE}/setup.sh | bash"],
          timeout=15)
@@ -2765,6 +2854,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     if not DEV_MODE:   # the background loops only poke real system services
+        _viz_restore()      # restore visualizer if we came back from an update
         _aout_reconcile()   # point the audio-out bridge at a present card
         threading.Thread(target=_auto_trust_loop, daemon=True).start()
         if BT_AUTOCONNECT:

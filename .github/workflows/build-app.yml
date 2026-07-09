@@ -51,6 +51,8 @@ jobs:
 
       - name: Build the web bundle + sync into the native project
         working-directory: web/app
+        env:
+          VITE_APP_SHA: ${{ github.sha }}   # in-app updater compares this to the release
         run: npm run cap:sync
 
       - name: Accept Android SDK licenses
@@ -69,6 +71,12 @@ jobs:
           path: web/app/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
+      - name: Write version.json (the in-app updater checks this)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          printf '{"sha":"%s","built":"%s"}\n' \
+            "${{ github.sha }}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > version.json
+
       - name: Publish to the android-latest prerelease (main only)
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
@@ -76,4 +84,6 @@ jobs:
           tag_name: android-latest
           name: Android app (latest)
           prerelease: true
-          files: web/app/android/app/build/outputs/apk/debug/app-debug.apk
+          files: |
+            web/app/android/app/build/outputs/apk/debug/app-debug.apk
+            version.json
