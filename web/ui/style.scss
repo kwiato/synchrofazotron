@@ -199,6 +199,10 @@ body {
   &.has-playerbar {
     display: flex; flex-direction: column;
 
+    // #app is the Preact mount sitting between <body> and the chrome. Without it
+    // in the flex column the flex:1 below has no effect, so on a short page the
+    // sticky player bar rides up under the content instead of pinning bottom.
+    > #app { flex: 1; display: flex; flex-direction: column; min-height: 0; }
     .wrap-wide, .stage, .route { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   }
 }
@@ -434,6 +438,19 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
   display: flex; align-items: center; gap: var(--spacer-xs); padding: var(--spacer-2xs) 0;
   border-bottom: var(--bw) solid var(--border);
   &:last-child { border-bottom: 0; }
+}
+
+// Divider label separating merged sections inside one card (e.g. saved networks
+// under the current Wi-Fi, the app updater under the Pi updater).
+.card .subhead {
+  margin: var(--spacer-sm) 0 var(--spacer-2xs);
+  padding-top: var(--spacer-sm);
+  border-top: var(--bw) solid var(--card-border);
+  font-size: .78rem; text-transform: uppercase; letter-spacing: .06em;
+}
+// Small label above a control inside a card (the language/theme selects).
+.card .fieldlabel {
+  display: block; margin: var(--spacer-xs) 0 var(--spacer-3xs); font-size: .85rem;
 }
 .row .info { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .srow .info {

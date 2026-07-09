@@ -187,6 +187,12 @@ body.has-playerbar {
   display: flex;
   flex-direction: column;
 }
+body.has-playerbar > #app {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 body.has-playerbar .wrap-wide, body.has-playerbar .stage, body.has-playerbar .route {
   flex: 1;
   display: flex;
@@ -628,6 +634,21 @@ code {
 }
 .row:last-child, .srow:last-child {
   border-bottom: 0;
+}
+
+.card .subhead {
+  margin: var(--spacer-sm) 0 var(--spacer-2xs);
+  padding-top: var(--spacer-sm);
+  border-top: var(--bw) solid var(--card-border);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.card .fieldlabel {
+  display: block;
+  margin: var(--spacer-xs) 0 var(--spacer-3xs);
+  font-size: 0.85rem;
 }
 
 .row .info {

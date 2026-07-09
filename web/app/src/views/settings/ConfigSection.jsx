@@ -16,14 +16,11 @@ export function ConfigSection() {
       <div class="sect-title">{t('nav_config')}</div>
       <div class="cardgrid">
         <NameCard />
-        <WifiNowCard w={w} />
-        <SavedNetworksCard w={w} reload={reloadW} />
+        <WifiCard w={w} reload={reloadW} />
         <TailscaleCard />
         <AudioOutputCard />
-        <LanguageCard />
-        <ThemeCard />
+        <AppearanceCard />
         <UpdateCard />
-        {IS_APP && <AppUpdateCard />}
         <RebootCard />
       </div>
     </section>
@@ -62,13 +59,25 @@ function NameCard() {
   );
 }
 
-function WifiNowCard({ w }) {
+// Wi-Fi: current connection + saved networks + add, in one card.
+function WifiCard({ w, reload }) {
   const { t } = useI18n();
+  const [modal, setModal] = useState(false);
+  const [msg, setMsg] = useState('');
   const cur = w && w.current;
+  const saved = (w && w.saved) || [];
+
   const parts = [];
   if (cur && cur.ip) parts.push(<span>{t('js_lan_ip')}<code>{cur.ip}</code></span>);
   if (w && w.tailscale_ip) parts.push(<span>{t('js_ts_ip')}<code>{w.tailscale_ip}</code></span>);
   if (w && w.hostname) parts.push(<span><code>{w.hostname}</code></span>);
+
+  const remove = async (slot, ssid) => {
+    if (!confirm(t('js_rm_pre') + ssid + t('js_rm_suf'))) return;
+    try { setMsg((await apiPost('/api/wifi/remove', { slot })).message || ''); }
+    catch { setMsg(t('js_conn_error')); }
+    reload();
+  };
 
   return (
     <div class="card">
@@ -81,28 +90,8 @@ function WifiNowCard({ w }) {
           : <span class="pill off">{t('js_wifi_none')}</span>}
       </p>
       <p class="muted">{parts.map((p, i) => <span key={i}>{i ? ' · ' : ''}{p}</span>)}</p>
-    </div>
-  );
-}
 
-function SavedNetworksCard({ w, reload }) {
-  const { t } = useI18n();
-  const [modal, setModal] = useState(false);
-  const [msg, setMsg] = useState('');
-  const cur = w && w.current;
-  const saved = (w && w.saved) || [];
-
-  const remove = async (slot, ssid) => {
-    if (!confirm(t('js_rm_pre') + ssid + t('js_rm_suf'))) return;
-    try { setMsg((await apiPost('/api/wifi/remove', { slot })).message || ''); }
-    catch { setMsg(t('js_conn_error')); }
-    reload();
-  };
-
-  return (
-    <div class="card">
-      <h2><i class="ico ico-list"></i> {t('wifi_saved_head')}</h2>
-      <p class="muted">{t('wifi_saved_note')}</p>
+      <div class="subhead muted">{t('wifi_saved_head')}</div>
       <div>
         {saved.length
           ? saved.map((s) => (
@@ -214,32 +203,15 @@ function AudioOutputCard() {
           <i class={'dot ' + hdmiDot}></i> HDMI{out === 'hdmi' ? ' ✓' : ''}
         </button>
       </div>
-      <button class="btn sec" disabled={testing} onClick={test}>{t('audio_test_btn')}</button>
+      <button class="btn sec" disabled={testing} onClick={test}>
+        <i class="ico ico-play"></i> {t('audio_test_btn')}
+      </button>
       {rebootReq && <button class="btn sec" disabled={rebooting} onClick={reboot}>{t('js_reboot')}</button>}
       {out === 'hdmi' && hdmiNoDisp && <p class="muted">{t('audio_hdmi_nodisp')}</p>}
       <p class="muted">
         {rebooting && <span class="spinner"></span>}{' '}
         {msg || (rebootReq ? t('js_audio_reboot') : '')}
       </p>
-    </div>
-  );
-}
-
-function LanguageCard() {
-  const { t, lang } = useI18n();
-  const change = async (e) => {
-    const l = e.currentTarget.value;
-    try { await apiPost('/api/lang', { lang: l }); } catch { /* ignore */ }
-    location.reload();
-  };
-  return (
-    <div class="card">
-      <h2><i class="ico ico-globe"></i> {t('lang_head')}</h2>
-      <p class="muted">{t('lang_note')}</p>
-      <select value={lang} onChange={change}>
-        <option value="en">English</option>
-        <option value="pl">Polski</option>
-      </select>
     </div>
   );
 }
@@ -258,10 +230,10 @@ function applyTheme(v) {
   else document.documentElement.dataset.theme = eff;
 }
 
-// Client-only appearance switch: sets data-theme on <html> and remembers it in
-// localStorage. Applies live — no reload, no server round-trip.
-function ThemeCard() {
-  const { t } = useI18n();
+// Appearance & language in one card: language (server-side, reloads) + theme
+// (client-only: sets data-theme on <html>, live, no round-trip).
+function AppearanceCard() {
+  const { t, lang } = useI18n();
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('theme') || 'system'; } catch { return 'system'; }
   });
@@ -273,17 +245,28 @@ function ThemeCard() {
     mq.addEventListener('change', on);
     return () => mq.removeEventListener('change', on);
   }, [theme]);
-  const change = (e) => {
+  const changeTheme = (e) => {
     const v = e.currentTarget.value;
     setTheme(v);
     try { localStorage.setItem('theme', v); } catch { /* private mode */ }
     applyTheme(v);
   };
+  const changeLang = async (e) => {
+    const l = e.currentTarget.value;
+    try { await apiPost('/api/lang', { lang: l }); } catch { /* ignore */ }
+    location.reload();
+  };
+
   return (
     <div class="card">
-      <h2><i class="ico ico-brush"></i> {t('theme_head')}</h2>
-      <p class="muted">{t('theme_note')}</p>
-      <select value={theme} onChange={change}>
+      <h2><i class="ico ico-brush"></i> {t('appearance_head')}</h2>
+      <label class="fieldlabel muted">{t('lang_head')}</label>
+      <select value={lang} onChange={changeLang}>
+        <option value="en">English</option>
+        <option value="pl">Polski</option>
+      </select>
+      <label class="fieldlabel muted">{t('theme_head')}</label>
+      <select value={theme} onChange={changeTheme}>
         <option value="system">{t('theme_system')}</option>
         <option value="mono-light">{t('theme_mono_light')}</option>
         <option value="mono-dark">{t('theme_mono_dark')}</option>
@@ -300,6 +283,27 @@ function UpdateCard() {
   const [checking, setChecking] = useState(false);
   const [running, setRunning] = useState(false);
   const timer = useRef(null);
+  // App-update half (mobile shell only): compares the installed build's SHA
+  // against the latest release's version.json; "install" hands the APK to the
+  // system browser (which downloads it and fires the package installer).
+  const [appMsg, setAppMsg] = useState('');
+  const [appChecking, setAppChecking] = useState(false);
+  const [appAvail, setAppAvail] = useState(false);
+
+  const appCheck = async () => {
+    setAppChecking(true);
+    setAppMsg(t('js_upd_checking'));
+    try {
+      const r = await fetch(`${VERSION_URL}?_=${Date.now()}`, { cache: 'no-store' });
+      if (!r.ok) throw new Error(String(r.status));
+      const latest = ((await r.json()).sha || '').slice(0, 7);
+      const isNew = !!latest && latest !== APP_SHA_SHORT;
+      setAppAvail(isNew);
+      setAppMsg(isNew ? t('appupd_available') : t('appupd_current'));
+    } catch { setAppMsg(t('js_upd_checkfail')); }
+    setAppChecking(false);
+  };
+  const appRun = async () => { try { await Browser.open({ url: APK_URL }); } catch { /* ignore */ } };
 
   const poll = () => {
     if (timer.current) return;
@@ -357,44 +361,18 @@ function UpdateCard() {
         <button class="btn sec" disabled={running} onClick={run}>{t('upd_run_btn')}</button>
       </div>
       <p class="muted">{running && <span class="spinner"></span>}{' '}{msg}</p>
-    </div>
-  );
-}
 
-// Mirror of UpdateCard for the mobile app itself: check compares the installed
-// build's SHA against the latest release's version.json; "update" hands the APK
-// URL to the system browser, which downloads it and fires the package installer.
-function AppUpdateCard() {
-  const { t } = useI18n();
-  const [msg, setMsg] = useState('');
-  const [checking, setChecking] = useState(false);
-  const [avail, setAvail] = useState(false);
-
-  const check = async () => {
-    setChecking(true);
-    setMsg(t('js_upd_checking'));
-    try {
-      const r = await fetch(`${VERSION_URL}?_=${Date.now()}`, { cache: 'no-store' });
-      if (!r.ok) throw new Error(String(r.status));
-      const latest = ((await r.json()).sha || '').slice(0, 7);
-      const isNew = !!latest && latest !== APP_SHA_SHORT;
-      setAvail(isNew);
-      setMsg(isNew ? t('appupd_available') : t('appupd_current'));
-    } catch { setMsg(t('js_upd_checkfail')); }
-    setChecking(false);
-  };
-  const run = async () => { try { await Browser.open({ url: APK_URL }); } catch { /* ignore */ } };
-
-  return (
-    <div class="card">
-      <h2><i class="ico ico-refresh"></i> {t('appupd_head')}</h2>
-      <p class="muted">{t('appupd_note')}</p>
-      <p class="muted small">{t('appupd_version')}: {APP_SHA_SHORT}</p>
-      <div class="lrow">
-        <button class="btn sec" disabled={checking} onClick={check}>{t('upd_check_btn')}</button>
-        <button class={'btn' + (avail ? '' : ' sec')} onClick={run}>{t('appupd_run_btn')}</button>
-      </div>
-      {msg && <p class="muted">{msg}</p>}
+      {IS_APP && (
+        <>
+          <div class="subhead muted">{t('appupd_head')} · {APP_SHA_SHORT}</div>
+          <p class="muted">{t('appupd_note')}</p>
+          <div class="lrow">
+            <button class="btn sec" disabled={appChecking} onClick={appCheck}>{t('upd_check_btn')}</button>
+            <button class={'btn' + (appAvail ? '' : ' sec')} onClick={appRun}>{t('appupd_run_btn')}</button>
+          </div>
+          {appMsg && <p class="muted">{appMsg}</p>}
+        </>
+      )}
     </div>
   );
 }
