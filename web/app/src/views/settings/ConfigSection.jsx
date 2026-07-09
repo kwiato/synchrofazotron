@@ -240,29 +240,50 @@ function LanguageCard() {
   );
 }
 
+// 'system' follows the OS light/dark preference, resolving to one of the mono
+// themes (the only ones the stylesheet knows besides the attribute-less neon).
+const sysTheme = () =>
+  matchMedia('(prefers-color-scheme: dark)').matches ? 'mono-dark' : 'mono-light';
+
+// Apply a stored choice to <html>: 'system' tracks the OS, 'neon' is the
+// attribute-less default, everything else maps straight onto data-theme. Kept in
+// sync with the no-flash script in index.html.
+function applyTheme(v) {
+  const eff = v === 'system' ? sysTheme() : v;
+  if (eff === 'neon') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = eff;
+}
+
 // Client-only appearance switch: sets data-theme on <html> and remembers it in
-// localStorage (the same value the no-flash script in index.html reads on load).
-// Applies live — no reload, no server round-trip.
+// localStorage. Applies live — no reload, no server round-trip.
 function ThemeCard() {
   const { t } = useI18n();
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('theme') || 'neon'; } catch { return 'neon'; }
+    try { return localStorage.getItem('theme') || 'system'; } catch { return 'system'; }
   });
+  // While on 'system', re-apply when the OS flips between light and dark.
+  useEffect(() => {
+    if (theme !== 'system') return;
+    const mq = matchMedia('(prefers-color-scheme: dark)');
+    const on = () => applyTheme('system');
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, [theme]);
   const change = (e) => {
     const v = e.currentTarget.value;
     setTheme(v);
     try { localStorage.setItem('theme', v); } catch { /* private mode */ }
-    if (v === 'neon') delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = v;
+    applyTheme(v);
   };
   return (
     <div class="card">
       <h2><i class="ico ico-brush"></i> {t('theme_head')}</h2>
       <p class="muted">{t('theme_note')}</p>
       <select value={theme} onChange={change}>
-        <option value="neon">{t('theme_neon')}</option>
+        <option value="system">{t('theme_system')}</option>
         <option value="mono-light">{t('theme_mono_light')}</option>
         <option value="mono-dark">{t('theme_mono_dark')}</option>
+        <option value="neon">{t('theme_neon')}</option>
       </select>
     </div>
   );

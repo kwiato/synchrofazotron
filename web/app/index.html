@@ -7,7 +7,7 @@
   <!-- Shared theme — one source of truth, served raw by the panel. -->
   <link rel="stylesheet" href="/static/style.css">
   <!-- apply the saved theme before first paint (no flash) -->
-  <script>try{var t=localStorage.getItem('theme');if(t&&t!=='neon')document.documentElement.dataset.theme=t;}catch(e){}</script>
+  <script>try{var t=localStorage.getItem('theme')||'system';if(t==='system')t=matchMedia('(prefers-color-scheme: dark)').matches?'mono-dark':'mono-light';if(t!=='neon')document.documentElement.dataset.theme=t;}catch(e){}</script>
 </head>
 <body class="has-playerbar">
   <div id="app"></div>
