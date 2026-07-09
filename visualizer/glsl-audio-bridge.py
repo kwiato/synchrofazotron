@@ -20,6 +20,20 @@ import sys
 
 import numpy as np
 
+# Experimental "normalize" toggle (panel: Config -> Experimental). On == AGC
+# below; off == raw fixed gains (the picture tracks the actual signal level, so
+# it goes quiet at low playback volume). The service restarts on toggle, so
+# reading the flag once at startup is enough.
+NORMALIZE_FILE = "/opt/pistream-visualizer/normalize"
+
+
+def _normalize_on():
+    try:
+        with open(NORMALIZE_FILE, encoding="utf-8") as fh:
+            return fh.read().strip() != "0"
+    except OSError:
+        return True
+
 RATE = 44100
 CHUNK = 1024                      # 1024 frames @ 44.1 kHz -> ~43 updates/s
 DEVICE = "plughw:Loopback,1,0"
@@ -48,6 +62,7 @@ def main():
     masks = [(freqs >= lo) & (freqs < hi) for lo, hi in BANDS]
     state = [0.0] * len(NAMES)
     env = 0.0                     # running peak of the gained level (AGC)
+    normalize = _normalize_on()
     while True:
         raw = rec.stdout.read(CHUNK * 4)          # 2 ch * 2 bytes
         if len(raw) < CHUNK * 4:
@@ -58,8 +73,11 @@ def main():
         vals = [float(np.sqrt(np.mean(mono ** 2)))]
         vals += [float(np.sqrt(np.mean(spec[m] ** 2))) for m in masks]
         gained = [v * g for v, g in zip(vals, GAINS)]
-        env = max(env * AGC_DECAY, gained[0])
-        scale = AGC_TARGET / max(env, AGC_TARGET / AGC_MAX_BOOST)
+        if normalize:
+            env = max(env * AGC_DECAY, gained[0])
+            scale = AGC_TARGET / max(env, AGC_TARGET / AGC_MAX_BOOST)
+        else:
+            scale = 1.0           # raw: the picture tracks the real signal level
         lines = []
         for i, v in enumerate(gained):
             v = min(v * scale, 1.0)

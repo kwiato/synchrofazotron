@@ -1,10 +1,11 @@
-import { useState } from 'preact/hooks';
-import { useSwipe } from '../hooks.js';
+import { useEffect, useState } from 'preact/hooks';
+import { useSwipe, useVolumes } from '../hooks.js';
 import { useStatus } from '../status.jsx';
 import { useI18n } from '../i18n.jsx';
 import { apiPost } from '../api.js';
 import { primary, srcSub } from '../util.js';
 import { Eq } from './Eq.jsx';
+import { VolumeSlider } from './VolumeSlider.jsx';
 
 // Bottom player bar + the expandable sources sheet. Ported from common.js;
 // the sheet open/closed state is now local component state instead of a class
@@ -28,11 +29,22 @@ export function PlayerBar() {
   const ctrlPrimary = (action) => { if (!ctrlOff) ctrl(p.id, action); };
   const swipe = useSwipe({ onUp: () => setOpen(true), onDown: () => setOpen(false) });
 
+  // Volume for the active source, shown in the sources sheet. Re-read the live
+  // level whenever the sheet opens (the phone may have moved it meanwhile).
+  const { volumes, setVolume, reload: reloadVol } = useVolumes();
+  useEffect(() => { if (open) reloadVol(); }, [open, reloadVol]);
+  const volId = p && p.id;
+  const showVol = volId && volId in volumes;
+
   return (
     <div class="playerbar">
       <div class={'pbwrap' + (open ? ' open' : '')} {...swipe}>
         <div class="sheet">
           <div class="sheet-head">{t('sheet_sources')}</div>
+          {showVol && (
+            <VolumeSlider value={volumes[volId]} label={p.name}
+                          onInput={(val) => setVolume(volId, val)} />
+          )}
           <div>
             {sources.length === 0
               ? <p class="muted">{t('js_silence')}</p>

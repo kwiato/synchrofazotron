@@ -1007,6 +1007,33 @@ input[type=range]::-moz-range-thumb {
   box-shadow: 0 0 10px var(--glow-cyan);
 }
 
+.volrow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacer-2xs);
+  margin: var(--spacer-2xs) 0;
+}
+.volrow .ico-volume {
+  flex: none;
+}
+.volrow .volrow-label {
+  flex: none;
+  min-width: 4.5rem;
+  font-size: 0.9rem;
+  color: var(--text-2);
+}
+.volrow input[type=range] {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+.volrow .volrow-pct {
+  flex: none;
+  min-width: 2.5ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .step {
   margin: var(--spacer-3xs) 0 var(--spacer-3xs) 2px;
 }

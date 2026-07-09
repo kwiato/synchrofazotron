@@ -645,6 +645,18 @@ input[type=range] {
   }
 }
 
+// Volume row: icon + range + % — used in the sources sheet and the Customize
+// volume card. The range keeps its global thumb/track styling; here we just lay
+// the row out.
+.volrow {
+  display: flex; align-items: center; gap: var(--spacer-2xs);
+  margin: var(--spacer-2xs) 0;
+  .ico-volume { flex: none; }
+  .volrow-label { flex: none; min-width: 4.5rem; font-size: .9rem; color: var(--text-2); }
+  input[type=range] { flex: 1 1 auto; min-width: 0; margin: 0; }
+  .volrow-pct { flex: none; min-width: 2.5ch; text-align: right; font-variant-numeric: tabular-nums; }
+}
+
 // ---------------------------------------------------------------------------
 // Misc (settings page)
 // ---------------------------------------------------------------------------

@@ -133,6 +133,15 @@ STR = {
         # settings v2 (sections / tailscale / source switches)
         "nav_customize": "Customize",
         "nav_connections": "Connections",
+        "vol_head": "Volume",
+        "vol_none": "No source is playing right now.",
+        "exp_head": "Experimental",
+        "exp_note": "Rough edges live here. Handy, but may change or misbehave.",
+        "exp_normalize": "Normalize visualizer",
+        "exp_normalize_note": "Keep the visualizer lively at any playback volume "
+                              "(auto-gain). Off = it tracks the raw signal level.",
+        "viz_normalize_on": "Visualizer normalization on.",
+        "viz_normalize_off": "Visualizer normalization off.",
         "nav_config": "Config",
         "nav_sources": "Sources",
         "nav_viz": "Visualizer",
@@ -413,6 +422,15 @@ STR = {
         "how_connect_head": "Jak podłączyć źródła",
         "nav_customize": "Personalizacja",
         "nav_connections": "Połączenia",
+        "vol_head": "Głośność",
+        "vol_none": "Żadne źródło teraz nie gra.",
+        "exp_head": "Eksperymentalne",
+        "exp_note": "Tu mieszkają funkcje w budowie. Przydatne, ale mogą się zmienić lub kaprysić.",
+        "exp_normalize": "Normalizuj wizualizer",
+        "exp_normalize_note": "Utrzymuj żywy wizualizer przy dowolnej głośności "
+                              "(auto-gain). Wyłączone = podąża za surowym poziomem sygnału.",
+        "viz_normalize_on": "Normalizacja wizualizera włączona.",
+        "viz_normalize_off": "Normalizacja wizualizera wyłączona.",
         "nav_config": "Konfiguracja",
         "nav_sources": "Źródła",
         "nav_viz": "Wizualizer",
@@ -1221,6 +1239,11 @@ VIZ_GLSL_ERR = "/opt/pistream-visualizer/glsl-error"
 # = higher fps on the Pi GPU. One of VIZ_SCALES; "1" = native.
 VIZ_SCALE_FILE = "/opt/pistream-visualizer/scale"
 VIZ_SCALES = ("1", "0.75", "0.5", "0.25")
+# Experimental: normalize the visualizer's input level so it stays lively
+# regardless of playback volume (players attenuate before the tee, so the viz
+# tap is as quiet as the speakers). On == cava autosens + the glsl bridge's AGC;
+# off == raw, volume-dependent. Defaults on (the shipped behaviour).
+VIZ_NORMALIZE_FILE = "/opt/pistream-visualizer/normalize"
 # Manual off-switch. When this flag exists the visualizer stays off even with a
 # monitor attached — hdmi-watch.sh honours it instead of auto-starting. It is
 # the user's intent (the panel toggle); the service's live state can differ
@@ -1230,7 +1253,7 @@ VIZ_DISABLED_FLAG = "/opt/pistream-visualizer/disabled"
 _VIZ_TEMPLATE = """# preset: {name} (managed by the Synchrofazotron panel — /settings page)
 [general]
 framerate = {framerate}
-autosens = 1
+autosens = {autosens}
 bars = 0
 bar_width = {bar_width}
 bar_spacing = {bar_spacing}
@@ -1369,6 +1392,27 @@ def _viz_set_scale(scale):
     return True, T("viz_scale_set").format(scale=scale)
 
 
+def _viz_normalize():
+    """Whether input normalization is on (default on = the shipped behaviour)."""
+    return _file_read(VIZ_NORMALIZE_FILE).strip() != "0"
+
+
+def _viz_set_normalize(on):
+    """(ok, message). Toggles viz input normalization for both engines.
+    glsl reads the flag file itself; cava's autosens is patched in the live conf.
+    Restart applies it (music keeps playing)."""
+    _file_write(VIZ_NORMALIZE_FILE, ("1" if on else "0") + "\n")
+    try:
+        conf = _file_read(VIZ_CONF)
+        if conf:
+            _file_write(VIZ_CONF, re.sub(
+                r"(?m)^autosens = .*$", f"autosens = {1 if on else 0}", conf))
+    except Exception:  # noqa: BLE001
+        pass
+    _run(["systemctl", "try-restart", VIZ_SERVICE])
+    return True, T("viz_normalize_on" if on else "viz_normalize_off")
+
+
 def _shader_label(sid):
     label = T(f"shader_{sid}")
     return sid.capitalize() if label == f"shader_{sid}" else label
@@ -1408,6 +1452,7 @@ def _viz_write_conf(name, params):
             name=name, framerate=params["framerate"],
             bar_width=params["bar_width"], bar_spacing=params["bar_spacing"],
             color=params["color"], background=params.get("background", "black"),
+            autosens=(1 if _viz_normalize() else 0),
             smoothing="\n".join(smoothing)))
     _run(["systemctl", "try-restart", VIZ_SERVICE])
 
@@ -1507,7 +1552,7 @@ def _viz_state():
             "presets": [{"id": p["id"], "label": p["label"], "params": p["params"]}
                         for p in _viz_presets_list()],
             "engine": engine, "shader": shader, "scale": _viz_scale(),
-            "scales": list(VIZ_SCALES),
+            "scales": list(VIZ_SCALES), "normalize": _viz_normalize(),
             "glsl_error": _file_read(VIZ_GLSL_ERR).strip(),
             "glsl_available": bool(_viz_glsl_ok() and _viz_shaders()),
             "shaders": [{"id": s, "label": _shader_label(s)}
@@ -2507,6 +2552,124 @@ def _control(source, action):
     return False
 
 
+# ---------------------------------------------------------------------------
+# Per-source volume. Each player owns its own (software) volume — the same knob
+# the controlling app moves — so we drive each through its native API and
+# normalise to 0-100:
+#   LMS      -> jsonrpc `mixer volume`             (already 0-100)
+#   AirPlay  -> shairport MPRIS `Volume` property  (0.0-1.0)
+#   Bluetooth-> bluealsa-cli on the A2DP PCM        (0-127, AVRCP absolute)
+# get returns None when the source isn't present/controllable right now.
+# ---------------------------------------------------------------------------
+def _bt_a2dp_path():
+    """D-Bus path of the A2DP sink stream (phone -> Pi), or None."""
+    for path in _run(["bluealsa-cli", "list-pcms"]).splitlines():
+        path = path.strip()
+        if "a2dp" in path:
+            return path
+    return None
+
+
+def _vol_lms_get():
+    pid = _lms_pid()
+    if not pid:
+        return None
+    v = _lms_request([pid, ["mixer", "volume", "?"]]).get("_volume")
+    return None if v is None else max(0, min(100, int(round(float(v)))))
+
+
+def _vol_lms_set(value):
+    pid = _lms_pid()
+    if not pid:
+        return False
+    _lms_request([pid, ["mixer", "volume", str(value)]])
+    return True
+
+
+# AirPlay volume is a dB value in [-30, 0] (a large negative == muted). The MPRIS
+# Volume is read-only, so use shairport's own writable org.gnome.ShairportSync
+# Volume property and map it to/from 0-100.
+_AP_SVC = "org.gnome.ShairportSync"
+_AP_OBJ = "/org/gnome/ShairportSync"
+_AP_DB_LO = -30.0
+
+
+def _vol_airplay_get():
+    out = _run(["busctl", "get-property", _AP_SVC, _AP_OBJ, _AP_SVC, "Volume"])
+    m = re.search(r"-?\d+(?:\.\d+)?", out)
+    if not m:
+        return None
+    db = float(m.group(0))
+    if db <= _AP_DB_LO:
+        return 0
+    if db >= 0:
+        return 100
+    return max(0, min(100, int(round((db - _AP_DB_LO) / -_AP_DB_LO * 100))))
+
+
+def _vol_airplay_set(value):
+    db = _AP_DB_LO + (value / 100.0) * (-_AP_DB_LO)   # 0 -> -30dB, 100 -> 0dB
+    # `--` so busctl doesn't parse the negative dB value as an option flag
+    return "__err__" not in _run(
+        ["busctl", "set-property", _AP_SVC, _AP_OBJ, _AP_SVC, "Volume", "d", "--", f"{db:.2f}"])
+
+
+def _vol_bt_get():
+    p = _bt_a2dp_path()
+    if not p:
+        return None
+    nums = re.findall(r"\d+", _run(["bluealsa-cli", "volume", p]))
+    return None if not nums else max(0, min(100, int(round(int(nums[0]) / 127 * 100))))
+
+
+def _vol_bt_set(value):
+    p = _bt_a2dp_path()
+    if not p:
+        return False
+    raw = max(0, min(127, int(round(value / 100 * 127))))
+    return "__err__" not in _run(["bluealsa-cli", "volume", p, str(raw)])
+
+
+_VOL_GET = {"lms": _vol_lms_get, "airplay": _vol_airplay_get, "bt": _vol_bt_get}
+_VOL_SET = {"lms": _vol_lms_set, "airplay": _vol_airplay_set, "bt": _vol_bt_set}
+
+
+def _volume_payload():
+    """Current volume (0-100) per available source; absent = not controllable now."""
+    out = {}
+    for sid, fn in _VOL_GET.items():
+        try:
+            v = fn()
+        except Exception:  # noqa: BLE001
+            v = None
+        if v is not None:
+            out[sid] = v
+    return {"volumes": out}
+
+
+def _volume_set(source, value=None, delta=None):
+    """Set absolute value or apply a delta. Returns (ok, new_value|None)."""
+    if source not in _VOL_SET:
+        return False, None
+    if delta is not None:
+        cur = None
+        try:
+            cur = _VOL_GET[source]()
+        except Exception:  # noqa: BLE001
+            cur = None
+        if cur is None:
+            return False, None
+        value = cur + delta
+    if value is None:
+        return False, None
+    value = max(0, min(100, int(value)))
+    try:
+        ok = _VOL_SET[source](value)
+    except Exception:  # noqa: BLE001
+        ok = False
+    return ok, (value if ok else None)
+
+
 def status_payload():
     show = _bt_show()
     connected = _connected_devices()
@@ -2729,6 +2892,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps(_sources_payload()), "application/json")
         elif self.path == "/api/status":
             self._send(200, json.dumps(status_payload()), "application/json")
+        elif self.path == "/api/volume":
+            self._send(200, json.dumps(_volume_payload()), "application/json")
         elif self.path == "/api/wifi":
             self._send(200, json.dumps(_wifi_payload()), "application/json")
         elif self.path == "/api/wifi/scan":
@@ -2833,6 +2998,14 @@ class Handler(BaseHTTPRequestHandler):
             body = self._json_body()
             ok = _control(str(body.get("source", "")), str(body.get("action", "toggle")))
             self._send(200, json.dumps({"ok": ok}), "application/json")
+        elif self.path == "/api/volume":
+            body = self._json_body()
+            v, d = body.get("value"), body.get("delta")
+            ok, newv = _volume_set(
+                str(body.get("source", "")),
+                value=(int(v) if v is not None else None),
+                delta=(int(d) if d is not None else None))
+            self._send(200, json.dumps({"ok": ok, "value": newv}), "application/json")
         elif self.path == "/api/wifi/add":
             body = self._json_body()
             ok, message = _wifi_add(str(body.get("ssid", "")), str(body.get("key", "")))
@@ -2858,6 +3031,10 @@ class Handler(BaseHTTPRequestHandler):
                        "application/json")
         elif self.path == "/api/viz/preset/delete":
             ok, message = _viz_preset_delete(self._json_body())
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/viz/normalize":
+            ok, message = _viz_set_normalize(bool(self._json_body().get("on")))
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/viz/shader/upload":

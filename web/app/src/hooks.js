@@ -44,6 +44,28 @@ export function useApi(path, interval) {
   return [data, reload];
 }
 
+// Per-source volume (0-100). Fetches /api/volume (only sources controllable
+// right now appear), and setVolume() updates the UI immediately while trailing-
+// throttling the POST so dragging a slider doesn't flood the player APIs.
+export function useVolumes() {
+  const [volumes, setVolumes] = useState({});
+  const timers = useRef({});
+  const reload = useCallback(async () => {
+    try { setVolumes((await apiGet('/api/volume')).volumes || {}); } catch { /* keep */ }
+  }, []);
+  useEffect(() => { reload(); }, [reload]);
+  const setVolume = useCallback((source, value) => {
+    const v = Math.max(0, Math.min(100, Math.round(value)));
+    setVolumes((cur) => ({ ...cur, [source]: v }));
+    clearTimeout(timers.current[source]);
+    timers.current[source] = setTimeout(() => {
+      apiPost('/api/volume', { source, value: v }).catch(() => {});
+    }, 120);
+  }, []);
+  useEffect(() => () => Object.values(timers.current).forEach(clearTimeout), []);
+  return { volumes, setVolume, reload };
+}
+
 // Polls /healthz until the device goes down and comes back (reboot / update),
 // then fires done(). Falls through after ~4 min so spinners never hang.
 export function watchComeBack(done) {

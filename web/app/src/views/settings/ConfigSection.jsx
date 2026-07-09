@@ -20,8 +20,41 @@ export function ConfigSection() {
         <TailscaleCard />
         <UpdateCard />
         <RebootCard />
+        <ExperimentalCard />
       </div>
     </section>
+  );
+}
+
+// Experimental toggles. First one: normalize the visualizer's input level so it
+// stays lively regardless of playback volume (auto-gain) — see /api/viz/normalize.
+function ExperimentalCard() {
+  const { t } = useI18n();
+  const [v, reload] = useApi('/api/viz', 0);
+  const [busy, setBusy] = useState(false);
+  const on = !!(v && v.normalize);
+  const toggle = async (e) => {
+    const val = e.currentTarget.checked;
+    setBusy(true);
+    try { await apiPost('/api/viz/normalize', { on: val }); } catch { /* ignore */ }
+    await reload();
+    setBusy(false);
+  };
+  return (
+    <div class="card">
+      <h2>🧪 {t('exp_head')}</h2>
+      <p class="muted">{t('exp_note')}</p>
+      <div class="card-head">
+        <div>
+          <b>{t('exp_normalize')}</b>
+          <p class="muted small" style="margin:2px 0 0;">{t('exp_normalize_note')}</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" checked={on} disabled={busy || !v} onChange={toggle} />
+          <span class="knob"></span>
+        </label>
+      </div>
+    </div>
   );
 }
 
