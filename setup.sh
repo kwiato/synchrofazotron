@@ -457,6 +457,24 @@ if [[ -f $SL ]]; then
     systemctl restart squeezelite 2>/dev/null || true
     ok "squeezelite → $OUT_PCM (with -C 5)"
   fi
+  # Retry on startup failure: squeezelite test-opens the output device on
+  # start, and when another source (e.g. bluealsa-aplay) holds pistream at
+  # that moment it exits 1 and would otherwise stay dead — leaving LMS with
+  # no player. Keep retrying until the device frees up.
+  SL_DROPIN=/etc/systemd/system/squeezelite.service.d/retry.conf
+  if [[ ! -f $SL_DROPIN ]]; then
+    mkdir -p "${SL_DROPIN%/*}"
+    cat > "$SL_DROPIN" <<'EOF'
+[Unit]
+StartLimitIntervalSec=0
+
+[Service]
+Restart=on-failure
+RestartSec=15
+EOF
+    systemctl daemon-reload
+    ok "squeezelite: auto-retry drop-in installed ($SL_DROPIN)"
+  fi
 fi
 # shairport-sync
 SP_CONF=/usr/local/etc/shairport-sync.conf
