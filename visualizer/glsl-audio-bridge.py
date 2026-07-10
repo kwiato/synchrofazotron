@@ -15,24 +15,18 @@ Values are 0..1 with fast attack / slow decay, so the shaders look snappy
 without flickering. When nothing plays, the loopback capture blocks and the
 picture simply freezes on the last frame — that is fine.
 """
+import json
 import subprocess
 import sys
 
 import numpy as np
 
-# Experimental "normalize" toggle (panel: Config -> Experimental). On == AGC
-# below; off == raw fixed gains (the picture tracks the actual signal level, so
-# it goes quiet at low playback volume). The service restarts on toggle, so
-# reading the flag once at startup is enough.
+# "Customize visualizer normalization" (panel: Config -> Experimental). The
+# panel stores JSON: {"custom": bool, "glsl": {"max_boost", "target"}, ...}.
+# Missing file, custom off, or legacy "0"/"1" content (the old on/off toggle)
+# all mean the shipped AGC defaults below. The service restarts on every
+# change, so reading once at startup is enough.
 NORMALIZE_FILE = "/opt/pistream-visualizer/normalize"
-
-
-def _normalize_on():
-    try:
-        with open(NORMALIZE_FILE, encoding="utf-8") as fh:
-            return fh.read().strip() != "0"
-    except OSError:
-        return True
 
 RATE = 44100
 CHUNK = 1024                      # 1024 frames @ 44.1 kHz -> ~43 updates/s
@@ -52,6 +46,23 @@ AGC_MAX_BOOST = 45.0
 AGC_DECAY = 0.999                 # per chunk (~43 Hz): env halves in ~16 s
 
 
+def _agc_params():
+    """(max_boost, target) — the user's values when customization is on,
+    the shipped defaults otherwise. max_boost 1.0 ~= raw (no boost, loud
+    playback still capped toward target)."""
+    try:
+        with open(NORMALIZE_FILE, encoding="utf-8") as fh:
+            cfg = json.load(fh)
+        if isinstance(cfg, dict) and cfg.get("custom"):
+            glsl = cfg.get("glsl") or {}
+            boost = float(glsl.get("max_boost", AGC_MAX_BOOST))
+            target = float(glsl.get("target", AGC_TARGET))
+            return min(max(boost, 1.0), 100.0), min(max(target, 0.1), 1.0)
+    except (OSError, ValueError, TypeError):
+        pass
+    return AGC_MAX_BOOST, AGC_TARGET
+
+
 def main():
     rec = subprocess.Popen(
         ["arecord", "-q", "-D", DEVICE, "-f", "S16_LE",
@@ -62,7 +73,7 @@ def main():
     masks = [(freqs >= lo) & (freqs < hi) for lo, hi in BANDS]
     state = [0.0] * len(NAMES)
     env = 0.0                     # running peak of the gained level (AGC)
-    normalize = _normalize_on()
+    max_boost, target = _agc_params()
     while True:
         raw = rec.stdout.read(CHUNK * 4)          # 2 ch * 2 bytes
         if len(raw) < CHUNK * 4:
@@ -73,11 +84,8 @@ def main():
         vals = [float(np.sqrt(np.mean(mono ** 2)))]
         vals += [float(np.sqrt(np.mean(spec[m] ** 2))) for m in masks]
         gained = [v * g for v, g in zip(vals, GAINS)]
-        if normalize:
-            env = max(env * AGC_DECAY, gained[0])
-            scale = AGC_TARGET / max(env, AGC_TARGET / AGC_MAX_BOOST)
-        else:
-            scale = 1.0           # raw: the picture tracks the real signal level
+        env = max(env * AGC_DECAY, gained[0])
+        scale = target / max(env, target / max_boost)
         lines = []
         for i, v in enumerate(gained):
             v = min(v * scale, 1.0)

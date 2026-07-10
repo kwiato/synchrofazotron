@@ -139,11 +139,16 @@ STR = {
         "vol_none": "No source is playing right now.",
         "exp_head": "Experimental",
         "exp_note": "Rough edges live here. Handy, but may change or misbehave.",
-        "exp_normalize": "Normalize visualizer",
-        "exp_normalize_note": "Keep the visualizer lively at any playback volume "
-                              "(auto-gain). Off = it tracks the raw signal level.",
-        "viz_normalize_on": "Visualizer normalization on.",
-        "viz_normalize_off": "Visualizer normalization off.",
+        "exp_normalize": "Customize visualizer normalization",
+        "exp_normalize_note": "Off = the shipped auto-gain (lively at any "
+                              "playback volume). On = tune how each engine "
+                              "tracks the signal.",
+        "viz_normalize_on": "Visualizer normalization: custom parameters applied.",
+        "viz_normalize_off": "Visualizer normalization back to defaults.",
+        "norm_autosens": "Auto sensitivity (autosens)",
+        "norm_sensitivity": "Sensitivity",
+        "norm_boost": "Max boost",
+        "norm_target": "Target level",
         "nav_config": "Config",
         "nav_sources": "Sources",
         "nav_viz": "Visualizer",
@@ -434,11 +439,16 @@ STR = {
         "vol_none": "Żadne źródło teraz nie gra.",
         "exp_head": "Eksperymentalne",
         "exp_note": "Tu mieszkają funkcje w budowie. Przydatne, ale mogą się zmienić lub kaprysić.",
-        "exp_normalize": "Normalizuj wizualizer",
-        "exp_normalize_note": "Utrzymuj żywy wizualizer przy dowolnej głośności "
-                              "(auto-gain). Wyłączone = podąża za surowym poziomem sygnału.",
-        "viz_normalize_on": "Normalizacja wizualizera włączona.",
-        "viz_normalize_off": "Normalizacja wizualizera wyłączona.",
+        "exp_normalize": "Dostosuj normalizację wizualizera",
+        "exp_normalize_note": "Wyłączone = domyślny auto-gain (żywy obraz przy "
+                              "każdej głośności). Włączone = ręczne strojenie "
+                              "każdego silnika.",
+        "viz_normalize_on": "Normalizacja wizualizera: własne parametry zastosowane.",
+        "viz_normalize_off": "Normalizacja wizualizera wróciła do domyślnej.",
+        "norm_autosens": "Automatyczna czułość (autosens)",
+        "norm_sensitivity": "Czułość",
+        "norm_boost": "Maks. podbicie",
+        "norm_target": "Poziom docelowy",
         "nav_config": "Konfiguracja",
         "nav_sources": "Źródła",
         "nav_viz": "Wizualizer",
@@ -1252,11 +1262,16 @@ VIZ_GLSL_ERR = "/opt/pistream-visualizer/glsl-error"
 # = higher fps on the Pi GPU. One of VIZ_SCALES; "1" = native.
 VIZ_SCALE_FILE = "/opt/pistream-visualizer/scale"
 VIZ_SCALES = ("1", "0.75", "0.5", "0.25")
-# Experimental: normalize the visualizer's input level so it stays lively
-# regardless of playback volume (players attenuate before the tee, so the viz
-# tap is as quiet as the speakers). On == cava autosens + the glsl bridge's AGC;
-# off == raw, volume-dependent. Defaults on (the shipped behaviour).
+# Experimental: "customize visualizer normalization". Both engines normalize
+# the input level so the picture stays lively regardless of playback volume
+# (players attenuate before the tee, so the viz tap is as quiet as the
+# speakers). Off == the shipped defaults below; on == the user's parameters.
+# Stored as JSON {"custom": bool, "cava": {...}, "glsl": {...}} — the glsl
+# bridge reads the file itself, cava gets its values written into cava.conf.
+# Legacy file contents ("0"/"1" from the old on/off toggle) read as not custom.
 VIZ_NORMALIZE_FILE = "/opt/pistream-visualizer/normalize"
+VIZ_NORM_DEFAULTS = {"cava": {"autosens": True, "sensitivity": 100},
+                     "glsl": {"max_boost": 45, "target": 0.9}}
 # Manual off-switch. When this flag exists the visualizer stays off even with a
 # monitor attached — hdmi-watch.sh honours it instead of auto-starting. It is
 # the user's intent (the panel toggle); the service's live state can differ
@@ -1267,6 +1282,7 @@ _VIZ_TEMPLATE = """# preset: {name} (managed by the Synchrofazotron panel — /s
 [general]
 framerate = {framerate}
 autosens = {autosens}
+sensitivity = {sensitivity}
 bars = 0
 bar_width = {bar_width}
 bar_spacing = {bar_spacing}
@@ -1405,25 +1421,63 @@ def _viz_set_scale(scale):
     return True, T("viz_scale_set").format(scale=scale)
 
 
-def _viz_normalize():
-    """Whether input normalization is on (default on = the shipped behaviour)."""
-    return _file_read(VIZ_NORMALIZE_FILE).strip() != "0"
+def _viz_norm_clamp(body):
+    """Sanitized normalization settings from a JSON body (or the stored file)."""
+    def num(sect, key, lo, hi, cast=int):
+        try:
+            v = cast((body.get(sect) or {}).get(key, VIZ_NORM_DEFAULTS[sect][key]))
+        except (TypeError, ValueError):
+            v = VIZ_NORM_DEFAULTS[sect][key]
+        return max(lo, min(hi, v))
+
+    autosens = (body.get("cava") or {}).get(
+        "autosens", VIZ_NORM_DEFAULTS["cava"]["autosens"])
+    return {"custom": bool(body.get("custom")),
+            "cava": {"autosens": bool(autosens),
+                     "sensitivity": num("cava", "sensitivity", 10, 500)},
+            "glsl": {"max_boost": num("glsl", "max_boost", 1, 100),
+                     "target": round(num("glsl", "target", 0.1, 1.0, float), 2)}}
 
 
-def _viz_set_normalize(on):
-    """(ok, message). Toggles viz input normalization for both engines.
-    glsl reads the flag file itself; cava's autosens is patched in the live conf.
+def _viz_norm():
+    """Normalization settings {"custom", "cava", "glsl"}. A missing file and
+    legacy "0"/"1" contents (the old on/off toggle) both mean not customized."""
+    try:
+        cfg = json.loads(_file_read(VIZ_NORMALIZE_FILE) or "{}")
+    except ValueError:
+        cfg = {}
+    return _viz_norm_clamp(cfg if isinstance(cfg, dict) else {})
+
+
+def _viz_norm_cava():
+    """Effective cava normalization values (defaults unless customized)."""
+    norm = _viz_norm()
+    return norm["cava"] if norm["custom"] else VIZ_NORM_DEFAULTS["cava"]
+
+
+def _viz_set_normalize(body):
+    """(ok, message). "Customize normalization": off = the shipped defaults,
+    on = the user's per-engine parameters. The glsl bridge reads the JSON file
+    itself; cava's autosens/sensitivity are patched into the live conf.
     Restart applies it (music keeps playing)."""
-    _file_write(VIZ_NORMALIZE_FILE, ("1" if on else "0") + "\n")
+    norm = _viz_norm_clamp(body)
+    _file_write(VIZ_NORMALIZE_FILE, json.dumps(norm) + "\n")
+    cava = norm["cava"] if norm["custom"] else VIZ_NORM_DEFAULTS["cava"]
     try:
         conf = _file_read(VIZ_CONF)
         if conf:
-            _file_write(VIZ_CONF, re.sub(
-                r"(?m)^autosens = .*$", f"autosens = {1 if on else 0}", conf))
+            conf = re.sub(r"(?m)^autosens = .*$",
+                          f"autosens = {1 if cava['autosens'] else 0}", conf)
+            line = f"sensitivity = {cava['sensitivity']}"
+            if re.search(r"(?m)^sensitivity = ", conf):
+                conf = re.sub(r"(?m)^sensitivity = .*$", line, conf)
+            else:  # confs written before the panel knew about sensitivity
+                conf = conf.replace("[general]", f"[general]\n{line}", 1)
+            _file_write(VIZ_CONF, conf)
     except Exception:  # noqa: BLE001
         pass
     _run(["systemctl", "try-restart", VIZ_SERVICE])
-    return True, T("viz_normalize_on" if on else "viz_normalize_off")
+    return True, T("viz_normalize_on" if norm["custom"] else "viz_normalize_off")
 
 
 def _shader_label(sid):
@@ -1460,12 +1514,14 @@ def _viz_write_conf(name, params):
     if params.get("waves"):
         smoothing.append("waves = 1")
     smoothing.append(f"noise_reduction = {params['noise_reduction']}")
+    norm_cava = _viz_norm_cava()
     with open(VIZ_CONF, "w", encoding="utf-8") as fh:
         fh.write(_VIZ_TEMPLATE.format(
             name=name, framerate=params["framerate"],
             bar_width=params["bar_width"], bar_spacing=params["bar_spacing"],
             color=params["color"], background=params.get("background", "black"),
-            autosens=(1 if _viz_normalize() else 0),
+            autosens=(1 if norm_cava["autosens"] else 0),
+            sensitivity=norm_cava["sensitivity"],
             smoothing="\n".join(smoothing)))
     _run(["systemctl", "try-restart", VIZ_SERVICE])
 
@@ -1565,7 +1621,7 @@ def _viz_state():
             "presets": [{"id": p["id"], "label": p["label"], "params": p["params"]}
                         for p in _viz_presets_list()],
             "engine": engine, "shader": shader, "scale": _viz_scale(),
-            "scales": list(VIZ_SCALES), "normalize": _viz_normalize(),
+            "scales": list(VIZ_SCALES), "norm": _viz_norm(),
             "glsl_error": _file_read(VIZ_GLSL_ERR).strip(),
             "glsl_available": bool(_viz_glsl_ok() and _viz_shaders()),
             "shaders": [{"id": s, "label": _shader_label(s)}
@@ -3071,7 +3127,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/viz/normalize":
-            ok, message = _viz_set_normalize(bool(self._json_body().get("on")))
+            ok, message = _viz_set_normalize(self._json_body())
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/viz/shader/upload":

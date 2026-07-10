@@ -6,6 +6,8 @@ import { useApi, doReboot } from '../../hooks.js';
 import { useToast } from '../../components/Toast.jsx';
 import { Droplet } from '../../components/Droplet.jsx';
 import { WifiModal } from '../../components/WifiModal.jsx';
+import { Collapsible } from '../../components/Collapsible.jsx';
+import { Tabs } from '../../components/Tabs.jsx';
 import { IS_APP, apiBase, switchDevice } from '../../host.js';
 import { APP_SHA_SHORT, APK_URL, RELEASE_API } from '../../appversion.js';
 import { ApkInstaller } from '../../apkinstaller.js';
@@ -27,20 +29,42 @@ export function ConfigSection() {
   );
 }
 
-// Experimental toggles. Normalize lives on the device (/api/viz/normalize);
-// smooth radio loading is a local UI pref (prefs.js, this phone only).
+// Range input that follows the local value while dragging (onInput) and only
+// commits on release (onChange) — every commit restarts the viz service.
+function NormSlider({ label, value, min, max, step, onCommit }) {
+  const [v, setV] = useState(value);
+  useEffect(() => setV(value), [value]);
+  return (
+    <label class="vlabel">{label}: <b>{v}</b>
+      <input type="range" min={min} max={max} step={step} value={v}
+             onInput={(e) => setV(e.currentTarget.value)}
+             onChange={(e) => onCommit(+e.currentTarget.value)} />
+    </label>
+  );
+}
+
+// Experimental toggles. Normalization lives on the device (/api/viz/normalize):
+// off = the shipped auto-gain defaults, on = per-engine parameters (tabs mirror
+// the engine picker). Smooth radio loading is a local UI pref (prefs.js).
 function ExperimentalCard() {
   const { t } = useI18n();
   const [v, reload] = useApi('/api/viz', 0);
   const [busy, setBusy] = useState(false);
-  const on = !!(v && v.normalize);
-  const toggle = async (e) => {
-    const val = e.currentTarget.checked;
+  const [norm, setNorm] = useState(null);   // local copy, seeded from the API
+  const [tab, setTab] = useState('cava');
+  useEffect(() => { if (v && v.norm && !norm) setNorm(v.norm); }, [v]);
+
+  const post = async (n) => {
+    setNorm(n);
     setBusy(true);
-    try { await apiPost('/api/viz/normalize', { on: val }); } catch { /* ignore */ }
+    try { await apiPost('/api/viz/normalize', n); } catch { /* ignore */ }
     await reload();
     setBusy(false);
   };
+  const toggle = (e) => post({ ...norm, custom: e.currentTarget.checked });
+  const setCava = (k, val) => post({ ...norm, cava: { ...norm.cava, [k]: val } });
+  const setGlsl = (k, val) => post({ ...norm, glsl: { ...norm.glsl, [k]: val } });
+
   const [fx, setFx] = useState(radioFx());
   const toggleFx = (e) => { const val = e.currentTarget.checked; setRadioFx(val); setFx(val); };
   return (
@@ -53,10 +77,41 @@ function ExperimentalCard() {
           <p class="muted small" style="margin:2px 0 0;">{t('exp_normalize_note')}</p>
         </div>
         <label class="switch">
-          <input type="checkbox" checked={on} disabled={busy || !v} onChange={toggle} />
+          <input type="checkbox" checked={!!(norm && norm.custom)}
+                 disabled={busy || !norm} onChange={toggle} />
           <span class="knob"></span>
         </label>
       </div>
+      {norm && (
+        <Collapsible open={norm.custom}>
+          <Tabs compact active={tab} onChange={setTab}
+                items={[
+                  { id: 'cava', label: t('viz_eng_cava') },
+                  { id: 'glsl', label: t('viz_eng_glsl') },
+                ]} />
+          {tab === 'cava'
+            ? (
+              <>
+                <label class="vlabel">
+                  <input type="checkbox" checked={norm.cava.autosens}
+                         onChange={(e) => setCava('autosens', e.currentTarget.checked)} /> {t('norm_autosens')}
+                </label>
+                {!norm.cava.autosens && (
+                  <NormSlider label={t('norm_sensitivity')} value={norm.cava.sensitivity}
+                              min={10} max={500} step={10}
+                              onCommit={(val) => setCava('sensitivity', val)} />)}
+              </>)
+            : (
+              <>
+                <NormSlider label={t('norm_boost')} value={norm.glsl.max_boost}
+                            min={1} max={100} step={1}
+                            onCommit={(val) => setGlsl('max_boost', val)} />
+                <NormSlider label={t('norm_target')} value={norm.glsl.target}
+                            min={0.1} max={1} step={0.05}
+                            onCommit={(val) => setGlsl('target', val)} />
+              </>)}
+        </Collapsible>
+      )}
       <div class="card-head">
         <div>
           <b>{t('exp_radiofx')}</b>
