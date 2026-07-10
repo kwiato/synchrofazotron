@@ -14,13 +14,23 @@ const FALLBACK = {
   player: '', lms_port: 9000, pair_win: 180, repo: '', version: '', strings: {},
 };
 
+const CACHE_KEY = 'i18n';
+
 export function I18nProvider({ children }) {
   const [data, setData] = useState(null);
   useEffect(() => {
     fetch(apiUrl('/api/i18n'), { cache: 'no-store' })
       .then((r) => r.json())
-      .then(setData)
-      .catch(() => setData(FALLBACK));
+      .then((d) => {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(d)); } catch { /* full/private */ }
+        setData(d);
+      })
+      .catch(() => {
+        // no device (picker skipped) or offline — the last device's strings
+        // beat FALLBACK's raw keys; FALLBACK only on a truly first run
+        try { setData(JSON.parse(localStorage.getItem(CACHE_KEY)) || FALLBACK); }
+        catch { setData(FALLBACK); }
+      });
   }, []);
   // Theme background is already painted by style.css, so a blank first frame is
   // invisible; this resolves in one request.

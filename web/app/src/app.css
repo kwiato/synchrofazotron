@@ -110,14 +110,12 @@
 }
 .connect-manual .btn { flex: none; }
 .connect-err { text-align: center; color: var(--hot, #e66); margin: var(--spacer-xs) 0 0; font-size: .88rem; }
-/* app-update escape hatch at the bottom of the picker — deliberately quiet */
-.connect-upd { text-align: center; margin-top: var(--spacer-lg); }
-.connect-updbtn {
+/* skip link at the bottom of the picker — deliberately quiet */
+.connect-skip { text-align: center; margin-top: var(--spacer-lg); }
+.connect-skipbtn {
   background: none; border: 0; padding: var(--spacer-2xs);
   font-size: .82rem; text-decoration: underline; cursor: pointer;
 }
-.connect-updbtn:disabled { opacity: .6; cursor: default; }
-.connect-updmsg { margin: var(--spacer-2xs) 0 0; }
 
 /* Pull-to-reveal status shade. The sheet (header + view) is an opaque surface on
    a darker backdrop; the tray sits fixed behind it and is uncovered by dragging

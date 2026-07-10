@@ -11,8 +11,14 @@ export function App() {
   // providers (which fetch /api/i18n, /api/status) stay unmounted behind the
   // device picker. On the web IS_APP is false and this collapses to the panel
   // being served same-origin — unchanged behaviour.
+  // "Skip" enters the UI with no device for this run only (not persisted):
+  // device-backed views show their empty/error states, i18n falls back to the
+  // last cached strings, and Settings > Device gets back to the picker.
   const [base, setBase] = useState(apiBase());
-  if (IS_APP && !base) return <Connect onConnect={() => setBase(apiBase())} />;
+  const [skipped, setSkipped] = useState(false);
+  if (IS_APP && !base && !skipped) {
+    return <Connect onConnect={() => setBase(apiBase())} onSkip={() => setSkipped(true)} />;
+  }
 
   return (
     <I18nProvider>
