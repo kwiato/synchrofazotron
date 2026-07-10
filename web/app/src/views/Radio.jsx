@@ -4,6 +4,7 @@ import { useToast } from '../components/Toast.jsx';
 import { apiGet, apiPost } from '../api.js';
 import { lmsIcon, IS_APP } from '../host.js';
 import { tuneinRoot, tuneinBrowse, tuneinSearch } from '../tunein.js';
+import { radioFx } from '../prefs.js';
 import { Tabs } from '../components/Tabs.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
 
@@ -40,8 +41,24 @@ export function RadioTab() {
 // item_id,fav,id,url,header}]} payload. onOpen(item) drills in, onPlay(item)
 // plays. `direct` marks TuneIn-direct items whose icons are absolute CDN URLs
 // (no panel proxy needed).
-function List({ data, loading, direct, onOpen, onPlay, onStar, onRemove }) {
+// While a list loads with the smooth-loading pref on: five ghost rows fading
+// out downwards (we never know how many items will come back).
+function SkeletonList() {
+  return (
+    <div class="lms-list" aria-hidden="true">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} class="lms-row lms-skel" style={`opacity:${(1 - i * 0.19).toFixed(2)}`}>
+          <span class="lms-ico lms-skel-ph"></span>
+          <span class="lms-skel-bar"></span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function List({ data, loading, direct, fx, onOpen, onPlay, onStar, onRemove }) {
   const { t } = useI18n();
+  if (loading && fx) return <SkeletonList />;
   if (loading && !data) return <p class="muted lms-note">{t('radio_loading')}</p>;
   if (data && data.error === 'lms') {
     return <EmptyState icon="ico-plug-off" title={t('radio_unavailable')} />;
@@ -150,18 +167,37 @@ function Browser({ kind }) {
     catch { /* ignore */ }
   } : null;
 
+  const fx = radioFx();
   return (
     <div class="lms">
-      {stack.length > 0 && (
-        <button class="lms-back" onClick={() => setStack(stack.slice(0, -1))}>
-          ‹ {stack.length > 1 ? stack[stack.length - 2].title : t(kind === 'fav' ? 'radio_fav' : 'radio_browse')}
-        </button>
-      )}
-      <List data={data} loading={loading} direct={direct} onOpen={onOpen} onPlay={onPlay}
-            onStar={kind === 'fav' ? null : onStar} onRemove={onRemove} />
+      <BackSlot stack={stack} fx={fx} onBack={() => setStack(stack.slice(0, -1))}
+                rootLabel={t(kind === 'fav' ? 'radio_fav' : 'radio_browse')} />
+      <div key={fx ? navKey(stack, loading) : 'k'} class={fx ? 'lms-in' : ''}>
+        <List data={data} loading={loading} direct={direct} fx={fx} onOpen={onOpen} onPlay={onPlay}
+              onStar={kind === 'fav' ? null : onStar} onRemove={onRemove} />
+      </div>
     </div>
   );
 }
+
+// The back row keeps its slot even at the root so the list does not jump when
+// drilling in/out; the button itself slides in whenever the level changes.
+function BackSlot({ stack, fx, onBack, rootLabel }) {
+  return (
+    <div class="lms-backslot">
+      {stack.length > 0 && (
+        <button key={stack.length} class={'lms-back' + (fx ? ' lms-back-in' : '')} onClick={onBack}>
+          ‹ {stack.length > 1 ? stack[stack.length - 2].title : rootLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Remounts the animated list wrapper on every navigation step and again when
+// the real content replaces the skeleton, so the slide-in plays for both.
+const navKey = (stack, loading) =>
+  stack.length + ':' + (loading ? 'skel' : 'data');
 
 function Search() {
   const { t } = useI18n();
@@ -211,17 +247,17 @@ function Search() {
     catch { /* ignore */ }
   };
 
+  const fx = radioFx();
   return (
     <div class="lms">
       <input class="in lms-search" type="search" inputMode="search"
              placeholder={t('radio_search_ph')} value={q}
              onInput={(e) => setQ(e.currentTarget.value)} />
-      {stack.length > 0 && (
-        <button class="lms-back" onClick={() => setStack(stack.slice(0, -1))}>
-          ‹ {stack.length > 1 ? stack[stack.length - 2].title : t('radio_search')}
-        </button>
-      )}
-      <List data={data} loading={loading} direct={direct} onOpen={onOpen} onPlay={onPlay} onStar={onStar} />
+      <BackSlot stack={stack} fx={fx} onBack={() => setStack(stack.slice(0, -1))}
+                rootLabel={t('radio_search')} />
+      <div key={fx ? navKey(stack, loading) : 'k'} class={fx ? 'lms-in' : ''}>
+        <List data={data} loading={loading} direct={direct} fx={fx} onOpen={onOpen} onPlay={onPlay} onStar={onStar} />
+      </div>
     </div>
   );
 }

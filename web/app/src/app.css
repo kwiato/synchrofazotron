@@ -157,13 +157,52 @@ html, body { overscroll-behavior-y: contain; }
   padding: var(--spacer-xs); border-radius: 10px; border: 1px solid var(--card-border);
   background: var(--panel, transparent); color: var(--text); font-size: 1rem;
 }
+/* Fixed-height slot for the back row: present even at the root, so the list
+   below never jumps when drilling into / out of a folder. */
+.lms-backslot {
+  min-height: 2.2rem; display: flex; align-items: center;
+  margin: 0 0 var(--spacer-3xs);
+}
 .lms-back {
   display: inline-flex; align-items: center; gap: var(--spacer-3xs);
-  margin: 0 0 var(--spacer-2xs); padding: var(--spacer-2xs) var(--spacer-xs) var(--spacer-2xs) var(--spacer-3xs);
+  margin: 0; padding: var(--spacer-2xs) var(--spacer-xs) var(--spacer-2xs) var(--spacer-3xs);
   border: 0; background: none; cursor: pointer;
   color: var(--muted); font-size: .95rem; -webkit-tap-highlight-color: transparent;
 }
 .lms-back:active { color: var(--text); }
+.lms-back-in { animation: lms-back-in .18s ease-out; }
+@keyframes lms-back-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Smooth-loading pref: new list content (and the skeleton before it) slides
+   in very gently to soften the swap. */
+.lms-in { animation: lms-in .18s ease-out; }
+@keyframes lms-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Ghost rows while a station list loads (5, fading out downwards — the row
+   count is unknown up front). */
+.lms-skel { pointer-events: none; }
+.lms-skel-ph {
+  flex: none; width: 38px; height: 38px; border-radius: 7px;
+  background: var(--card-border);
+}
+.lms-skel-bar {
+  height: .9rem; border-radius: 5px; background: var(--card-border);
+  flex: 0 1 60%;
+}
+.lms-skel .lms-skel-ph, .lms-skel .lms-skel-bar { animation: lms-pulse 1.1s ease-in-out infinite; }
+@keyframes lms-pulse {
+  50% { opacity: .55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lms-back-in, .lms-in, .lms-skel .lms-skel-ph, .lms-skel .lms-skel-bar { animation: none; }
+}
 .lms-list { display: flex; flex-direction: column; }
 /* group header inside results (TuneIn-direct "Stations" / "Shows" sections) */
 .lms-group {

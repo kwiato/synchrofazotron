@@ -9,6 +9,7 @@ import { WifiModal } from '../../components/WifiModal.jsx';
 import { IS_APP, apiBase, switchDevice } from '../../host.js';
 import { APP_SHA_SHORT, APK_URL, RELEASE_API } from '../../appversion.js';
 import { ApkInstaller } from '../../apkinstaller.js';
+import { radioFx, setRadioFx } from '../../prefs.js';
 
 export function ConfigSection() {
   const { t } = useI18n();
@@ -26,8 +27,8 @@ export function ConfigSection() {
   );
 }
 
-// Experimental toggles. First one: normalize the visualizer's input level so it
-// stays lively regardless of playback volume (auto-gain) — see /api/viz/normalize.
+// Experimental toggles. Normalize lives on the device (/api/viz/normalize);
+// smooth radio loading is a local UI pref (prefs.js, this phone only).
 function ExperimentalCard() {
   const { t } = useI18n();
   const [v, reload] = useApi('/api/viz', 0);
@@ -40,6 +41,8 @@ function ExperimentalCard() {
     await reload();
     setBusy(false);
   };
+  const [fx, setFx] = useState(radioFx());
+  const toggleFx = (e) => { const val = e.currentTarget.checked; setRadioFx(val); setFx(val); };
   return (
     <div class="card">
       <h2>🧪 {t('exp_head')}</h2>
@@ -51,6 +54,16 @@ function ExperimentalCard() {
         </div>
         <label class="switch">
           <input type="checkbox" checked={on} disabled={busy || !v} onChange={toggle} />
+          <span class="knob"></span>
+        </label>
+      </div>
+      <div class="card-head">
+        <div>
+          <b>{t('exp_radiofx')}</b>
+          <p class="muted small" style="margin:2px 0 0;">{t('exp_radiofx_note')}</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" checked={fx} onChange={toggleFx} />
           <span class="knob"></span>
         </label>
       </div>
