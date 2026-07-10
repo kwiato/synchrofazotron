@@ -13,6 +13,15 @@ export function navigate(path) {
   location.hash = path;
 }
 
+// "Homepage" gesture (the logo, the player bar): land on / with the Now tab
+// active. The tab lives in Panel's state + localStorage, so navigate() alone
+// wouldn't switch it — the event tells a mounted Panel to flip.
+export function goHome() {
+  try { localStorage.setItem('paneltab', 'now'); } catch { /* private mode */ }
+  navigate('/');
+  dispatchEvent(new Event('app:home'));
+}
+
 export function useRoute() {
   const [path, setPath] = useState(currentPath());
   useEffect(() => {

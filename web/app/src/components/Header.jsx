@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { useStatus } from '../status.jsx';
 import { useI18n } from '../i18n.jsx';
 import { apiPost } from '../api.js';
-import { navigate, useRoute } from '../router.jsx';
+import { goHome, navigate, useRoute } from '../router.jsx';
 import { RingMark } from './ConsoleLogo.jsx';
 
 export function Header() {
@@ -25,7 +25,8 @@ export function Header() {
   return (
     <header class="top">
       <h1 class="brand">
-        <a href="#/" aria-label={device}>
+        {/* homepage: also forces the Now tab (href alone wouldn't switch it) */}
+        <a href="#/" aria-label={device} onClick={(e) => { e.preventDefault(); goHome(); }}>
           <RingMark class="brand-mark" />
           <span class="brand-name">{device}</span>
         </a>

@@ -5,6 +5,7 @@ import { useI18n } from '../i18n.jsx';
 import { apiPost } from '../api.js';
 import { primary, srcSub } from '../util.js';
 import { usePending, pendingStart, pendingClear } from '../pending.js';
+import { goHome } from '../router.jsx';
 import { Eq } from './Eq.jsx';
 import { VolumeSlider } from './VolumeSlider.jsx';
 
@@ -89,7 +90,8 @@ export function PlayerBar() {
           <p class="muted small">{t('sources_note')}</p>
         </div>
 
-        <div class="inner">
+        {/* homepage gesture: a tap on the bar itself (not its buttons) shows Now Playing */}
+        <div class="inner" onClick={(e) => { if (!e.target.closest('button')) goHome(); }}>
           <button class="iconbtn arrow" onClick={() => setOpen((o) => !o)}
                   title={t('sheet_sources')} aria-label={t('sheet_sources')}>
             <i class="ico ico-chev" aria-hidden="true"></i>

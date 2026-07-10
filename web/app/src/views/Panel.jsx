@@ -25,6 +25,12 @@ export function Panel() {
     setTab(name);
     try { localStorage.setItem('paneltab', name); } catch { /* ignore */ }
   };
+  // the homepage gesture (logo / player bar) — goHome() already persisted it
+  useEffect(() => {
+    const on = () => setTab('now');
+    addEventListener('app:home', on);
+    return () => removeEventListener('app:home', on);
+  }, []);
   // swipe left → next tab, right → previous; clamped at the ends
   const step = (d) => {
     const j = ORDER.indexOf(tab) + d;
