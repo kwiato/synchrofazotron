@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { Browser } from '@capacitor/browser';
 import { useI18n } from '../../i18n.jsx';
 import { apiGet, apiPost } from '../../api.js';
 import { useApi, doReboot } from '../../hooks.js';
@@ -9,8 +8,8 @@ import { WifiModal } from '../../components/WifiModal.jsx';
 import { Collapsible } from '../../components/Collapsible.jsx';
 import { Tabs } from '../../components/Tabs.jsx';
 import { IS_APP, apiBase, switchDevice } from '../../host.js';
-import { APP_SHA_SHORT, APK_URL, RELEASE_API } from '../../appversion.js';
-import { ApkInstaller } from '../../apkinstaller.js';
+import { APP_SHA_SHORT } from '../../appversion.js';
+import { appUpdateAvailable, installAppUpdate } from '../../appupdate.js';
 import { radioFx, setRadioFx } from '../../prefs.js';
 
 export function ConfigSection() {
@@ -414,46 +413,27 @@ function UpdateCard() {
   const appCheck = async () => {
     setAppChecking(true);
     setAppMsg(t('js_upd_checking')); setAppMsgTone('');
-    try {
-      const r = await fetch(`${RELEASE_API}?_=${Date.now()}`, { cache: 'no-store' });
-      if (!r.ok) throw new Error(String(r.status));
-      const m = ((await r.json()).body || '').match(/[0-9a-f]{7,40}/i);
-      const latest = m ? m[0].slice(0, 7) : '';
-      const isNew = !!latest && latest !== APP_SHA_SHORT;
-      setAppAvail(isNew);
-      setAppMsg(isNew ? t('appupd_available') : t('appupd_current'));
-      setAppMsgTone(isNew ? 'warn' : 'good');
-    } catch {
+    const avail = await appUpdateAvailable();
+    if (avail == null) {
       setAppMsg(t('js_upd_checkfail')); setAppMsgTone('danger');
+    } else {
+      setAppAvail(avail);
+      setAppMsg(avail ? t('appupd_available') : t('appupd_current'));
+      setAppMsgTone(avail ? 'warn' : 'good');
     }
     setAppChecking(false);
   };
   const appRun = async () => {
     setAppBusy(true);
-    let sub = null;
-    try {
-      // Android 8+ needs a one-time per-app "install unknown apps" grant; send
-      // the user to the system screen and let them tap the button again.
-      if (!(await ApkInstaller.canInstall()).allowed) {
-        setAppMsg(t('appupd_allow')); setAppMsgTone('warn');
-        await ApkInstaller.openInstallSettings();
-        return;
-      }
-      setAppMsg(t('appupd_downloading')); setAppMsgTone('');
-      sub = await ApkInstaller.addListener('progress', ({ received, total }) => {
-        setAppMsg(t('appupd_downloading')
-          + (total > 0 ? ` ${Math.round((received / total) * 100)}%` : ''));
-      });
-      await ApkInstaller.downloadAndInstall({ url: APK_URL });
-      setAppMsg(t('appupd_installing')); setAppMsgTone('good');
-    } catch {
-      // native path failed (or web build) — fall back to the browser download
-      setAppMsg(t('appupd_dl_fail')); setAppMsgTone('danger');
-      try { await Browser.open({ url: APK_URL }); } catch { /* ignore */ }
-    } finally {
-      if (sub) sub.remove();
-      setAppBusy(false);
-    }
+    await installAppUpdate((state, pct) => {
+      if (state === 'allow') { setAppMsg(t('appupd_allow')); setAppMsgTone('warn'); }
+      else if (state === 'downloading') {
+        setAppMsg(t('appupd_downloading') + (pct != null ? ` ${pct}%` : ''));
+        setAppMsgTone('');
+      } else if (state === 'installing') { setAppMsg(t('appupd_installing')); setAppMsgTone('good'); }
+      else { setAppMsg(t('appupd_dl_fail')); setAppMsgTone('danger'); }
+    });
+    setAppBusy(false);
   };
 
   const poll = () => {
