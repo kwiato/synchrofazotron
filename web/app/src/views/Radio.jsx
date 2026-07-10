@@ -2,13 +2,20 @@ import { useCallback, useEffect, useState } from 'preact/hooks';
 import { useI18n } from '../i18n.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { apiGet, apiPost } from '../api.js';
-import { lmsIcon } from '../host.js';
+import { lmsIcon, IS_APP } from '../host.js';
+import { tuneinRoot, tuneinBrowse, tuneinSearch } from '../tunein.js';
 import { Tabs } from '../components/Tabs.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
 
-// Radio browser over the panel's LMS proxy. TuneIn is a tree, so Browse and
-// Favorites each keep a navigation stack (folders push, back pops); Search is a
-// flat query. A station row plays on tap and can be starred into favorites.
+// Radio browser. Two data paths into the same list UI:
+//   * app shell — the phone browses TuneIn directly (tunein.js) and only sends
+//     "play this URL" / favorites to the device; falls back to the LMS path if
+//     TuneIn is unreachable.
+//   * web build — everything over the panel's LMS proxy (browser CORS rules
+//     block TuneIn's API there).
+// TuneIn is a tree, so Browse and Favorites each keep a navigation stack
+// (folders push, back pops); Search is a flat query. A station row plays on
+// tap and can be starred into favorites (stored in LMS — shared with the web).
 
 export function RadioTab() {
   const { t } = useI18n();
@@ -30,8 +37,10 @@ export function RadioTab() {
 }
 
 // Shared list renderer for a normalized {items:[{title,icon,playable,browsable,
-// item_id,fav,id,url}]} payload. onOpen(item) drills in, onPlay(item) plays.
-function List({ data, loading, onOpen, onPlay, onStar, onRemove }) {
+// item_id,fav,id,url,header}]} payload. onOpen(item) drills in, onPlay(item)
+// plays. `direct` marks TuneIn-direct items whose icons are absolute CDN URLs
+// (no panel proxy needed).
+function List({ data, loading, direct, onOpen, onPlay, onStar, onRemove }) {
   const { t } = useI18n();
   if (loading && !data) return <p class="muted lms-note">{t('radio_loading')}</p>;
   if (data && data.error === 'lms') {
@@ -44,10 +53,11 @@ function List({ data, loading, onOpen, onPlay, onStar, onRemove }) {
   return (
     <div class="lms-list">
       {items.map((it, i) => {
-        const icon = lmsIcon(it.icon);
+        if (it.header) return <div key={'h' + i} class="lms-group muted">{it.title}</div>;
+        const icon = direct ? it.icon : lmsIcon(it.icon);
         const act = () => (it.browsable ? onOpen(it) : it.playable && onPlay(it));
         return (
-          <div key={it.item_id || it.id || i} class="lms-row" role="button" tabIndex={0}
+          <div key={it.item_id || it.id || it.url || i} class="lms-row" role="button" tabIndex={0}
                onClick={act} onKeyDown={(e) => e.key === 'Enter' && act()}>
             {icon
               ? <img class="lms-ico" src={icon} loading="lazy" alt="" />
@@ -69,13 +79,19 @@ function List({ data, loading, onOpen, onPlay, onStar, onRemove }) {
   );
 }
 
-// kind 'browse' walks TuneIn (verb+item_id); kind 'fav' walks favorites (id).
+// Plays a TuneIn-direct station: the device just gets the stream URL.
+const playUrl = (it) => apiPost('/api/lms/playurl', { url: it.url, title: it.title });
+
+// kind 'browse' walks TuneIn (direct or via LMS verbs); kind 'fav' walks the
+// LMS favorites (id) — favorites always live on the device.
 function Browser({ kind }) {
   const { t } = useI18n();
   const toast = useToast();
-  const [stack, setStack] = useState([]);       // [{title, verb, item_id/id}]
+  const [stack, setStack] = useState([]);       // [{title, url | verb+item_id | id}]
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [useLms, setUseLms] = useState(!IS_APP);
+  const direct = kind === 'browse' && !useLms;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,6 +101,8 @@ function Browser({ kind }) {
       if (kind === 'fav') {
         d = await apiGet('/api/lms/favorites'
           + (top ? `?item_id=${encodeURIComponent(top.id)}` : ''));
+      } else if (direct) {
+        d = { items: top ? await tuneinBrowse(top.url) : await tuneinRoot() };
       } else if (!top) {
         d = await apiGet('/api/lms/radio');           // root = TuneIn top menu
       } else {
@@ -92,9 +110,12 @@ function Browser({ kind }) {
           + `&item_id=${encodeURIComponent(top.item_id || '')}`);
       }
       setData(d);
-    } catch { setData({ items: [], error: 'lms' }); }
+    } catch {
+      if (direct) { setStack([]); setUseLms(true); }  // retry over the LMS path
+      else setData({ items: [], error: 'lms' });
+    }
     setLoading(false);
-  }, [kind, stack]);
+  }, [kind, stack, direct]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -105,6 +126,7 @@ function Browser({ kind }) {
 
   const onOpen = (it) => {
     if (kind === 'fav') { setStack([...stack, { title: it.title, id: it.id }]); return; }
+    if (direct) { setStack([...stack, { title: it.title, url: it.url }]); return; }
     // root items carry their own verb; deeper folders inherit the current verb.
     const verb = it.verb || currentVerb();
     setStack([...stack, { title: it.title, verb, item_id: it.item_id || '' }]);
@@ -113,6 +135,7 @@ function Browser({ kind }) {
   const onPlay = async (it) => {
     try {
       if (kind === 'fav') await apiPost('/api/lms/favorites/play', { id: it.id });
+      else if (direct) await playUrl(it);
       else await apiPost('/api/lms/radio/play', { verb: currentVerb(), item_id: it.item_id });
     } catch { toast(t('radio_play_err')); }
   };
@@ -134,7 +157,7 @@ function Browser({ kind }) {
           ‹ {stack.length > 1 ? stack[stack.length - 2].title : t(kind === 'fav' ? 'radio_fav' : 'radio_browse')}
         </button>
       )}
-      <List data={data} loading={loading} onOpen={onOpen} onPlay={onPlay}
+      <List data={data} loading={loading} direct={direct} onOpen={onOpen} onPlay={onPlay}
             onStar={kind === 'fav' ? null : onStar} onRemove={onRemove} />
     </div>
   );
@@ -147,28 +170,41 @@ function Search() {
   const [stack, setStack] = useState([]);   // folders drilled into from results
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [useLms, setUseLms] = useState(!IS_APP);
+  const direct = !useLms;
 
   const load = useCallback(async () => {
     if (!q.trim()) { setData(null); return; }
     setLoading(true);
     try {
       const top = stack[stack.length - 1];
-      const d = top
-        ? await apiGet(`/api/lms/radio/browse?verb=search&item_id=${encodeURIComponent(top.item_id)}`)
-        : await apiGet(`/api/lms/radio/search?q=${encodeURIComponent(q)}`);
+      let d;
+      if (direct) {
+        d = { items: top ? await tuneinBrowse(top.url) : await tuneinSearch(q) };
+      } else {
+        d = top
+          ? await apiGet(`/api/lms/radio/browse?verb=search&item_id=${encodeURIComponent(top.item_id)}`)
+          : await apiGet(`/api/lms/radio/search?q=${encodeURIComponent(q)}`);
+      }
       setData(d);
-    } catch { setData({ items: [], error: 'lms' }); }
+    } catch {
+      if (direct) { setStack([]); setUseLms(true); }  // retry over the LMS path
+      else setData({ items: [], error: 'lms' });
+    }
     setLoading(false);
-  }, [q, stack]);
+  }, [q, stack, direct]);
 
   // New query resets the drill-down; debounce so we do not hammer TuneIn.
   useEffect(() => { setStack([]); }, [q]);
   useEffect(() => { const id = setTimeout(load, stack.length ? 0 : 400); return () => clearTimeout(id); }, [load]);
 
-  const onOpen = (it) => setStack([...stack, { title: it.title, item_id: it.item_id }]);
+  const onOpen = (it) => setStack([...stack,
+    direct ? { title: it.title, url: it.url } : { title: it.title, item_id: it.item_id }]);
   const onPlay = async (it) => {
-    try { await apiPost('/api/lms/radio/play', { verb: 'search', item_id: it.item_id }); }
-    catch { toast(t('radio_play_err')); }
+    try {
+      if (direct) await playUrl(it);
+      else await apiPost('/api/lms/radio/play', { verb: 'search', item_id: it.item_id });
+    } catch { toast(t('radio_play_err')); }
   };
   const onStar = async (it) => {
     try { await apiPost('/api/lms/favorites/add', it.fav); toast(t('radio_added')); }
@@ -185,7 +221,7 @@ function Search() {
           ‹ {stack.length > 1 ? stack[stack.length - 2].title : t('radio_search')}
         </button>
       )}
-      <List data={data} loading={loading} onOpen={onOpen} onPlay={onPlay} onStar={onStar} />
+      <List data={data} loading={loading} direct={direct} onOpen={onOpen} onPlay={onPlay} onStar={onStar} />
     </div>
   );
 }

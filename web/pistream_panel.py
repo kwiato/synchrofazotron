@@ -2331,6 +2331,18 @@ def _lms_fav_remove(fav_id):
     return {"ok": True}
 
 
+def _lms_play_url(url, title=""):
+    """Play a stream URL directly (the app browses TuneIn itself and only
+    sends the station's Tune.ashx URL here — LMS resolves it natively)."""
+    if not (url.startswith("http://") or url.startswith("https://")):
+        return {"ok": False}
+    params = ["playlist", "play", url]
+    if title:
+        params.append(title)
+    _lms_request([_lms_pid(), params])
+    return {"ok": True}
+
+
 # A phone opening the Radio tab fires a burst of icon requests at once; each
 # used to hold its own handler thread + an LMS request (imageproxy fetches the
 # image from the internet per call), which once memory-spiralled the whole Pi.
@@ -3113,6 +3125,8 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/lms/radio/play":
                 return _lms_radio_play(str(b.get("verb", "")), str(b.get("item_id", "")),
                                        bool(b.get("add")))
+            if path == "/api/lms/playurl":
+                return _lms_play_url(str(b.get("url", "")), str(b.get("title", "")))
             if path == "/api/lms/favorites/play":
                 return _lms_fav_play(str(b.get("id", "")))
             if path == "/api/lms/favorites/add":

@@ -165,6 +165,12 @@ html, body { overscroll-behavior-y: contain; }
 }
 .lms-back:active { color: var(--text); }
 .lms-list { display: flex; flex-direction: column; }
+/* group header inside results (TuneIn-direct "Stations" / "Shows" sections) */
+.lms-group {
+  padding: var(--spacer-xs) var(--spacer-3xs) var(--spacer-3xs);
+  font-size: .78rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em;
+}
 .lms-row {
   display: flex; align-items: center; gap: var(--spacer-xs); width: 100%;
   padding: var(--spacer-2xs) var(--spacer-3xs); border: 0;
