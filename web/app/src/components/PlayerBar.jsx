@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { useSwipe, useVolumes } from '../hooks.js';
 import { useStatus } from '../status.jsx';
 import { useI18n } from '../i18n.jsx';
 import { apiPost } from '../api.js';
 import { primary, srcSub } from '../util.js';
+import { usePending, pendingStart, pendingClear } from '../pending.js';
 import { Eq } from './Eq.jsx';
 import { VolumeSlider } from './VolumeSlider.jsx';
 
@@ -20,10 +21,22 @@ export function PlayerBar() {
   const sources = (status && status.sources) || [];
   const owners = (status && status.dac_owners) || [];
 
+  // Feedback ring on the play button: on while an action is pending, cleared
+  // as soon as the polled status differs from the snapshot taken at the tap.
+  const pending = usePending();
+  const sig = p ? `${p.id}|${p.playing}|${p.detail || ''}` : '';
+  const base = useRef(null);
+  useEffect(() => {
+    if (!pending) { base.current = null; return; }
+    if (base.current == null) base.current = sig;         // snapshot at start
+    else if (sig !== base.current) pendingClear();        // the device moved
+  }, [pending, sig]);
+
   const ctrl = async (id, action) => {
+    pendingStart();
     try {
       await apiPost('/api/control', { source: id, action: action || 'toggle' });
-    } catch { /* ignore */ }
+    } catch { pendingClear(); }
     setTimeout(refresh, 500);
   };
   const ctrlPrimary = (action) => { if (!ctrlOff) ctrl(p.id, action); };
@@ -92,6 +105,7 @@ export function PlayerBar() {
           </button>
           <button class="playbtn" disabled={ctrlOff} title={ctrlOff ? t('js_ctrl_hint') : ''}
                   onClick={() => ctrlPrimary('toggle')}>
+            {pending && <span class="pb-spin" aria-hidden="true"></span>}
             <i class={'ico ico-lg ' + (p && p.playing ? 'ico-pause' : 'ico-play')} aria-hidden="true"></i>
           </button>
           <button class="pbskip" disabled={ctrlOff} aria-label="next"

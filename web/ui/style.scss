@@ -578,11 +578,23 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
   flex: none; width: 52px; height: 52px; border: 0; border-radius: 50%;
   background: var(--grad); color: var(--on-fill); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  position: relative;
   box-shadow: 0 0 20px var(--glow-cyan);
   transition: filter .15s, box-shadow .15s;
   &:hover { filter: brightness(1.12); }
   &:disabled { opacity: .35; cursor: default; box-shadow: none; }
 }
+// Feedback ring while an action is in flight: a thin arc with a fading tail
+// spinning just inside the play button's outline. The button itself does not
+// change — the ring is pure overlay (see pending.js for when it shows).
+.pb-spin {
+  position: absolute; inset: 2px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(from 0deg, transparent 0 30%, var(--on-fill) 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 2.5px));
+  animation: pb-rot .9s linear infinite;
+}
+@keyframes pb-rot { to { transform: rotate(360deg); } }
 .pbskip {
   flex: none; width: 40px; height: 40px; border: 0; border-radius: 50%;
   background: transparent; color: var(--muted); cursor: pointer;

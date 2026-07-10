@@ -5,6 +5,7 @@ import { apiGet, apiPost } from '../api.js';
 import { lmsIcon, IS_APP } from '../host.js';
 import { tuneinRoot, tuneinBrowse, tuneinSearch } from '../tunein.js';
 import { radioFx } from '../prefs.js';
+import { pendingStart, pendingClear } from '../pending.js';
 import { Tabs } from '../components/Tabs.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
 
@@ -150,11 +151,12 @@ function Browser({ kind }) {
   };
 
   const onPlay = async (it) => {
+    pendingStart();                       // feedback ring on the play button
     try {
       if (kind === 'fav') await apiPost('/api/lms/favorites/play', { id: it.id });
       else if (direct) await playUrl(it);
       else await apiPost('/api/lms/radio/play', { verb: currentVerb(), item_id: it.item_id });
-    } catch { toast(t('radio_play_err')); }
+    } catch { pendingClear(); toast(t('radio_play_err')); }
   };
 
   const onStar = async (it) => {
@@ -237,10 +239,11 @@ function Search() {
   const onOpen = (it) => setStack([...stack,
     direct ? { title: it.title, url: it.url } : { title: it.title, item_id: it.item_id }]);
   const onPlay = async (it) => {
+    pendingStart();                       // feedback ring on the play button
     try {
       if (direct) await playUrl(it);
       else await apiPost('/api/lms/radio/play', { verb: 'search', item_id: it.item_id });
-    } catch { toast(t('radio_play_err')); }
+    } catch { pendingClear(); toast(t('radio_play_err')); }
   };
   const onStar = async (it) => {
     try { await apiPost('/api/lms/favorites/add', it.fav); toast(t('radio_added')); }
