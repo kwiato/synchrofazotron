@@ -10,8 +10,15 @@ const DOMAIN = 'local.';
 
 // name -> { name, host, ip, port, url } ; keyed by service name so a device
 // re-announcing (added -> resolved) updates in place instead of duplicating.
+// Only a numeric IPv4 makes a usable row: Android's WebView cannot resolve
+// .local names, and 'added' events carry no address yet (the plugin puts the
+// service name in `hostname` there — an URL built from it can never work).
+// Skipped entries appear once the service resolves; if it never does (Android
+// NSD resolution is flaky with a VPN up), an empty list + manual entry beats
+// a row that always fails.
 function toDevice(service) {
-  const ip = (service.ipv4Addresses && service.ipv4Addresses[0]) || service.hostname || '';
+  const ip = (service.ipv4Addresses || [])
+    .find((a) => /^\d{1,3}(\.\d{1,3}){3}$/.test(a)) || '';
   if (!ip) return null;
   const port = service.port || 8787;
   return {
