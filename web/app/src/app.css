@@ -101,6 +101,11 @@
 .device-row:disabled { opacity: .55; }
 .device-name { font-size: 1rem; }
 .device-addr { font-size: .82rem; }
+/* saved-devices list: a device-row plus its remove button */
+.known-head { margin: 0 0 var(--spacer-2xs); font-size: .85rem; }
+.known-row { display: flex; align-items: center; gap: var(--spacer-2xs); }
+.known-row .device-row { flex: 1 1 auto; min-width: 0; }
+.known-row .device-addr { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .connect-manual-label { text-align: center; margin: var(--spacer-sm) 0 var(--spacer-2xs); font-size: .85rem; }
 .connect-manual { display: flex; gap: var(--spacer-2xs); }
 .connect-manual .in {

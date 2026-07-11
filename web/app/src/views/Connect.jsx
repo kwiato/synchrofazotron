@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { RingMark } from '../components/ConsoleLogo.jsx';
-import { setApiBase } from '../host.js';
+import { setApiBase, knownDevices, rememberDevice, forgetDevice } from '../host.js';
 import { startDiscovery } from '../discovery.js';
 
 // Device picker shown in the app before any device is chosen. It runs *before*
@@ -17,6 +17,7 @@ const S = {
     manual: 'or enter an address', connect: 'Connect', ph: 'e.g. 192.168.1.50',
     checking: 'Connecting…', unreachable: 'Could not reach that device.',
     skip: 'Skip — browse without a device',
+    saved: 'Saved devices', remove: 'Remove from the list',
   },
   pl: {
     tag: 'Wybierz urządzenie', searching: 'Szukam urządzeń w sieci…',
@@ -24,26 +25,33 @@ const S = {
     manual: 'albo podaj adres', connect: 'Połącz', ph: 'np. 192.168.1.50',
     checking: 'Łączę…', unreachable: 'Nie udało się połączyć z tym urządzeniem.',
     skip: 'Pomiń — przeglądaj bez urządzenia',
+    saved: 'Zapamiętane urządzenia', remove: 'Usuń z listy',
   },
 }[LANG];
 
-// A device answers on /api/i18n; use it to validate a pick before committing.
-async function reachable(url) {
+// A device answers on /api/i18n; probe it to validate a pick before
+// committing. Returns the payload (its .device is the display name used for
+// the saved-devices list) or null when unreachable.
+async function probe(url) {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 4000);
     const r = await fetch(`${url}/api/i18n`, { cache: 'no-store', signal: ctrl.signal });
     clearTimeout(timer);
-    return r.ok;
-  } catch { return false; }
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
 }
 
 export function Connect({ onConnect, onSkip }) {
   const [devices, setDevices] = useState([]);
+  const [known, setKnown] = useState(knownDevices());
   const [manual, setManual] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const stopRef = useRef(null);
+  const forget = (url) => { forgetDevice(url); setKnown(knownDevices()); };
+  // a discovered device already on the saved list would render twice
+  const discovered = devices.filter((d) => !known.some((k) => k.url === d.url));
 
   useEffect(() => {
     let live = true;
@@ -55,7 +63,9 @@ export function Connect({ onConnect, onSkip }) {
 
   const pick = async (url) => {
     setErr(''); setBusy(true);
-    if (await reachable(url)) {
+    const info = await probe(url);
+    if (info) {
+      rememberDevice(info.device || url.replace(/^https?:\/\//, ''), url);
       if (stopRef.current) await stopRef.current();
       setApiBase(url);
       onConnect();
@@ -77,15 +87,31 @@ export function Connect({ onConnect, onSkip }) {
       <div class="connect-brand"><RingMark class="brand-mark" /></div>
       <p class="connect-tag">{S.tag}</p>
 
+      {known.length > 0 && (
+        <div class="card">
+          <p class="known-head muted">{S.saved}</p>
+          {known.map((d) => (
+            <div class="known-row" key={d.url}>
+              <button class="device-row" disabled={busy} onClick={() => pick(d.url)}>
+                <span class="device-name">{d.name}</span>
+                <span class="device-addr muted">{d.url.replace(/^https?:\/\//, '')}</span>
+              </button>
+              <button class="xbtn" title={S.remove} aria-label={S.remove}
+                      onClick={() => forget(d.url)}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div class="card">
-        {devices.length === 0 && (
+        {discovered.length === 0 && (
           <div class="empty">
             <i class="ico empty-ico ico-wifi"></i>
             <p class="empty-title">{S.searching}</p>
             <p class="empty-sub">{S.none}</p>
           </div>
         )}
-        {devices.map((d) => (
+        {discovered.map((d) => (
           <button key={d.name} class="device-row" disabled={busy} onClick={() => pick(d.url)}>
             <span class="device-name">{d.name}</span>
             <span class="device-addr muted">{d.ip}:{d.port}</span>

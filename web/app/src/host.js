@@ -33,6 +33,25 @@ export function apiUrl(path) {
   return base ? base + path : path;
 }
 
+// Devices the app has successfully talked to, most recent first — the picker
+// lists them so switching devices (or reconnecting away from home, where mDNS
+// cannot see anything) is one tap. Capped small; url is the dedupe key.
+const KNOWN_KEY = 'knownDevices';
+
+export function knownDevices() {
+  try { return JSON.parse(localStorage.getItem(KNOWN_KEY)) || []; } catch { return []; }
+}
+
+export function rememberDevice(name, url) {
+  const list = [{ name, url }, ...knownDevices().filter((d) => d.url !== url)].slice(0, 6);
+  try { localStorage.setItem(KNOWN_KEY, JSON.stringify(list)); } catch { /* no storage */ }
+}
+
+export function forgetDevice(url) {
+  const list = knownDevices().filter((d) => d.url !== url);
+  try { localStorage.setItem(KNOWN_KEY, JSON.stringify(list)); } catch { /* no storage */ }
+}
+
 // LMS artwork/icons live on the LMS web port (9000), which the phone often
 // cannot reach (bound locally / cleartext-blocked / not on the tailnet). Route
 // them through the panel's own origin instead — it proxies to LMS on localhost.

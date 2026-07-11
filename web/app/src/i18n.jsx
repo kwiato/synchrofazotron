@@ -1,6 +1,6 @@
 import { createContext } from 'preact';
 import { useContext, useEffect, useState } from 'preact/hooks';
-import { apiUrl } from './host.js';
+import { IS_APP, apiBase, apiUrl, rememberDevice } from './host.js';
 
 // All translated strings + device config come from /api/i18n in one shot at
 // boot. Python's STR dict stays the single source of truth; the bundle carries
@@ -23,6 +23,9 @@ export function I18nProvider({ children }) {
       .then((r) => r.json())
       .then((d) => {
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(d)); } catch { /* full/private */ }
+        // keep the picker's saved-devices list fresh: every successful boot
+        // against a device (re)files it under its current name
+        if (IS_APP && apiBase() && d.device) rememberDevice(d.device, apiBase());
         setData(d);
       })
       .catch(() => {
