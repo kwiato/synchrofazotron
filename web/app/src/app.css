@@ -107,13 +107,15 @@
 .known-row .device-row { flex: 1 1 auto; min-width: 0; }
 .known-row .device-addr { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .connect-manual-label { text-align: center; margin: var(--spacer-sm) 0 var(--spacer-2xs); font-size: .85rem; }
-.connect-manual { display: flex; gap: var(--spacer-2xs); }
+/* stacked: full-width address input above a full-width Connect button —
+   side by side the input got squeezed unusably narrow on phones */
+.connect-manual { display: flex; flex-direction: column; gap: var(--spacer-2xs); }
 .connect-manual .in {
-  flex: 1 1 auto; min-width: 0; padding: var(--spacer-xs); border-radius: 10px;
+  width: 100%; box-sizing: border-box; padding: var(--spacer-xs); border-radius: 10px;
   border: 1px solid var(--card-border); background: var(--panel, transparent);
   color: var(--text); font-size: 1rem;
 }
-.connect-manual .btn { flex: none; }
+.connect-manual .btn { width: 100%; }
 .connect-err { text-align: center; color: var(--hot, #e66); margin: var(--spacer-xs) 0 0; font-size: .88rem; }
 /* skip link at the bottom of the picker — deliberately quiet */
 .connect-skip { text-align: center; margin-top: var(--spacer-lg); }

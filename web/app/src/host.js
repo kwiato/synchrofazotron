@@ -64,8 +64,19 @@ export function lmsIcon(icon) {
   return icon ? lmsArt(icon) : '';
 }
 
-// Drop the current device and reload — sends the app back to the picker.
+// Drop the current device and reload — sends the app back to the picker. The
+// previous base is stashed for the session so the picker can offer "cancel"
+// (restore it) instead of "skip"; a successful pick discards the stash.
 export function switchDevice() {
+  try { sessionStorage.setItem('prevBase', base); } catch { /* no storage */ }
   setApiBase('');
   location.reload();
+}
+
+export function prevBase() {
+  try { return sessionStorage.getItem('prevBase') || ''; } catch { return ''; }
+}
+
+export function clearPrevBase() {
+  try { sessionStorage.removeItem('prevBase'); } catch { /* no storage */ }
 }

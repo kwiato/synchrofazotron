@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { RingMark } from '../components/ConsoleLogo.jsx';
-import { setApiBase, knownDevices, rememberDevice, forgetDevice } from '../host.js';
+import { setApiBase, knownDevices, rememberDevice, forgetDevice,
+         prevBase, clearPrevBase } from '../host.js';
 import { startDiscovery } from '../discovery.js';
 
 // Device picker shown in the app before any device is chosen. It runs *before*
@@ -16,7 +17,7 @@ const S = {
     none: 'None found yet. Make sure the phone is on the same Wi-Fi as the device.',
     manual: 'or enter an address', connect: 'Connect', ph: 'e.g. 192.168.1.50',
     checking: 'Connecting…', unreachable: 'Could not reach that device.',
-    skip: 'Skip — browse without a device',
+    skip: 'Skip — browse without a device', cancel: 'Cancel',
     saved: 'Saved devices', remove: 'Remove from the list',
   },
   pl: {
@@ -24,7 +25,7 @@ const S = {
     none: 'Na razie nic nie znaleziono. Upewnij się, że telefon jest w tym samym Wi-Fi co urządzenie.',
     manual: 'albo podaj adres', connect: 'Połącz', ph: 'np. 192.168.1.50',
     checking: 'Łączę…', unreachable: 'Nie udało się połączyć z tym urządzeniem.',
-    skip: 'Pomiń — przeglądaj bez urządzenia',
+    skip: 'Pomiń — przeglądaj bez urządzenia', cancel: 'Anuluj',
     saved: 'Zapamiętane urządzenia', remove: 'Usuń z listy',
   },
 }[LANG];
@@ -67,12 +68,22 @@ export function Connect({ onConnect, onSkip }) {
     if (info) {
       rememberDevice(info.device || url.replace(/^https?:\/\//, ''), url);
       if (stopRef.current) await stopRef.current();
+      clearPrevBase();
       setApiBase(url);
       onConnect();
     } else {
       setErr(S.unreachable);
       setBusy(false);
     }
+  };
+
+  // opened via "switch device"? then the bottom link cancels back to the
+  // previous device instead of skipping into a device-less UI
+  const prev = prevBase();
+  const cancel = () => {
+    clearPrevBase();
+    setApiBase(prev);
+    onConnect();
   };
 
   const pickManual = () => {
@@ -130,10 +141,14 @@ export function Connect({ onConnect, onSkip }) {
         </button>
       </div>
       {err && <p class="connect-err">{err}</p>}
-      {/* escape hatch into the UI with no device — device-backed views show
-          their empty/error states, but Settings (app update, theme) works */}
+      {/* escape hatch: cancel back to the previous device when the picker was
+          opened deliberately; otherwise skip into the UI with no device —
+          device-backed views show their empty/error states, but Settings
+          (app update, theme) works */}
       <div class="connect-skip">
-        <button class="connect-skipbtn muted" onClick={onSkip}>{S.skip}</button>
+        {prev
+          ? <button class="connect-skipbtn muted" onClick={cancel}>{S.cancel}</button>
+          : <button class="connect-skipbtn muted" onClick={onSkip}>{S.skip}</button>}
       </div>
     </div>
   );
