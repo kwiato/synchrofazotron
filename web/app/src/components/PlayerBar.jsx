@@ -22,6 +22,18 @@ export function PlayerBar() {
   const sources = (status && status.sources) || [];
   const owners = (status && status.dac_owners) || [];
 
+  // Wi-Fi + Bluetooth at a glance, shown at the top of the sources sheet.
+  // Reads the shared /api/status poll, so it costs no extra requests.
+  const ssid = (status && status.wifi_ssid) || '';
+  const pairLeft = (status && status.pair_seconds_left) || 0;
+  const btConn = (status && status.connected) || [];
+  const btPowered = !!(status && status.bt_powered);
+  const bt = pairLeft > 0
+    ? { text: t('st_bt_pairing') + ' ' + pairLeft + 's', dot: 'warn' }
+    : btConn.length
+      ? { text: btConn.map((d) => d.name).join(', '), dot: 'on' }
+      : { text: btPowered ? t('st_bt_ready') : t('st_bt_off'), dot: btPowered ? '' : 'err' };
+
   // Feedback ring on the play button: on while an action is pending, cleared
   // as soon as the polled status differs from the snapshot taken at the tap.
   const pending = usePending();
@@ -54,6 +66,18 @@ export function PlayerBar() {
     <div class="playerbar">
       <div class={'pbwrap' + (open ? ' open' : '')} {...swipe}>
         <div class="sheet">
+          <div class="sheet-status">
+            <span class="ss-item">
+              <i class="ico ico-wifi" aria-hidden="true"></i>
+              <i class={'dot ' + (ssid ? 'on' : 'err')}></i>
+              <span class="ss-val">{ssid || t('st_wifi_off')}</span>
+            </span>
+            <span class="ss-item">
+              <i class="ico ico-bt" aria-hidden="true"></i>
+              <i class={'dot ' + bt.dot}></i>
+              <span class="ss-val">{bt.text}</span>
+            </span>
+          </div>
           <div class="sheet-head">{t('sheet_sources')}</div>
           {showVol && (
             <VolumeSlider value={volumes[volId]} label={p.name}
@@ -80,14 +104,14 @@ export function PlayerBar() {
                   );
                 })}
           </div>
-          <p class="muted small">
-            {owners.length
-              ? <>{t('js_dac_owner')}{owners.map((o, i) => (
-                  <span key={i}>{i ? ', ' : ''}<b>{o.label}</b>{o.running ? '' : ' ' + t('js_dac_hold')}</span>
-                ))}</>
-              : t('js_dac_free')}
-          </p>
-          <p class="muted small">{t('sources_note')}</p>
+          {owners.length
+            ? owners.map((o) => (
+                <div class="dac-owner" key={o.unit}>
+                  <span class="dac-owner-state">{o.running ? t('state_playing') : t('js_dac_hold')}</span>
+                  {o.label}
+                </div>
+              ))
+            : <p class="muted small">{t('js_dac_free')}</p>}
         </div>
 
         {/* homepage gesture: a tap on the bar itself (not its buttons) shows Now Playing */}

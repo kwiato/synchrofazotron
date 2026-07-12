@@ -124,42 +124,37 @@
   font-size: .82rem; text-decoration: underline; cursor: pointer;
 }
 
-/* Pull-to-reveal status shade. The sheet (header + view) is an opaque surface on
-   a darker backdrop; the tray sits fixed behind it and is uncovered by dragging
-   the sheet down. Keep the tray height in sync with MAX in PullSheet.jsx. */
-html, body { overscroll-behavior-y: contain; }
-.pullroot { position: relative; }
-.pulltray {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 1; height: 128px;
-  box-sizing: border-box;
-  padding: calc(env(safe-area-inset-top, 0px) + var(--spacer-2xs)) var(--spacer-xs) var(--spacer-xs);
-  display: flex; flex-direction: column; justify-content: center; gap: var(--spacer-2xs);
-  /* an elevated surface, not a darker one: on dark themes --card-2 is lighter
-     than the sheet's --bg, which reads better than "deeper" behind it. */
-  background: var(--card-2);
-  box-shadow: inset 0 calc(-1 * var(--spacer-xs)) var(--spacer-md) rgba(0, 0, 0, .35);
+/* Wi-Fi + Bluetooth at a glance, at the top of the sources sheet: icon, dot,
+   network/device name. Wraps to two lines when the names get long. */
+.sheet-status {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--spacer-3xs) var(--spacer-sm);
+  margin: 2px 0 var(--spacer-2xs); padding-bottom: var(--spacer-2xs);
+  border-bottom: var(--bw) solid var(--border);
 }
-.pullsheet {
-  position: relative; z-index: 2; background: var(--bg); box-sizing: border-box;
-  padding: var(--spacer-sm) var(--spacer-xs) var(--spacer-md);
-  box-shadow: 0 calc(-1 * var(--spacer-2xs)) var(--spacer-md) rgba(0, 0, 0, .35);
-  transition: transform .28s cubic-bezier(.22, 1, .36, 1);
+.ss-item {
+  display: inline-flex; align-items: center; gap: var(--spacer-2xs);
+  min-width: 0; max-width: 100%;
 }
-.pullsheet.dragging { transition: none; }
-/* faint grab handle hinting the sheet can be pulled */
-.pullsheet::before {
-  content: ''; position: absolute; top: calc(env(safe-area-inset-top, 0px) + 4px);
-  left: 50%; transform: translateX(-50%);
-  width: 34px; height: 4px; border-radius: 999px; background: var(--muted); opacity: .35;
+.ss-item .ico { flex: none; width: 16px; height: 16px; opacity: .8; }
+.ss-val {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: .88rem;
 }
 
-.statustray { max-width: 1100px; margin: 0 auto; width: 100%; }
-.st-row { display: flex; align-items: center; gap: var(--spacer-xs); min-width: 0; }
-.st-row .ico { flex: none; width: 18px; height: 18px; opacity: .8; }
-.st-label { flex: none; width: 5.5em; color: var(--muted); font-size: .9rem; }
-.st-val {
-  flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; font-size: .95rem;
+/* The service holding the audio output, at the bottom of the sheet: a subtly
+   outlined box with its state sitting on the outline, fieldset-legend style.
+   The badge paints over the border with the sheet's own background (--pb-bg). */
+.dac-owner {
+  position: relative; border: var(--bw) solid var(--border); border-radius: 12px;
+  margin: var(--spacer-xs) 0 var(--spacer-2xs);
+  padding: var(--spacer-2xs) var(--spacer-xs);
+  font-size: .9rem;
+}
+.dac-owner-state {
+  position: absolute; top: 0; right: var(--spacer-xs); transform: translateY(-55%);
+  padding: 0 var(--spacer-3xs); background: var(--pb-bg);
+  font-size: .72rem; color: var(--muted); white-space: nowrap;
 }
 
 /* LMS radio browser — icon list of folders/stations with a back row. */

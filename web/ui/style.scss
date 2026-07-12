@@ -198,18 +198,12 @@ body {
   // leftover height — the Now tab uses it to centre the cover in the viewport.
   &.has-playerbar {
     display: flex; flex-direction: column;
-    // The pull-sheet must cover the status tray edge to edge, so the outer
-    // padding moves off <body> and onto .pullsheet (its background then bleeds
-    // full-width and the content stays inset).
-    padding: 0;
 
     // #app is the Preact mount sitting between <body> and the chrome. Without it
     // in the flex column the flex:1 below has no effect, so on a short page the
     // sticky player bar rides up under the content instead of pinning bottom.
     > #app { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-    .pullroot, .pullsheet, .wrap-wide, .stage, .route {
-      flex: 1; display: flex; flex-direction: column; min-height: 0;
-    }
+    .wrap-wide, .stage, .route { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   }
 }
 
@@ -477,6 +471,9 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
   &:hover { border-color: var(--border-hi); }
   &.playing {
     background: var(--grad); border-color: transparent;
+    // ink for filled surfaces — inheriting --text went white-on-white in
+    // mono-light's player bar (and black-on-black in mono-dark's)
+    color: var(--on-fill);
     box-shadow: 0 0 14px var(--glow-cyan);
   }
   &:disabled { opacity: .35; cursor: default; }
@@ -554,6 +551,11 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
 }
 .pbwrap {
   max-width: 1100px; margin: 0 auto; pointer-events: auto;
+  // Re-resolve the ink here: the mono themes retheme the bar as an inverted
+  // "island" by overriding --text on .pbwrap, but `color` inherits from <body>
+  // as a computed value — without this declaration the sheet text kept the
+  // page ink (black on the black island / white on the white one).
+  color: var(--text);
 
   .inner {
     display: flex; align-items: center; gap: var(--spacer-xs);
