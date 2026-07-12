@@ -62,6 +62,28 @@ export function PlayerBar() {
   const volId = p && p.id;
   const showVol = volId && volId in volumes;
 
+  // The outlined box at the bottom groups everything about current playback:
+  // the followed source's row, its volume, and the output state on the border.
+  const others = p ? sources.filter((x) => x !== p) : sources;
+  const live = !!(p && p.playing) || owners.some((o) => o.running);
+  const srow = (x) => {
+    const off = !(x.controllable && x.id);
+    return (
+      <div class="srow" key={x.id || x.name}>
+        <div class="info">
+          <Eq n={3} on={x.playing} />{' '}
+          <b>{x.name}</b> — {x.state}
+          {x.detail && <div class="det">{x.detail}</div>}
+        </div>
+        <button class={'tbtn' + (x.playing ? ' playing' : '')}
+                disabled={off} title={off ? t('js_ctrl_hint') : ''}
+                onClick={() => !off && ctrl(x.id)}>
+          <i class={'ico ' + (x.playing ? 'ico-pause' : 'ico-play')} aria-hidden="true"></i>
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div class="playerbar">
       <div class={'pbwrap' + (open ? ' open' : '')} {...swipe}>
@@ -79,38 +101,24 @@ export function PlayerBar() {
             </span>
           </div>
           <div class="sheet-head">{t('sheet_sources')}</div>
-          {showVol && (
-            <VolumeSlider value={volumes[volId]} label={p.name}
-                          onInput={(val) => setVolume(volId, val)} />
-          )}
           <div>
             {sources.length === 0
               ? <p class="muted">{t('js_silence')}</p>
-              : sources.map((x) => {
-                  const off = !(x.controllable && x.id);
-                  return (
-                    <div class="srow" key={x.id || x.name}>
-                      <div class="info">
-                        <Eq n={3} on={x.playing} />{' '}
-                        <b>{x.name}</b> — {x.state}
-                        {x.detail && <div class="det">{x.detail}</div>}
-                      </div>
-                      <button class={'tbtn' + (x.playing ? ' playing' : '')}
-                              disabled={off} title={off ? t('js_ctrl_hint') : ''}
-                              onClick={() => !off && ctrl(x.id)}>
-                        <i class={'ico ' + (x.playing ? 'ico-pause' : 'ico-play')} aria-hidden="true"></i>
-                      </button>
-                    </div>
-                  );
-                })}
+              : others.map(srow)}
           </div>
-          {owners.length
-            ? owners.map((o) => (
-                <div class="dac-owner" key={o.unit}>
-                  <span class="dac-owner-state">{o.running ? t('state_playing') : t('js_dac_hold')}</span>
-                  {o.label}
+          {(p || owners.length > 0)
+            ? (
+                <div class="dac-owner">
+                  <span class="dac-owner-state">{live ? t('state_playing') : t('js_dac_hold')}</span>
+                  {p
+                    ? srow(p)
+                    : owners.map((o) => <div class="dac-owner-label" key={o.unit}>{o.label}</div>)}
+                  {p && showVol && (
+                    <VolumeSlider value={volumes[volId]} label={p.name}
+                                  onInput={(val) => setVolume(volId, val)} />
+                  )}
                 </div>
-              ))
+              )
             : <p class="muted small">{t('js_dac_free')}</p>}
         </div>
 

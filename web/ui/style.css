@@ -180,7 +180,7 @@ body {
   background-repeat: no-repeat;
   color: var(--text);
   line-height: 1.5;
-  padding: var(--spacer-sm) var(--spacer-xs) var(--spacer-md);
+  padding: var(--spacer-sm) var(--spacer-xs) var(--spacer-sm);
   min-height: 100vh;
 }
 body.has-playerbar {
@@ -805,9 +805,9 @@ code {
 
 .playerbar {
   position: sticky;
-  bottom: 0;
+  bottom: calc(var(--spacer-sm) + env(safe-area-inset-bottom, 0px));
   z-index: 30;
-  padding: 0 var(--spacer-xs) calc(var(--spacer-xs) + env(safe-area-inset-bottom, 0px));
+  padding: 0;
   pointer-events: none;
 }
 

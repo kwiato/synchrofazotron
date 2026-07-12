@@ -191,7 +191,7 @@ body {
   background-repeat: no-repeat;
   color: var(--text);
   line-height: 1.5;
-  padding: var(--spacer-sm) var(--spacer-xs) var(--spacer-md);
+  padding: var(--spacer-sm) var(--spacer-xs) var(--spacer-sm);
   min-height: 100vh;
 
   // The SPA lays its chrome out as a column so the routed view can claim the
@@ -545,8 +545,11 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
 // Player bar (sticky bottom)
 // ---------------------------------------------------------------------------
 .playerbar {
-  position: sticky; bottom: 0; z-index: 30;
-  padding: 0 var(--spacer-xs) calc(var(--spacer-xs) + env(safe-area-inset-bottom, 0px));
+  // padding 0 aligns the bar with the content (the body already insets the
+  // sides); the gap under it comes from the sticky offset instead, padded by
+  // the safe area so it clears phone gesture bars in the app shell.
+  position: sticky; bottom: calc(var(--spacer-sm) + env(safe-area-inset-bottom, 0px));
+  z-index: 30; padding: 0;
   pointer-events: none;
 }
 .pbwrap {

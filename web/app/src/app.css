@@ -142,15 +142,18 @@
   font-size: .88rem;
 }
 
-/* The service holding the audio output, at the bottom of the sheet: a subtly
-   outlined box with its state sitting on the outline, fieldset-legend style.
-   The badge paints over the border with the sheet's own background (--pb-bg). */
+/* Current playback, boxed at the bottom of the sheet: the followed source's
+   row + its volume inside a subtle outline, with the output state sitting on
+   the outline, fieldset-legend style. The badge paints over the border with
+   the sheet's own background (--pb-bg). */
 .dac-owner {
   position: relative; border: var(--bw) solid var(--border); border-radius: 12px;
   margin: var(--spacer-xs) 0 var(--spacer-2xs);
   padding: var(--spacer-2xs) var(--spacer-xs);
-  font-size: .9rem;
 }
+.dac-owner .srow { border-bottom: 0; }     /* the outline does the separating */
+/* fallback content when nothing is followed: the holding services by name */
+.dac-owner-label { font-size: .9rem; }
 .dac-owner-state {
   position: absolute; top: 0; right: var(--spacer-xs); transform: translateY(-55%);
   padding: 0 var(--spacer-3xs); background: var(--pb-bg);
