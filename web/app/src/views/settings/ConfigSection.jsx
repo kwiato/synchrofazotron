@@ -68,7 +68,7 @@ function ExperimentalCard() {
   const toggleFx = (e) => { const val = e.currentTarget.checked; setRadioFx(val); setFx(val); };
   return (
     <div class="card">
-      <h2>🧪 {t('exp_head')}</h2>
+      <h2>{t('exp_head')}</h2>
       <p class="muted">{t('exp_note')}</p>
       <div class="card-head">
         <div>
