@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { useI18n } from '../../i18n.jsx';
 import { apiGet, apiPost } from '../../api.js';
 import { useApi, doReboot } from '../../hooks.js';
@@ -10,6 +10,7 @@ import { Tabs } from '../../components/Tabs.jsx';
 import { IS_APP, apiBase, switchDevice } from '../../host.js';
 import { APP_SHA_SHORT } from '../../appversion.js';
 import { appUpdateAvailable, installAppUpdate } from '../../appupdate.js';
+import { useUpdate, updPollStart, updError } from '../../update.js';
 import { radioFx, setRadioFx } from '../../prefs.js';
 
 export function ConfigSection() {
@@ -393,14 +394,8 @@ function UpdateCard() {
   const [msg, setMsg] = useState('');
   const [msgTone, setMsgTone] = useState('');
   const [checking, setChecking] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [topDrop, setTopDrop] = useState(null);        // top droplet {open,text,tone,icon,spinner}
-  const timer = useRef(null);
-  const runTimers = useRef([]);
-  const closeTopLater = (closeMs, reloadMs) => {
-    runTimers.current.push(setTimeout(() => setTopDrop((d) => (d ? { ...d, open: false } : d)), closeMs));
-    if (reloadMs) runTimers.current.push(setTimeout(() => location.reload(), reloadMs));
-  };
+  // the run itself (droplet + poll) is global — see update.js / Shell
+  const { running } = useUpdate();
   // App-update half (mobile shell only): compares the installed build's SHA
   // against the latest release; "install" downloads the APK natively (see
   // apkinstaller.js) and fires the system package installer.
@@ -436,38 +431,6 @@ function UpdateCard() {
     setAppBusy(false);
   };
 
-  const poll = () => {
-    if (timer.current) return;
-    setRunning(true);
-    setMsg(''); setMsgTone('');                       // the run lives in the top droplet
-    setTopDrop({ open: true, text: t('js_upd_running'), tone: '', icon: 'check', spinner: true });
-    timer.current = setInterval(async () => {
-      try {
-        const j = await apiGet('/api/update');
-        if (j.running) return;
-        clearInterval(timer.current);
-        timer.current = null;
-        setRunning(false);
-        if (j.failed) {
-          setTopDrop({ open: true, text: t('js_upd_failed'), tone: 'danger', icon: 'x', spinner: false });
-          closeTopLater(2400);
-        } else {
-          setTopDrop({ open: true, text: t('js_upd_done'), tone: 'good', icon: 'check', spinner: false });
-          closeTopLater(1300, 2300);                  // show the check, ripple away, then reload
-        }
-      } catch { /* panel restarting mid-update — keep polling */ }
-    }, 3000);
-  };
-
-  // page opened while an update is already running -> resume the poll
-  useEffect(() => {
-    apiGet('/api/update').then((j) => { if (j.running) poll(); }).catch(() => {});
-    return () => {
-      if (timer.current) clearInterval(timer.current);
-      runTimers.current.forEach(clearTimeout);
-    };
-  }, []);
-
   const check = async () => {
     setChecking(true);
     setMsg(t('js_upd_checking')); setMsgTone('');
@@ -483,15 +446,11 @@ function UpdateCard() {
     if (!confirm(t('js_upd_confirm'))) return;
     try {
       const j = await apiPost('/api/update/run');
-      if (!j.ok) {
-        setTopDrop({ open: true, text: j.message || t('js_error'), tone: 'danger', icon: 'x', spinner: false });
-        closeTopLater(2400);
-        return;
-      }
-      poll();
+      if (!j.ok) { updError(j.message || t('js_error')); return; }
+      setMsg(''); setMsgTone('');                     // the run lives in the global droplet
+      updPollStart();
     } catch {
-      setTopDrop({ open: true, text: t('js_conn_error'), tone: 'danger', icon: 'x', spinner: false });
-      closeTopLater(2400);
+      updError(t('js_conn_error'));
     }
   };
 
@@ -504,7 +463,7 @@ function UpdateCard() {
         <button class="btn sec" disabled={running} onClick={run}>{t('upd_run_btn')}</button>
       </div>
       {msg && (
-        <Droplet inline open text={msg} tone={msgTone}
+        <Droplet inline open text={msg} tone={msgTone} timeout={5000}
                  spinner={checking} icon={iconFor(msgTone)} />
       )}
 
@@ -518,15 +477,10 @@ function UpdateCard() {
                     onClick={appRun}>{t('appupd_run_btn')}</button>
           </div>
           {appMsg && (
-            <Droplet inline open text={appMsg} tone={appMsgTone}
+            <Droplet inline open text={appMsg} tone={appMsgTone} timeout={5000}
                      spinner={appChecking || appBusy} icon={iconFor(appMsgTone)} />
           )}
         </>
-      )}
-
-      {topDrop && (
-        <Droplet open={topDrop.open} text={topDrop.text} tone={topDrop.tone}
-                 spinner={topDrop.spinner} icon={topDrop.icon} />
       )}
     </div>
   );

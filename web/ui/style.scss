@@ -868,20 +868,34 @@ pre {
 
   &.active { opacity: 1; transform: translateY(0) scale(1); }
   &.open {
-    width: var(--droplet-w, 200px); height: 42px; background: var(--tone);
+    // height 42px single-line; long text wraps and Droplet.jsx staggers
+    // --droplet-h so the pill morphs sideways first, then grows down
+    width: var(--droplet-w, 200px); height: var(--droplet-h, 42px); background: var(--tone);
     box-shadow: 0 12px 34px rgba(0, 0, 0, .38), 0 0 26px -4px var(--tone);
   }
   &.leaving { width: 13px; height: 13px; background: var(--tone); }
   &.sinking { animation: droplet-merge .5s cubic-bezier(.4, 0, .2, 1) forwards; }
+
+  // wrapped ("multi-line") pill — set by Droplet.jsx when text exceeds max width
+  &.multi .droplet-inner {
+    white-space: normal; line-height: 1.35; text-align: center;
+    padding: var(--spacer-2xs) var(--spacer-sm);
+  }
 }
 
-// Inline placement: sits in normal flow under whatever rendered it, left-
-// aligned, with a gentler drop-in (no fall from the top of the screen).
+// Inline placement: a slot div reserves the height first (quick grow keeps the
+// layout shift to one short step), then the droplet morphs in its centre like
+// the pinned one. The slot stays mounted at height 0 when the droplet hides.
+.droplet-slot {
+  position: relative; height: 0;
+  transition: height .18s ease, margin .18s ease;
+  &.grown { height: var(--slot-h, 42px); margin-top: var(--spacer-xs); }
+}
 .droplet-inline {
-  position: static; margin: var(--spacer-xs) 0 0;
-  transform: translateY(-6px) scale(.5);
+  position: absolute; inset: 0; margin: auto;   // centred in the slot both ways
+  transform: scale(.5);
   box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
-  &.active { transform: translateY(0) scale(1); }
+  &.active { transform: scale(1); }
 }
 
 .droplet-inner {

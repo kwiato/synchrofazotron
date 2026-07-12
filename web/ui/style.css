@@ -1389,7 +1389,7 @@ pre {
 }
 .droplet.open {
   width: var(--droplet-w, 200px);
-  height: 42px;
+  height: var(--droplet-h, 42px);
   background: var(--tone);
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38), 0 0 26px -4px var(--tone);
 }
@@ -1401,15 +1401,32 @@ pre {
 .droplet.sinking {
   animation: droplet-merge 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
+.droplet.multi .droplet-inner {
+  white-space: normal;
+  line-height: 1.35;
+  text-align: center;
+  padding: var(--spacer-2xs) var(--spacer-sm);
+}
+
+.droplet-slot {
+  position: relative;
+  height: 0;
+  transition: height 0.18s ease, margin 0.18s ease;
+}
+.droplet-slot.grown {
+  height: var(--slot-h, 42px);
+  margin-top: var(--spacer-xs);
+}
 
 .droplet-inline {
-  position: static;
-  margin: var(--spacer-xs) 0 0;
-  transform: translateY(-6px) scale(0.5);
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  transform: scale(0.5);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
 .droplet-inline.active {
-  transform: translateY(0) scale(1);
+  transform: scale(1);
 }
 
 .droplet-inner {
