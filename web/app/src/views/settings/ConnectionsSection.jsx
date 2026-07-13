@@ -4,6 +4,12 @@ import { apiGet, apiPost } from '../../api.js';
 import { useApi } from '../../hooks.js';
 import { WifiCard } from './ConfigSection.jsx';
 
+// Numbered how-to step whose i18n string carries inline HTML (<b>NAME</b>) —
+// rendering it as text showed the literal tags.
+function Step({ n, html }) {
+  return <p><span class="num">{n}</span><span dangerouslySetInnerHTML={{ __html: html }} /></p>;
+}
+
 export function ConnectionsSection() {
   const { t, lmsPort } = useI18n();
   const [src, reload] = useApi('/api/sources', 10000);
@@ -20,25 +26,117 @@ export function ConnectionsSection() {
         <BluetoothCard group={g('bluetooth')} reloadSources={reload} />
 
         <SourceCard group={g('airplay')} reload={reload} icon="ico-airplay" title={t('airplay_head')}>
-          <p><span class="num">1</span>{t('airplay_1')}</p>
-          <p><span class="num">2</span>{t('airplay_2')}</p>
+          <Step n="1" html={t('airplay_1')} />
+          <Step n="2" html={t('airplay_2')} />
         </SourceCard>
 
         <SourceCard group={g('lms')} reload={reload} icon="ico-music" title={t('lms_head')}>
-          <p><span class="num">1</span>{t('lms_1')}</p>
-          <p><span class="num">2</span>{t('lms_2')}</p>
+          <Step n="1" html={t('lms_1')} />
+          <Step n="2" html={t('lms_2')} />
           <p>{t('lms_web')} <a href={lmsUrl}>{lmsUrl}</a> {t('lms_web2')}</p>
         </SourceCard>
 
+        <TidalCard />
+
         {spotify && (
           <SourceCard group={spotify} reload={reload} icon="ico-music" title={t('spotify_head')}>
-            <p><span class="num">1</span>{t('spotify_1')}</p>
-            <p><span class="num">2</span>{t('spotify_2')}</p>
+            <Step n="1" html={t('spotify_1')} />
+            <Step n="2" html={t('spotify_2')} />
             <p class="muted">{t('spotify_note')}</p>
           </SourceCard>
         )}
       </div>
     </section>
+  );
+}
+
+// TIDAL account, connected through the LMS plugin's OAuth device flow. The
+// panel proxies the plugin's auth page: "connect" fetches a link.tidal.com
+// URL + device code, the user signs in on this phone, and LMS polls TIDAL
+// itself — we only poll the panel until the account shows up. The head switch
+// merely hides TIDAL on the main screen (source label); it never signs out.
+function TidalCard() {
+  const { t } = useI18n();
+  const [st, setSt] = useState(null);       // /api/tidal payload
+  const [auth, setAuth] = useState(null);   // {link, code} while a flow runs
+  const [err, setErr] = useState('');
+  const poll = useRef(null);
+
+  const load = useCallback(async () => {
+    try { setSt(await apiGet('/api/tidal')); } catch { setSt(null); }
+  }, []);
+  useEffect(() => { load(); return () => clearInterval(poll.current); }, [load]);
+
+  const connect = async () => {
+    setErr('');
+    try {
+      const j = await apiPost('/api/tidal/auth/start', {});
+      if (!j.ok) { setErr(t('js_conn_error')); return; }
+      const before = ((st && st.accounts) || []).length;
+      setAuth(j);
+      clearInterval(poll.current);
+      poll.current = setInterval(async () => {
+        try {
+          const s = await apiGet('/api/tidal/auth/status?code=' + encodeURIComponent(j.code));
+          if (!s.done) return;
+          // "done" also fires when the code expires — success means an
+          // account actually appeared
+          clearInterval(poll.current);
+          setAuth(null);
+          if (((s.accounts) || []).length <= before) setErr(t('tidal_expired'));
+          load();
+        } catch { /* panel briefly unreachable — keep polling */ }
+      }, 2000);
+    } catch { setErr(t('js_conn_error')); }
+  };
+
+  const forget = async (a) => {
+    if (!confirm(t('tidal_forget_confirm'))) return;
+    try { await apiPost('/api/tidal/forget', { id: a.id }); } catch { /* reload below */ }
+    load();
+  };
+
+  const toggleShow = async (e) => {
+    const show = e.currentTarget.checked;
+    setSt((s) => (s ? { ...s, show } : s));
+    try { await apiPost('/api/tidal/show', { show }); } catch { load(); }
+  };
+
+  const accounts = (st && st.accounts) || [];
+
+  return (
+    <div class="card">
+      <div class="card-head">
+        <h2><i class="ico ico-music"></i> {t('tidal_head')}</h2>
+        <label class="switch" title={t('tidal_show_note')}>
+          <input type="checkbox" checked={!!(st && st.show)} onChange={toggleShow} />
+          <span class="knob"></span>
+        </label>
+      </div>
+      <p class="muted">{t('tidal_note')}</p>
+
+      {st && !st.available && <p class="muted">{t('tidal_missing')}</p>}
+      {st && st.available && accounts.map((a) => (
+        <div key={a.id}>
+          <div class="row">
+            <div class="info">{t('tidal_logged')} <b>{a.name}</b></div>
+          </div>
+          <button class="btn sec" onClick={() => forget(a)}>{t('tidal_forget')}</button>
+        </div>
+      ))}
+      {st && st.available && !accounts.length && (auth
+        ? <>
+            <p class="muted">{t('tidal_link_note')}</p>
+            <a class="btn tidal-link" href={auth.link} target="_blank" rel="noreferrer">
+              {auth.link.replace(/^https?:\/\//, '')}
+            </a>
+            <p class="muted small"><span class="spinner"></span>{t('tidal_waiting')}</p>
+          </>
+        : <button class="btn" onClick={connect}>{t('tidal_connect')}</button>)}
+      {err && <p class="muted">{err}</p>}
+
+      <p class="muted small">{t('tidal_show_note')}</p>
+    </div>
   );
 }
 

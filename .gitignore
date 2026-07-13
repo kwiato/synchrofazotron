@@ -3,3 +3,4 @@ __pycache__/
 web/lang
 web/name
 web/bt-reconnect.json
+web/tidal-ui.json

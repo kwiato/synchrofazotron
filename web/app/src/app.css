@@ -160,6 +160,13 @@
   font-size: .72rem; color: var(--muted); white-space: nowrap;
 }
 
+/* TIDAL connect: the auth link rendered as a button (an <a> needs the button
+   text styling the shared .btn assumes from <button>) */
+.tidal-link {
+  text-align: center; text-decoration: none;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 /* LMS radio browser — icon list of folders/stations with a back row. */
 .lms { margin-top: var(--spacer-3xs); }
 .lms-note { text-align: center; padding: var(--spacer-sm) 0; }

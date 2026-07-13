@@ -196,7 +196,18 @@ STR = {
         "airplay_head": "AirPlay",
         "airplay_1": "On iPhone/iPad/Mac open Control Center or the AirPlay icon in your music app.",
         "airplay_2": "Pick <b>{{DEVICE}}</b> as the speaker.",
-        "lms_head": "TIDAL / radio / library (Lyrion Music Server)",
+        "lms_head": "Radio / library (Lyrion Music Server)",
+        "tidal_head": "TIDAL",
+        "tidal_note": "TIDAL streams through Lyrion Music Server. Connect your account once — then pick music from Squeezer/iPeng or the LMS web UI.",
+        "tidal_connect": "Connect TIDAL account",
+        "tidal_link_note": "Open the link and sign in to TIDAL:",
+        "tidal_waiting": "Waiting for sign-in…",
+        "tidal_expired": "The link expired — try again.",
+        "tidal_logged": "Signed in as",
+        "tidal_forget": "Disconnect account",
+        "tidal_forget_confirm": "Disconnect the TIDAL account? Sign in again anytime.",
+        "tidal_show_note": "The switch only hides TIDAL on the main screen — it does not sign you out.",
+        "tidal_missing": "The TIDAL plugin is not installed in LMS — re-run setup.sh to add it.",
         "lms_1": "Install the <b>Squeezer</b> app (Android) or <b>iPeng</b> (iOS) — that is the main remote.",
         "lms_2": "Pick the <b>{{PLAYER}}</b> player and play TIDAL, internet radio, playlists.",
         "lms_web": "Or from a browser:",
@@ -494,7 +505,18 @@ STR = {
         "airplay_head": "AirPlay",
         "airplay_1": "Na iPhone/iPad/Mac otwórz Centrum sterowania lub ikonę AirPlay w apce muzycznej.",
         "airplay_2": "Wybierz <b>{{DEVICE}}</b> jako głośnik.",
-        "lms_head": "TIDAL / radio / biblioteka (Lyrion Music Server)",
+        "lms_head": "Radio / biblioteka (Lyrion Music Server)",
+        "tidal_head": "TIDAL",
+        "tidal_note": "TIDAL gra przez Lyrion Music Server. Połącz konto raz — potem wybieraj muzykę ze Squeezer/iPeng albo z webowego LMS.",
+        "tidal_connect": "Połącz konto TIDAL",
+        "tidal_link_note": "Otwórz link i zaloguj się w TIDAL:",
+        "tidal_waiting": "Czekam na zalogowanie…",
+        "tidal_expired": "Link wygasł — spróbuj ponownie.",
+        "tidal_logged": "Zalogowano jako",
+        "tidal_forget": "Odłącz konto",
+        "tidal_forget_confirm": "Odłączyć konto TIDAL? Możesz zalogować się ponownie w każdej chwili.",
+        "tidal_show_note": "Przełącznik tylko ukrywa TIDAL na głównej — nie wylogowuje.",
+        "tidal_missing": "Wtyczka TIDAL nie jest zainstalowana w LMS — odpal ponownie setup.sh.",
         "lms_1": "Zainstaluj apkę <b>Squeezer</b> (Android) lub <b>iPeng</b> (iOS) — to główny pilot.",
         "lms_2": "Wybierz odtwarzacz <b>{{PLAYER}}</b> i graj TIDAL, radio internetowe, playlisty.",
         "lms_web": "Albo z przeglądarki:",
@@ -2426,6 +2448,148 @@ def _lms_art(path):
         _art_sem.release()
 
 
+# ---------------------------------------------------------------------------
+# TIDAL (the LMS "TIDAL local" plugin) — connect proxy
+#
+# The plugin runs an OAuth device flow entirely inside LMS: GETting its
+# settings auth page kicks the flow off (LMS itself polls TIDAL's token
+# endpoint from a Perl timer), the page carries the link.tidal.com URL and the
+# deviceCode, and a tiny JSON endpoint reports when tokens have landed. The
+# panel proxies those three touchpoints so the app can run the whole flow
+# without ever exposing the LMS web UI. Tokens/accounts live in LMS prefs —
+# the panel never sees TIDAL credentials.
+# ---------------------------------------------------------------------------
+TIDAL_UI_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             "tidal-ui.json")
+# LMS prefs dir differs between the legacy squeezeboxserver package and newer
+# Lyrion builds — probe the known locations.
+_LMS_PREFS_CANDIDATES = (
+    "/var/lib/squeezeboxserver/prefs/plugin/tidal.prefs",
+    "/var/lib/lyrionmusicserver/prefs/plugin/tidal.prefs",
+    "/usr/share/squeezeboxserver/prefs/plugin/tidal.prefs",
+)
+
+
+# cached — read on every /api/status poll (the LMS source label depends on it)
+_tidal_show_cache = None
+
+
+def _tidal_show():
+    global _tidal_show_cache
+    if _tidal_show_cache is None:
+        try:
+            _tidal_show_cache = bool(json.load(
+                open(TIDAL_UI_FILE, encoding="utf-8")).get("show", True))
+        except Exception:  # noqa: BLE001 — no file yet = default on
+            _tidal_show_cache = True
+    return _tidal_show_cache
+
+
+def _tidal_show_set(show):
+    global _tidal_show_cache
+    _tidal_show_cache = bool(show)
+    _file_write(TIDAL_UI_FILE, json.dumps({"show": bool(show)}) + "\n")
+
+
+def _lms_http(path):
+    """GET an LMS web path (settings pages, plugin endpoints) as text."""
+    with urllib.request.urlopen(f"http://127.0.0.1:{LMS_PORT}/{path}",
+                                timeout=10) as r:
+        return r.read().decode("utf-8", "replace")
+
+
+def _tidal_accounts():
+    """[{'id','name'}] parsed from the plugin's prefs file (simple YAML: an
+    `accounts:` hash of userId -> profile). Loose line parser on purpose — the
+    panel has no YAML lib and only needs ids and display names."""
+    txt = ""
+    for path in _LMS_PREFS_CANDIDATES:
+        txt = _file_read(path)
+        if txt:
+            break
+    if not txt:
+        return []
+    accounts, cur = {}, None
+    in_accounts = False
+    for line in txt.splitlines():
+        if not line.startswith(" "):                # top-level key
+            in_accounts = line.startswith("accounts:")
+            cur = None
+            continue
+        if not in_accounts:
+            continue
+        m = re.match(r"^  ['\"]?([^:'\"]+)['\"]?:\s*$", line)
+        if m:                                        # userId key
+            cur = m.group(1)
+            accounts[cur] = {}
+            continue
+        m = re.match(r"^\s+(\w+):\s*(.*)$", line)
+        if m and cur:
+            accounts[cur][m.group(1)] = m.group(2).strip("'\"")
+    return [{"id": uid,
+             "name": (a.get("nickname") or a.get("firstName")
+                      or a.get("fullName") or a.get("username") or uid)}
+            for uid, a in accounts.items()]
+
+
+def _tidal_plugin_state():
+    """'enabled'/'disabled'/... or '' when the plugin (or LMS) is missing."""
+    try:
+        res = _lms_request(["", ["pref", "plugin.state:TIDAL", "?"]])
+        return str(res.get("_p2", ""))
+    except Exception:  # noqa: BLE001 — LMS down
+        return ""
+
+
+def _tidal_status():
+    state = _tidal_plugin_state()
+    return {"available": state == "enabled", "plugin_state": state,
+            "show": _tidal_show(), "accounts": _tidal_accounts()}
+
+
+def _tidal_auth_start():
+    """Kick off the device flow and hand the app the link + code. Each call
+    starts a fresh flow (the previous code simply expires in LMS)."""
+    try:
+        html = _lms_http("plugins/TIDAL/settings/auth.html")
+    except OSError:
+        return {"ok": False}
+    link = re.search(r"https?://link\.tidal\.com/[A-Za-z0-9]+", html)
+    code = re.search(r'name="deviceCode"[^>]*value="([^"]+)"', html)
+    if not (link and code):
+        return {"ok": False}
+    return {"ok": True, "link": link.group(0), "code": code.group(1)}
+
+
+def _tidal_auth_status(code):
+    """The plugin drops the code from its cache once tokens arrive — but also
+    when the code expires, so 'done' alone is not success: the app checks that
+    an account actually appeared (returned here to save a round trip)."""
+    done = False
+    if code:
+        try:
+            j = json.loads(_lms_http(
+                "plugins/TIDAL/settings/hasCredentials?deviceCode="
+                + urllib.parse.quote(code)))
+            done = bool(j.get("hasCredentials"))
+        except (OSError, ValueError):
+            pass
+    return {"done": done, "accounts": _tidal_accounts()}
+
+
+def _tidal_forget(account_id):
+    """Remove one account via the plugin settings handler (delete_<id> param
+    runs unconditionally there)."""
+    if not re.fullmatch(r"[\w.-]+", account_id or ""):
+        return {"ok": False}
+    try:
+        _lms_http("plugins/TIDAL/settings.html?delete_"
+                  + urllib.parse.quote(account_id) + "=1")
+        return {"ok": True, "accounts": _tidal_accounts()}
+    except OSError:
+        return {"ok": False}
+
+
 def _bt_streams():
     """List of A2DP streams: [{'mac','running'}] (Running=true => actually playing)."""
     streams = []
@@ -2503,7 +2667,10 @@ def _active_sources(connected):
     if lms is not None:
         state = {"play": T("state_playing"),
                  "pause": T("state_paused")}.get(lms["mode"], T("state_idle"))
-        sources.append({"name": "LMS (radio/TIDAL)", "playing": lms["mode"] == "play",
+        # the "hide TIDAL" toggle only changes how the source is presented —
+        # LMS itself (and a connected account) is untouched
+        name = "LMS (radio/TIDAL)" if _tidal_show() else "LMS (radio)"
+        sources.append({"name": name, "playing": lms["mode"] == "play",
                         "state": state, "detail": lms.get("title", ""),
                         "artist": lms.get("artist", "")})
 
@@ -2531,7 +2698,7 @@ def _active_sources(connected):
     # id + controllable for LMS/BT (added above without those fields)
     for s in sources:
         s.setdefault("controllable", True)
-        s.setdefault("id", {"LMS (radio/TIDAL)": "lms",
+        s.setdefault("id", {"LMS (radio/TIDAL)": "lms", "LMS (radio)": "lms",
                             "Bluetooth": "bt"}.get(s["name"], ""))
     return sources
 
@@ -3016,6 +3183,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, art[0], art[1])
             else:
                 self._send(404, "no art", "text/plain")
+        elif self.path == "/api/tidal":
+            self._send(200, json.dumps(_tidal_status()), "application/json",
+                       no_cache=True)
+        elif self.path.startswith("/api/tidal/auth/status"):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            code = (q.get("code") or [""])[0]
+            self._send(200, json.dumps(_tidal_auth_status(code)),
+                       "application/json", no_cache=True)
         elif self.path.startswith("/api/lms/"):
             self._send(200, json.dumps(self._lms_get()), "application/json",
                        no_cache=True)
@@ -3079,6 +3254,17 @@ class Handler(BaseHTTPRequestHandler):
                                          bool(body.get("enable")))
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
+        elif self.path == "/api/tidal/auth/start":
+            self._send(200, json.dumps(_tidal_auth_start()), "application/json")
+        elif self.path == "/api/tidal/show":
+            show = bool(self._json_body().get("show"))
+            _tidal_show_set(show)
+            self._send(200, json.dumps({"ok": True, "show": show}),
+                       "application/json")
+        elif self.path == "/api/tidal/forget":
+            self._send(200, json.dumps(
+                _tidal_forget(str(self._json_body().get("id", "")))),
+                "application/json")
         elif self.path == "/api/name":
             ok, message = _set_device_name(self._json_body().get("name", ""))
             self._send(200, json.dumps({"ok": ok, "message": message}),
