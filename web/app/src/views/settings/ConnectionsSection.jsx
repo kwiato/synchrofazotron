@@ -63,9 +63,7 @@ function TidalCard() {
   const poll = useRef(null);
 
   const load = useCallback(async () => {
-    // a panel older than this app has no /api/tidal — surface that as its own
-    // state instead of silently rendering a dead card
-    try { setSt(await apiGet('/api/tidal')); } catch { setSt({ stale: true }); }
+    try { setSt(await apiGet('/api/tidal')); } catch { setSt(null); }
   }, []);
   useEffect(() => { load(); return () => clearInterval(poll.current); }, [load]);
 
@@ -98,6 +96,28 @@ function TidalCard() {
     load();
   };
 
+  // one-tap plugin install (devices set up before setup.sh grew the TIDAL
+  // step): the panel does the LMS "Manage plugins" POST + LMS restart; we
+  // poll /api/tidal until the plugin answers (or the panel reports an error)
+  const install = async () => {
+    setErr('');
+    try {
+      await apiPost('/api/tidal/install', {});
+      setSt((s) => (s ? { ...s, installing: true } : s));
+      clearInterval(poll.current);
+      let tries = 0;
+      poll.current = setInterval(async () => {
+        try {
+          const s = await apiGet('/api/tidal');
+          if (s.installing && ++tries < 100) return;
+          clearInterval(poll.current);
+          setSt(s);
+          if (!s.available) setErr(t('tidal_install_err'));
+        } catch { /* LMS restarting can stall the panel briefly — keep polling */ }
+      }, 3000);
+    } catch { setErr(t('js_conn_error')); }
+  };
+
   const toggleShow = async (e) => {
     const show = e.currentTarget.checked;
     setSt((s) => (s ? { ...s, show } : s));
@@ -105,28 +125,25 @@ function TidalCard() {
   };
 
   const accounts = (st && st.accounts) || [];
-  const stale = !!(st && st.stale);
-  // The "update the panel" hint cannot come from the panel's own i18n — a
-  // panel old enough to need it does not serve the key yet, so fall back to
-  // baked-in copy when t() returns the raw key.
-  const updHint = t('tidal_upd_panel') !== 'tidal_upd_panel'
-    ? t('tidal_upd_panel')
-    : 'Update the device software first (Config → Updates). / Najpierw zaktualizuj oprogramowanie urządzenia (Konfiguracja → Aktualizacje).';
+  const installing = !!(st && st.installing);
 
   return (
     <div class="card">
       <div class="card-head">
         <h2><i class="ico ico-music"></i> {t('tidal_head')}</h2>
         <label class="switch" title={t('tidal_show_note')}>
-          <input type="checkbox" checked={!!(st && st.show)} disabled={!st || stale}
-                 onChange={toggleShow} />
+          <input type="checkbox" checked={!!(st && st.show)} onChange={toggleShow} />
           <span class="knob"></span>
         </label>
       </div>
       <p class="muted">{t('tidal_note')}</p>
 
-      {stale && <p class="muted">{updHint}</p>}
-      {st && !stale && !st.available && <p class="muted">{t('tidal_missing')}</p>}
+      {st && !st.available && (installing
+        ? <p class="muted small"><span class="spinner"></span>{t('tidal_installing')}</p>
+        : <>
+            <p class="muted">{t('tidal_missing')}</p>
+            <button class="btn" onClick={install}>{t('tidal_install')}</button>
+          </>)}
       {st && st.available && accounts.map((a) => (
         <div key={a.id}>
           <div class="row">

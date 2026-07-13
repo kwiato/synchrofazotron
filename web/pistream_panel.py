@@ -207,8 +207,10 @@ STR = {
         "tidal_forget": "Disconnect account",
         "tidal_forget_confirm": "Disconnect the TIDAL account? Sign in again anytime.",
         "tidal_show_note": "The switch only hides TIDAL on the main screen — it does not sign you out.",
-        "tidal_missing": "The TIDAL plugin is not installed in LMS — re-run setup.sh to add it.",
-        "tidal_upd_panel": "Update the device software first (Config → Updates).",
+        "tidal_missing": "The TIDAL plugin is not installed in LMS.",
+        "tidal_install": "Install the TIDAL plugin",
+        "tidal_installing": "Installing… LMS restarts along the way, so playback pauses for a minute.",
+        "tidal_install_err": "Install failed — check that LMS is running and online.",
         "lms_1": "Install the <b>Squeezer</b> app (Android) or <b>iPeng</b> (iOS) — that is the main remote.",
         "lms_2": "Pick the <b>{{PLAYER}}</b> player and play TIDAL, internet radio, playlists.",
         "lms_web": "Or from a browser:",
@@ -517,8 +519,10 @@ STR = {
         "tidal_forget": "Odłącz konto",
         "tidal_forget_confirm": "Odłączyć konto TIDAL? Możesz zalogować się ponownie w każdej chwili.",
         "tidal_show_note": "Przełącznik tylko ukrywa TIDAL na głównej — nie wylogowuje.",
-        "tidal_missing": "Wtyczka TIDAL nie jest zainstalowana w LMS — odpal ponownie setup.sh.",
-        "tidal_upd_panel": "Najpierw zaktualizuj oprogramowanie urządzenia (Konfiguracja → Aktualizacje).",
+        "tidal_missing": "Wtyczka TIDAL nie jest zainstalowana w LMS.",
+        "tidal_install": "Zainstaluj wtyczkę TIDAL",
+        "tidal_installing": "Instaluję… po drodze restartuje się LMS, więc odtwarzanie stanie na minutę.",
+        "tidal_install_err": "Instalacja nie wyszła — sprawdź, czy LMS działa i ma internet.",
         "lms_1": "Zainstaluj apkę <b>Squeezer</b> (Android) lub <b>iPeng</b> (iOS) — to główny pilot.",
         "lms_2": "Wybierz odtwarzacz <b>{{PLAYER}}</b> i graj TIDAL, radio internetowe, playlisty.",
         "lms_web": "Albo z przeglądarki:",
@@ -2595,7 +2599,68 @@ def _tidal_plugin_state():
 def _tidal_status():
     state = _tidal_plugin_state()
     return {"available": state == "enabled", "plugin_state": state,
-            "show": _tidal_show(), "accounts": _tidal_accounts()}
+            "show": _tidal_show(), "accounts": _tidal_accounts(),
+            "installing": _tidal_inst["running"],
+            "install_error": _tidal_inst["error"]}
+
+
+# One-tap plugin install for devices set up before setup.sh grew the TIDAL
+# step: the same POST the LMS "Manage plugins" page sends, then an LMS restart
+# (the zip is unpacked on boot). Runs in a thread — the app polls /api/tidal.
+_tidal_inst = {"running": False, "error": ""}
+_tidal_inst_lock = threading.Lock()
+
+
+def _lms_unit():
+    for u in ("lyrionmusicserver", "logitechmediaserver"):
+        if _run(["systemctl", "is-active", u]) in ("active", "activating"):
+            return u
+    return "lyrionmusicserver"
+
+
+def _tidal_plugin_alive():
+    """True once the plugin's web endpoints actually respond (loaded, not just
+    marked enabled in prefs)."""
+    try:
+        json.loads(_lms_http("plugins/TIDAL/settings/hasCredentials?deviceCode=x"))
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _tidal_install_worker():
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{LMS_PORT}/settings/server/plugins.html",
+            data=b"install:TIDAL=1&saveSettings=1")
+        with urllib.request.urlopen(req, timeout=90) as r:
+            r.read()
+        for _ in range(45):                    # LMS downloads the zip
+            if _tidal_plugin_state() in ("needs-install", "enabled"):
+                break
+            time.sleep(2)
+        else:
+            _tidal_inst["error"] = "download timeout"
+            return
+        _run(["systemctl", "restart", _lms_unit()], timeout=90)
+        for _ in range(60):                    # first boot on a Zero takes a while
+            if _tidal_plugin_alive():
+                return
+            time.sleep(3)
+        _tidal_inst["error"] = "restart timeout"
+    except Exception as e:  # noqa: BLE001 — LMS down / network
+        _tidal_inst["error"] = str(e)
+    finally:
+        _tidal_inst["running"] = False
+
+
+def _tidal_install_start():
+    with _tidal_inst_lock:
+        if not _tidal_inst["running"]:
+            _tidal_inst["running"] = True
+            _tidal_inst["error"] = ""
+            threading.Thread(target=_tidal_install_worker, daemon=True).start()
+    return {"ok": True}
 
 
 def _tidal_auth_start():
@@ -3307,6 +3372,8 @@ class Handler(BaseHTTPRequestHandler):
                        "application/json")
         elif self.path == "/api/tidal/auth/start":
             self._send(200, json.dumps(_tidal_auth_start()), "application/json")
+        elif self.path == "/api/tidal/install":
+            self._send(200, json.dumps(_tidal_install_start()), "application/json")
         elif self.path == "/api/tidal/show":
             show = bool(self._json_body().get("show"))
             _tidal_show_set(show)
