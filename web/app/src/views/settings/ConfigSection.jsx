@@ -413,7 +413,7 @@ function UpdateCard() {
       setAppMsg(t('js_upd_checkfail')); setAppMsgTone('danger');
     } else {
       setAppAvail(avail);
-      setAppMsg(avail ? t('appupd_available') : t('appupd_current'));
+      setAppMsg(avail ? t('js_upd_available') : t('js_upd_current'));
       setAppMsgTone(avail ? 'warn' : 'good');
     }
     setAppChecking(false);
