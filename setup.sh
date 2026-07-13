@@ -329,14 +329,22 @@ lms_wait() {  # the first LMS start on a Zero 2 W takes a good while
   done
   return 1
 }
-lms_install_plugins() {  # $INSTALL = "install:Name=1&…" — POST like the settings page,
+lms_install_plugins() {  # $INSTALL_PLUGINS = names — POST like the settings page,
                          # then wait until LMS has downloaded the zips
-  local _ P PENDING
-  curl -sf -m 90 -d "${INSTALL}saveSettings=1" \
+  local _ P PENDING RAND DATA
+  # the page guards saveSettings with a per-boot token rendered into the form
+  # ("rand") — a POST without it is silently ignored
+  RAND=$(curl -sf -m 90 http://127.0.0.1:9000/settings/server/plugins.html \
+    | grep -oE 'name="rand"[^>]*value="[0-9a-f]+"' | grep -oE '[0-9a-f]{16,}' | head -1)
+  DATA="rand=${RAND}&saveSettings=1"
+  # install:<name> marks the plugin as extension-managed; the bare <name>=1
+  # carries the desired state (absent would mean "uninstall")
+  for P in $INSTALL_PLUGINS; do DATA+="&install:$P=1&$P=1"; done
+  curl -sf -m 90 -d "$DATA" \
     http://127.0.0.1:9000/settings/server/plugins.html >/dev/null || true
   for _ in $(seq 30); do   # state flips to needs-install once downloaded
     PENDING=0
-    for P in MaterialSkin TIDAL; do
+    for P in $INSTALL_PLUGINS; do
       [[ -z "$(lms_plugin_state "$P")" ]] && PENDING=1
     done
     [[ $PENDING == 0 ]] && return 0
@@ -359,11 +367,11 @@ if run -w "waiting for LMS on :9000 (up to 3 min)" lms_wait; then
   ok "analytics reporting disabled"
   # Material Skin + TIDAL local: send the same POST the "Manage plugins" page
   # sends — LMS downloads the zips itself and unpacks them on its next restart
-  INSTALL=""
+  INSTALL_PLUGINS=""
   for P in MaterialSkin TIDAL; do
-    [[ -z "$(lms_plugin_state "$P")" ]] && INSTALL+="install:$P=1&"
+    [[ -z "$(lms_plugin_state "$P")" ]] && INSTALL_PLUGINS+="$P "
   done
-  if [[ -n $INSTALL ]]; then
+  if [[ -n $INSTALL_PLUGINS ]]; then
     run "plugins: Material Skin + TIDAL local" lms_install_plugins
     LMS_RESTART=1
   else

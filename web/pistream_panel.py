@@ -2626,9 +2626,23 @@ def _tidal_plugin_alive():
 
 def _tidal_install_worker():
     try:
+        # The plugins page guards saveSettings with a per-boot token rendered
+        # into its form (my $rand in Slim::Web::Settings::Server::Plugins) —
+        # a POST without it is silently ignored. Fetch the page, lift the
+        # token. install:<name> marks the plugin as managed by the extension
+        # downloader; the bare <name> param carries the desired state (its
+        # absence would mean "uninstall").
+        page = _lms_http("settings/server/plugins.html")
+        m = re.search(r'name="rand"[^>]*value="([0-9a-f]+)"', page)
+        if not m:
+            _tidal_inst["error"] = "no csrf token"
+            return
         req = urllib.request.Request(
             f"http://127.0.0.1:{LMS_PORT}/settings/server/plugins.html",
-            data=b"install:TIDAL=1&saveSettings=1")
+            data=urllib.parse.urlencode({
+                "rand": m.group(1), "saveSettings": "1",
+                "install:TIDAL": "1", "TIDAL": "1",
+            }).encode())
         with urllib.request.urlopen(req, timeout=90) as r:
             r.read()
         for _ in range(45):                    # LMS downloads the zip
@@ -2639,7 +2653,7 @@ def _tidal_install_worker():
             _tidal_inst["error"] = "download timeout"
             return
         _run(["systemctl", "restart", _lms_unit()], timeout=90)
-        for _ in range(60):                    # first boot on a Zero takes a while
+        for _ in range(100):                   # cold boot on a Zero takes minutes
             if _tidal_plugin_alive():
                 return
             time.sleep(3)

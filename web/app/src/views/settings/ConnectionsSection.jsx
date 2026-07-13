@@ -109,7 +109,7 @@ function TidalCard() {
       poll.current = setInterval(async () => {
         try {
           const s = await apiGet('/api/tidal');
-          if (s.installing && ++tries < 100) return;
+          if (s.installing && ++tries < 160) return;
           clearInterval(poll.current);
           setSt(s);
           if (!s.available) setErr(t('tidal_install_err'));
