@@ -208,6 +208,7 @@ STR = {
         "tidal_forget_confirm": "Disconnect the TIDAL account? Sign in again anytime.",
         "tidal_show_note": "The switch only hides TIDAL on the main screen — it does not sign you out.",
         "tidal_missing": "The TIDAL plugin is not installed in LMS — re-run setup.sh to add it.",
+        "tidal_upd_panel": "Update the device software first (Config → Updates).",
         "lms_1": "Install the <b>Squeezer</b> app (Android) or <b>iPeng</b> (iOS) — that is the main remote.",
         "lms_2": "Pick the <b>{{PLAYER}}</b> player and play TIDAL, internet radio, playlists.",
         "lms_web": "Or from a browser:",
@@ -517,6 +518,7 @@ STR = {
         "tidal_forget_confirm": "Odłączyć konto TIDAL? Możesz zalogować się ponownie w każdej chwili.",
         "tidal_show_note": "Przełącznik tylko ukrywa TIDAL na głównej — nie wylogowuje.",
         "tidal_missing": "Wtyczka TIDAL nie jest zainstalowana w LMS — odpal ponownie setup.sh.",
+        "tidal_upd_panel": "Najpierw zaktualizuj oprogramowanie urządzenia (Konfiguracja → Aktualizacje).",
         "lms_1": "Zainstaluj apkę <b>Squeezer</b> (Android) lub <b>iPeng</b> (iOS) — to główny pilot.",
         "lms_2": "Wybierz odtwarzacz <b>{{PLAYER}}</b> i graj TIDAL, radio internetowe, playlisty.",
         "lms_web": "Albo z przeglądarki:",
@@ -2585,7 +2587,7 @@ def _tidal_plugin_state():
     """'enabled'/'disabled'/... or '' when the plugin (or LMS) is missing."""
     try:
         res = _lms_request(["", ["pref", "plugin.state:TIDAL", "?"]])
-        return str(res.get("_p2", ""))
+        return str(res.get("_p2") or "")     # _p2 is null when not installed
     except Exception:  # noqa: BLE001 — LMS down
         return ""
 

@@ -63,7 +63,9 @@ function TidalCard() {
   const poll = useRef(null);
 
   const load = useCallback(async () => {
-    try { setSt(await apiGet('/api/tidal')); } catch { setSt(null); }
+    // a panel older than this app has no /api/tidal — surface that as its own
+    // state instead of silently rendering a dead card
+    try { setSt(await apiGet('/api/tidal')); } catch { setSt({ stale: true }); }
   }, []);
   useEffect(() => { load(); return () => clearInterval(poll.current); }, [load]);
 
@@ -103,19 +105,28 @@ function TidalCard() {
   };
 
   const accounts = (st && st.accounts) || [];
+  const stale = !!(st && st.stale);
+  // The "update the panel" hint cannot come from the panel's own i18n — a
+  // panel old enough to need it does not serve the key yet, so fall back to
+  // baked-in copy when t() returns the raw key.
+  const updHint = t('tidal_upd_panel') !== 'tidal_upd_panel'
+    ? t('tidal_upd_panel')
+    : 'Update the device software first (Config → Updates). / Najpierw zaktualizuj oprogramowanie urządzenia (Konfiguracja → Aktualizacje).';
 
   return (
     <div class="card">
       <div class="card-head">
         <h2><i class="ico ico-music"></i> {t('tidal_head')}</h2>
         <label class="switch" title={t('tidal_show_note')}>
-          <input type="checkbox" checked={!!(st && st.show)} onChange={toggleShow} />
+          <input type="checkbox" checked={!!(st && st.show)} disabled={!st || stale}
+                 onChange={toggleShow} />
           <span class="knob"></span>
         </label>
       </div>
       <p class="muted">{t('tidal_note')}</p>
 
-      {st && !st.available && <p class="muted">{t('tidal_missing')}</p>}
+      {stale && <p class="muted">{updHint}</p>}
+      {st && !stale && !st.available && <p class="muted">{t('tidal_missing')}</p>}
       {st && st.available && accounts.map((a) => (
         <div key={a.id}>
           <div class="row">
