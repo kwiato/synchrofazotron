@@ -33,7 +33,7 @@ PORT = int(os.environ.get("PISTREAM_PANEL_PORT", "8787"))
 BIND = os.environ.get("PISTREAM_PANEL_BIND", "0.0.0.0")
 REPO = os.environ.get("PISTREAM_REPO", "kwiato/synchrofazotron")
 BRANCH = os.environ.get("PISTREAM_BRANCH", "main")
-VERSION = "0.70.19"                 # About version; CI auto-bumps the patch part
+VERSION = "0.70.20"                 # About version; CI auto-bumps the patch part
                                    # (build-panel.yml) — bump minor/major by hand
 
 _HOSTNAME = socket.gethostname() or "Synchrofazotron"
