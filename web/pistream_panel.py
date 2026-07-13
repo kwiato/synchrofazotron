@@ -2372,7 +2372,7 @@ def _lms_radio_play(verb, item_id, add=False):
 
 
 def _lms_favorites(item_id="", start=0, count=300):
-    params = ["favorites", "items", str(start), str(count)]
+    params = ["favorites", "items", str(start), str(count), "want_url:1"]
     if item_id:
         params.append("item_id:" + item_id)
     res = _lms_request(["", params])
@@ -2385,7 +2385,14 @@ def _lms_favorites(item_id="", start=0, count=300):
     return {"title": res.get("title", ""), "items": items}
 
 
-def _lms_fav_play(fav_id):
+def _lms_fav_play(fav_id, url="", title=""):
+    """Favorites stored as TuneIn directory links (Tune.ashx, sometimes with
+    old partnerId/serial baggage) get resolved to the clean direct stream like
+    radio-tab plays; anything else plays through the favorites plugin."""
+    if url and urllib.parse.urlsplit(url).netloc in _TUNEIN_HOSTS:
+        direct = _tunein_resolve(url)
+        if direct:
+            return _lms_play_url(direct, title)
     if not fav_id:
         return {"ok": False}
     _lms_request([_lms_pid(), ["favorites", "playlist", "play", "item_id:" + fav_id]])
@@ -2409,11 +2416,53 @@ def _lms_fav_remove(fav_id):
     return {"ok": True}
 
 
+# TuneIn-attributed sessions get preroll ads stitched in by the stream CDN
+# (StreamTheWorld/Triton & co. key off dist=/aggregator= in the URL — that is
+# the "Welcome to TuneIn" jingle + a geo-targeted spot). Resolving Tune.ashx
+# ourselves with a bare request and dropping the attribution params keeps
+# TuneIn out of the audio path; what remains is the broadcaster's own content.
+_TUNEIN_HOSTS = ("opml.radiotime.com", "opml.tunein.com")
+_ATTR_PARAMS = ("dist", "aggregator", "ads", "ads_partner_alias")
+
+
+def _radio_deattribute(url):
+    u = urllib.parse.urlsplit(url)
+    q = [(k, v) for k, v in urllib.parse.parse_qsl(u.query, keep_blank_values=True)
+         if k.lower() not in _ATTR_PARAMS]
+    return urllib.parse.urlunsplit(
+        (u.scheme, u.netloc, u.path, urllib.parse.urlencode(q), u.fragment))
+
+
+def _tunein_resolve(url):
+    """Tune.ashx -> the station's direct stream URL ('' when unresolvable —
+    the caller then falls back to the original URL). Only the station id is
+    forwarded: no partnerId/serial, nothing for TuneIn to monetize."""
+    q = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(url).query))
+    sid = q.get("id", "")
+    if not re.fullmatch(r"[st]\d+", sid):
+        return ""
+    try:
+        with urllib.request.urlopen(
+                "https://opml.radiotime.com/Tune.ashx?render=json"
+                "&formats=aac,ogg,mp3&id=" + sid, timeout=6) as r:
+            body = json.loads(r.read().decode("utf-8", "replace")).get("body", [])
+    except Exception:  # noqa: BLE001 — TuneIn down: let LMS resolve as before
+        return ""
+    streams = [it for it in body if it.get("element") == "audio" and it.get("url")]
+    if not streams:
+        return ""
+    # keep TuneIn's preference order, but direct station URLs first
+    streams.sort(key=lambda it: (not it.get("is_direct"), it.get("position", 0)))
+    return _radio_deattribute(streams[0]["url"])
+
+
 def _lms_play_url(url, title=""):
-    """Play a stream URL directly (the app browses TuneIn itself and only
-    sends the station's Tune.ashx URL here — LMS resolves it natively)."""
+    """Play a stream URL directly (the app browses TuneIn itself and sends
+    the station's Tune.ashx URL here — resolved to a clean direct stream)."""
     if not (url.startswith("http://") or url.startswith("https://")):
         return {"ok": False}
+    if urllib.parse.urlsplit(url).netloc in _TUNEIN_HOSTS:
+        url = _tunein_resolve(url) or url
     params = ["playlist", "play", url]
     if title:
         params.append(title)
@@ -3370,7 +3419,8 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/lms/playurl":
                 return _lms_play_url(str(b.get("url", "")), str(b.get("title", "")))
             if path == "/api/lms/favorites/play":
-                return _lms_fav_play(str(b.get("id", "")))
+                return _lms_fav_play(str(b.get("id", "")), str(b.get("url", "")),
+                                     str(b.get("title", "")))
             if path == "/api/lms/favorites/add":
                 return _lms_fav_add(str(b.get("url", "")), str(b.get("title", "")),
                                     str(b.get("icon", "")))

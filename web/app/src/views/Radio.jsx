@@ -153,7 +153,7 @@ function Browser({ kind }) {
   const onPlay = async (it) => {
     pendingStart();                       // feedback ring on the play button
     try {
-      if (kind === 'fav') await apiPost('/api/lms/favorites/play', { id: it.id });
+      if (kind === 'fav') await apiPost('/api/lms/favorites/play', { id: it.id, url: it.url || '', title: it.title || '' });
       else if (direct) await playUrl(it);
       else await apiPost('/api/lms/radio/play', { verb: currentVerb(), item_id: it.item_id });
     } catch { pendingClear(); toast(t('radio_play_err')); }
