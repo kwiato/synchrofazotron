@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { apiGet, apiPost } from './api.js';
 import { apiUrl } from './host.js';
 import { nativeAppInfo } from './appversion.js';
+import { dropSpin, dropDone } from './update.js';
 
 // {version, build} of the installed native app (matches Google Play), or null on
 // the web build / before it resolves. Read once on mount.
@@ -90,14 +91,15 @@ export function watchComeBack(done) {
 }
 
 // Shared reboot flow (used by the reboot card and the audio card's reboot
-// button): confirm, POST, then wait for the device to return.
-export async function doReboot({ t, toast, onStart, onDone }) {
+// button): confirm, POST, then wait for the device to return. Progress lives
+// in the global droplet (update.js), so it survives navigation like updates.
+export async function doReboot({ t, onStart, onDone }) {
   if (!confirm(t('js_reboot_confirm'))) return;
   if (onStart) onStart();
+  dropSpin('js_rebooting');
   try { await apiPost('/api/reboot'); } catch { /* it is going down anyway */ }
   watchComeBack(() => {
     if (onDone) onDone();
-    if (toast) toast(t('reboot_done_toast'));
-    setTimeout(() => location.reload(), 1800);
+    dropDone('reboot_done_toast', { reloadMs: 1900 });
   });
 }

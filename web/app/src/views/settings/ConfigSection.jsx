@@ -2,7 +2,6 @@ import { useEffect, useState } from 'preact/hooks';
 import { useI18n } from '../../i18n.jsx';
 import { apiGet, apiPost } from '../../api.js';
 import { useApi, doReboot } from '../../hooks.js';
-import { useToast } from '../../components/Toast.jsx';
 import { Droplet } from '../../components/Droplet.jsx';
 import { WifiModal } from '../../components/WifiModal.jsx';
 import { Collapsible } from '../../components/Collapsible.jsx';
@@ -267,7 +266,6 @@ function TailscaleCard() {
 
 export function AudioOutputCard() {
   const { t } = useI18n();
-  const toast = useToast();
   const [a, reload] = useApi('/api/audio', 0);
   const [msg, setMsg] = useState('');
   const [testing, setTesting] = useState(false);
@@ -287,9 +285,9 @@ export function AudioOutputCard() {
     setTesting(false);
   };
   const reboot = () => doReboot({
-    t, toast,
-    onStart: () => { setRebooting(true); setMsg(t('js_rebooting')); },
-    onDone: () => { setRebooting(false); setMsg(''); },
+    t,
+    onStart: () => { setRebooting(true); setMsg(''); },
+    onDone: () => setRebooting(false),
   });
 
   const cards = (a && a.cards) || {};
@@ -488,20 +486,17 @@ function UpdateCard() {
 
 function RebootCard() {
   const { t } = useI18n();
-  const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
   const reboot = () => doReboot({
-    t, toast,
-    onStart: () => { setBusy(true); setMsg(t('js_rebooting')); },
-    onDone: () => { setBusy(false); setMsg(''); },
+    t,
+    onStart: () => setBusy(true),
+    onDone: () => setBusy(false),
   });
   return (
     <div class="card">
       <h2><i class="ico ico-refresh"></i> {t('reboot_head')}</h2>
       <p class="muted">{t('reboot_note')}</p>
       <button class="btn sec" disabled={busy} onClick={reboot}>{t('js_reboot')}</button>
-      <p class="muted">{busy && <span class="spinner"></span>}{' '}{msg}</p>
     </div>
   );
 }

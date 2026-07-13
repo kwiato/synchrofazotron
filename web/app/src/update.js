@@ -25,6 +25,19 @@ export function updError(text) {
   closeLater(2400);
 }
 
+// The pinned droplet doubles as the generic "system is busy" pill — reboot
+// uses these two directly (spinner while down, check + optional reload after).
+export function dropSpin(key) {
+  clearTimers();
+  set({ open: true, key, tone: '', icon: 'check', spinner: true });
+}
+
+export function dropDone(key, { tone = 'good', reloadMs = 0 } = {}) {
+  clearTimers();
+  set({ open: true, key, tone, icon: tone === 'danger' ? 'x' : 'check', spinner: false });
+  closeLater(1300, reloadMs);
+}
+
 // update accepted — show the spinner pill and poll until the panel reports done
 export function updPollStart() {
   if (polling) return;

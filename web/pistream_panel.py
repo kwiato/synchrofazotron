@@ -2542,10 +2542,10 @@ def _tidal_show_set(show):
     _file_write(TIDAL_UI_FILE, json.dumps({"show": bool(show)}) + "\n")
 
 
-def _lms_http(path):
+def _lms_http(path, timeout=10):
     """GET an LMS web path (settings pages, plugin endpoints) as text."""
     with urllib.request.urlopen(f"http://127.0.0.1:{LMS_PORT}/{path}",
-                                timeout=10) as r:
+                                timeout=timeout) as r:
         return r.read().decode("utf-8", "replace")
 
 
@@ -2677,7 +2677,11 @@ def _tidal_auth_start():
     """Kick off the device flow and hand the app the link + code. Each call
     starts a fresh flow (the previous code simply expires in LMS)."""
     try:
-        html = _lms_http("plugins/TIDAL/settings/auth.html")
+        # note: the page is plugins/TIDAL/auth.html — NOT settings/auth.html
+        # (verified against the installed plugin, Settings::Auth->page).
+        # Rendering it makes LMS call TIDAL's device_authorization endpoint,
+        # so give it more headroom than a local page.
+        html = _lms_http("plugins/TIDAL/auth.html", timeout=25)
     except OSError:
         return {"ok": False}
     link = re.search(r"https?://link\.tidal\.com/[A-Za-z0-9]+", html)
