@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Synchrofazotron</string>
+
+    <!-- Connect -->
+    <string name="connect_title">Connect to a device</string>
+    <string name="connect_host_label">Address (host or IP)</string>
+    <string name="connect_host_hint">e.g. pistream or 192.168.0.187</string>
+    <string name="connect_button">Connect</string>
+    <string name="connect_checking">Checking…</string>
+    <string name="connect_unreachable">Could not reach the device.</string>
+
+    <!-- Now playing -->
+    <string name="now_title">Now playing</string>
+    <string name="now_nothing">Silence — nothing is playing.</string>
+    <string name="now_device">Device</string>
+    <string name="now_change_device">Change device</string>
+    <string name="now_multi_warning">Several sources are playing at once — the first one owns the output.</string>
+    <string name="now_reconnecting">Reconnecting…</string>
+
+    <!-- Source states -->
+    <string name="state_playing">playing</string>
+    <string name="state_paused">paused</string>
+    <string name="state_idle">idle</string>
+    <string name="state_connected">connected</string>
+
+    <!-- Controls -->
+    <string name="action_play">Play</string>
+    <string name="action_pause">Pause</string>
+    <string name="volume_label">Volume</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="back">Back</string>
+    <string name="refresh">Refresh</string>
+
+    <!-- Wi-Fi -->
+    <string name="wifi_head">📡 Wi-Fi</string>
+    <string name="wifi_current">Connected: %1$s</string>
+    <string name="wifi_not_connected">Not connected to Wi-Fi</string>
+    <string name="wifi_saved">Saved networks</string>
+    <string name="wifi_free_slots">free slots: %1$d</string>
+    <string name="wifi_add">Add a network</string>
+    <string name="wifi_ssid">Network name (SSID)</string>
+    <string name="wifi_key">Password (empty = open)</string>
+    <string name="wifi_save">Save network</string>
+    <string name="wifi_scan">🔍 Scan for networks</string>
+    <string name="wifi_scanning">Scanning…</string>
+    <string name="wifi_remove">Remove</string>
+    <string name="wifi_no_saved">No saved networks.</string>
+
+    <!-- Bluetooth -->
+    <string name="bt_head">📶 Bluetooth</string>
+    <string name="bt_pair">🔵 Enable pairing</string>
+    <string name="bt_pairing_active">Pairing active — look for the device (%1$d s)</string>
+    <string name="bt_none">Nothing paired yet — use “Enable pairing”.</string>
+    <string name="bt_connect">Connect</string>
+    <string name="bt_disconnect">Disconnect</string>
+    <string name="bt_forget">Forget</string>
+    <string name="bt_connected">connected</string>
+    <string name="bt_connecting">Connecting…</string>
+
+    <string name="lang_name">English</string>
+</resources>

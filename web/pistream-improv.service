@@ -1,0 +1,20 @@
+[Unit]
+Description=Synchrofazotron Improv Wi-Fi BLE provisioning (GATT server)
+# Needs the BT adapter; talks to the panel over localhost for the Wi-Fi write.
+After=bluetooth.service pistream-panel.service
+Wants=bluetooth.service
+
+[Service]
+Type=simple
+# root is required for the BlueZ system bus + raw HCI advertising (hcitool).
+User=root
+Environment=PISTREAM_PANEL_PORT=8787
+ExecStart=/usr/bin/python3 /opt/pistream-panel/improv_wifi.py
+Restart=on-failure
+RestartSec=5
+MemoryAccounting=yes
+MemoryHigh=60M
+MemoryMax=90M
+
+[Install]
+WantedBy=multi-user.target
