@@ -11,6 +11,7 @@ REPO="${PISTREAM_REPO:-kwiato/synchrofazotron}"
 BRANCH="${PISTREAM_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/$REPO/$BRANCH/web"
 FILES=(pistream_panel.py pistream-panel.service bt-agent.service
+       improv_wifi.py pistream-improv.service
        ui/style.css
        app/dist/index.html app/dist/assets/index.js app/dist/assets/index.css)
 DEST=/opt/pistream-panel
@@ -39,7 +40,16 @@ install -m 0644 "$SRC_DIR/bt-agent.service" /etc/systemd/system/bt-agent.service
 echo "==> Copying the panel to $DEST"
 install -d "$DEST" "$DEST/ui" "$DEST/app/dist/assets"
 install -m 0755 "$SRC_DIR/pistream_panel.py" "$DEST/pistream_panel.py"
+install -m 0755 "$SRC_DIR/improv_wifi.py" "$DEST/improv_wifi.py"
 install -m 0644 "$SRC_DIR/ui/style.css" "$DEST/ui/"
+
+# Improv Wi-Fi BLE provisioning needs D-Bus + GLib bindings (a GATT server
+# can't be done with the panel's stdlib-only approach). hcitool (bluez legacy
+# tools) is used for the advertising the Pi controller's extended-advertising
+# firmware rejects — see improv_wifi.py.
+if ! python3 -c "import dbus, gi" >/dev/null 2>&1 || ! command -v hcitool >/dev/null 2>&1; then
+  DEBIAN_FRONTEND=noninteractive apt-get install -y python3-dbus python3-gi bluez
+fi
 
 # Prebuilt Preact panel (web/app) served at /app — shipped as static files
 # (the Pi has no Node). Stable filenames, so this fixed list stays valid.
@@ -49,16 +59,18 @@ install -m 0644 "$SRC_DIR/app/dist/assets/index.js" \
 
 echo "==> Installing systemd services"
 install -m 0644 "$SRC_DIR/pistream-panel.service" /etc/systemd/system/pistream-panel.service
+install -m 0644 "$SRC_DIR/pistream-improv.service" /etc/systemd/system/pistream-improv.service
 systemctl daemon-reload
-systemctl enable bt-agent.service pistream-panel.service
+systemctl enable bt-agent.service pistream-panel.service pistream-improv.service
 # restart (not enable --now): on update this swaps the running process for the new code
 systemctl restart pistream-panel.service
 # bt-agent needs bluetooth.service; on a fresh system bluez may not be usable
 # until after a reboot — it is enabled above, so it will start on its own then
 if systemctl cat bluetooth.service >/dev/null 2>&1; then
   systemctl restart bt-agent.service
+  systemctl restart pistream-improv.service || true
 else
-  echo "    bluetooth.service not present yet — bt-agent will start after reboot"
+  echo "    bluetooth.service not present yet — bt-agent + improv will start after reboot"
 fi
 
 echo "==> Advertising the panel over mDNS (_pistream._tcp) via avahi"
