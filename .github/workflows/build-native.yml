@@ -7,7 +7,11 @@ name: Build native app (Android APK)
 on:
   workflow_dispatch: {}
   push:
-    branches: [ main ]
+    branches: [ main, android-native ]
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-native.yml'
+  pull_request:
     paths:
       - 'android/**'
       - '.github/workflows/build-native.yml'
