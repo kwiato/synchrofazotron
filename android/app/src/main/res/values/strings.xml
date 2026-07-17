@@ -27,5 +27,10 @@
     <string name="state_idle">cisza</string>
     <string name="state_connected">połączony</string>
 
+    <!-- Controls -->
+    <string name="action_play">Odtwórz</string>
+    <string name="action_pause">Pauza</string>
+    <string name="volume_label">Głośność</string>
+
     <string name="lang_name">Polski</string>
 </resources>

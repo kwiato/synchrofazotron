@@ -27,3 +27,19 @@ data class Source(
     val id: String = "",
     val controllable: Boolean = false,
 )
+
+/** GET /api/volume — per-source 0..100; a key is absent when not controllable. */
+@Serializable
+data class VolumeState(
+    val volumes: Map<String, Int> = emptyMap(),
+)
+
+@Serializable
+data class ControlRequest(val source: String, val action: String)
+
+@Serializable
+data class VolumeRequest(
+    val source: String,
+    val value: Int? = null,
+    val delta: Int? = null,
+)

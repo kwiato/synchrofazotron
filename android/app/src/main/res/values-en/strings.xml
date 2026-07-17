@@ -24,5 +24,10 @@
     <string name="state_idle">idle</string>
     <string name="state_connected">connected</string>
 
+    <!-- Controls -->
+    <string name="action_play">Play</string>
+    <string name="action_pause">Pause</string>
+    <string name="volume_label">Volume</string>
+
     <string name="lang_name">English</string>
 </resources>

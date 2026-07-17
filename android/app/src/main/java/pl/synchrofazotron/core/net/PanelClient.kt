@@ -6,7 +6,11 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
@@ -40,6 +44,25 @@ class PanelClient(private val baseUrl: String) {
 
     /** GET /api/status — the main poll. */
     suspend fun status(): StatusResponse = http.get("$baseUrl/api/status").body()
+
+    /** GET /api/volume — per-source current volume. */
+    suspend fun volume(): VolumeState = http.get("$baseUrl/api/volume").body()
+
+    /** POST /api/control — play/pause/next/prev a source. */
+    suspend fun control(source: String, action: String) {
+        http.post("$baseUrl/api/control") {
+            contentType(ContentType.Application.Json)
+            setBody(ControlRequest(source, action))
+        }
+    }
+
+    /** POST /api/volume — absolute value or signed delta on a source. */
+    suspend fun setVolume(source: String, value: Int? = null, delta: Int? = null) {
+        http.post("$baseUrl/api/volume") {
+            contentType(ContentType.Application.Json)
+            setBody(VolumeRequest(source, value, delta))
+        }
+    }
 
     fun close() = http.close()
 }
