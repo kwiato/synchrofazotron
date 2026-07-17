@@ -110,6 +110,49 @@ class PanelClient(private val baseUrl: String) {
             setBody(MacRequest(mac))
         }.body()
 
+    // --- Audio -----------------------------------------------------------
+    suspend fun audio(): AudioState = http.get("$baseUrl/api/audio").body()
+
+    suspend fun audioSet(output: String): OkMessage =
+        http.post("$baseUrl/api/audio/set") {
+            contentType(ContentType.Application.Json)
+            setBody(OutputRequest(output))
+        }.body()
+
+    /** POST /api/audio/test — plays a test tone, blocks up to ~15 s. */
+    suspend fun audioTest(): OkMessage =
+        http.post("$baseUrl/api/audio/test") {
+            timeout { requestTimeoutMillis = 25_000; socketTimeoutMillis = 25_000 }
+        }.body()
+
+    // --- System ----------------------------------------------------------
+    suspend fun setName(name: String): OkMessage =
+        http.post("$baseUrl/api/name") {
+            contentType(ContentType.Application.Json)
+            setBody(NameRequest(name))
+        }.body()
+
+    suspend fun tailscale(): TailscaleState = http.get("$baseUrl/api/tailscale").body()
+
+    suspend fun tailscaleSet(up: Boolean): OkMessage =
+        http.post("$baseUrl/api/tailscale/set") {
+            contentType(ContentType.Application.Json)
+            setBody(UpRequest(up))
+        }.body()
+
+    suspend fun updateStatus(): UpdateState = http.get("$baseUrl/api/update").body()
+
+    /** GET /api/update/check — compares against GitHub, blocks up to ~15 s. */
+    suspend fun updateCheck(): UpdateCheck = http.get("$baseUrl/api/update/check") {
+        timeout { requestTimeoutMillis = 25_000; socketTimeoutMillis = 25_000 }
+    }.body()
+
+    suspend fun updateRun(): OkMessage = http.post("$baseUrl/api/update/run").body()
+
+    suspend fun reboot() {
+        http.post("$baseUrl/api/reboot")
+    }
+
     fun close() = http.close()
 }
 

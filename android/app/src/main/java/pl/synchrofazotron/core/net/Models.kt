@@ -96,3 +96,37 @@ data class MacRequest(val mac: String)
 
 @Serializable
 data class PairResponse(val ok: Boolean = false, val seconds: Int = 0)
+
+// --- Audio ---------------------------------------------------------------
+@Serializable
+data class AudioState(
+    val output: String = "",
+    val running: String = "",
+    val overlay: String = "",
+    val cards: Map<String, Boolean> = emptyMap(),
+    @SerialName("hdmi_connected") val hdmiConnected: Boolean = false,
+    @SerialName("bridge_active") val bridgeActive: Boolean = false,
+    @SerialName("reboot_required") val rebootRequired: Boolean = false,
+)
+
+@Serializable
+data class OutputRequest(val output: String)
+
+// --- System / Tailscale / updates ---------------------------------------
+@Serializable
+data class TailscaleState(val installed: Boolean = false, val active: Boolean = false, val ip: String = "")
+
+@Serializable
+data class UpdateState(val running: Boolean = false, val failed: Boolean = false)
+
+@Serializable
+data class UpdateCheck(
+    val ok: Boolean = false,
+    @SerialName("update_available") val updateAvailable: Boolean = false,
+)
+
+@Serializable
+data class NameRequest(val name: String)
+
+@Serializable
+data class UpRequest(val up: Boolean)

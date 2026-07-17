@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -41,8 +43,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pl.synchrofazotron.R
 import pl.synchrofazotron.core.PanelSession
+import pl.synchrofazotron.core.net.AudioState
 import pl.synchrofazotron.core.net.BtDevice
 import pl.synchrofazotron.core.net.BtInfo
+import pl.synchrofazotron.core.net.TailscaleState
 import pl.synchrofazotron.core.net.WifiInfo
 import pl.synchrofazotron.core.net.WifiNetwork
 
@@ -71,6 +75,10 @@ fun SettingsScreen(session: PanelSession, onBack: () -> Unit) {
         ) {
             WifiCard(session)
             BluetoothCard(session)
+            AudioCard(session)
+            DeviceCard(session)
+            TailscaleCard(session)
+            UpdateCard(session)
             Column(Modifier.padding(bottom = 24.dp)) {}
         }
     }
@@ -256,4 +264,185 @@ private fun BtRow(
             Button(onClick = onConnect) { Text(stringResource(R.string.bt_connect)) }
         }
     }
+}
+
+@Composable
+private fun AudioCard(session: PanelSession) {
+    val scope = rememberCoroutineScope()
+    var audio by remember { mutableStateOf<AudioState?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    suspend fun reload() { audio = session.fetchAudio() }
+    LaunchedEffect(session) { reload() }
+
+    SectionCard(stringResource(R.string.audio_head)) {
+        val out = audio?.output ?: ""
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutputButton(stringResource(R.string.audio_dac), out == "dac", busy) {
+                scope.launch { busy = true; session.setAudio("dac"); reload(); busy = false }
+            }
+            OutputButton(stringResource(R.string.audio_hdmi), out == "hdmi", busy) {
+                scope.launch { busy = true; session.setAudio("hdmi"); reload(); busy = false }
+            }
+        }
+        if (audio?.rebootRequired == true) {
+            Text(
+                stringResource(R.string.audio_reboot_required),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        OutlinedButton(
+            onClick = { scope.launch { session.testAudio() } },
+            modifier = Modifier.padding(top = 8.dp),
+        ) { Text(stringResource(R.string.audio_test)) }
+    }
+}
+
+@Composable
+private fun OutputButton(label: String, selected: Boolean, busy: Boolean, onClick: () -> Unit) {
+    if (selected) {
+        Button(onClick = onClick, enabled = !busy) { Text(label) }
+    } else {
+        OutlinedButton(onClick = onClick, enabled = !busy) { Text(label) }
+    }
+}
+
+@Composable
+private fun DeviceCard(session: PanelSession) {
+    val scope = rememberCoroutineScope()
+    val status by session.status.collectAsStateWithLifecycle()
+    var name by remember { mutableStateOf("") }
+    var prefilled by remember { mutableStateOf(false) }
+    var confirmReboot by remember { mutableStateOf(false) }
+    LaunchedEffect(status?.deviceName) {
+        val dn = status?.deviceName.orEmpty()
+        if (!prefilled && dn.isNotBlank()) { name = dn; prefilled = true }
+    }
+
+    SectionCard(stringResource(R.string.device_head)) {
+        OutlinedTextField(
+            value = name, onValueChange = { name = it }, singleLine = true,
+            label = { Text(stringResource(R.string.device_name_label)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                enabled = name.isNotBlank(),
+                onClick = { scope.launch { session.setName(name.trim()) } },
+            ) { Text(stringResource(R.string.device_rename)) }
+            OutlinedButton(onClick = { confirmReboot = true }) {
+                Text(stringResource(R.string.device_reboot))
+            }
+        }
+    }
+
+    if (confirmReboot) {
+        ConfirmDialog(
+            title = stringResource(R.string.device_reboot_title),
+            text = stringResource(R.string.device_reboot_confirm),
+            onConfirm = { confirmReboot = false; scope.launch { session.reboot() } },
+            onDismiss = { confirmReboot = false },
+        )
+    }
+}
+
+@Composable
+private fun TailscaleCard(session: PanelSession) {
+    val scope = rememberCoroutineScope()
+    var ts by remember { mutableStateOf<TailscaleState?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    suspend fun reload() { ts = session.fetchTailscale() }
+    LaunchedEffect(session) { reload() }
+
+    SectionCard(stringResource(R.string.tailscale_head)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                val ip = ts?.ip.orEmpty()
+                if (ip.isNotBlank()) {
+                    Text(stringResource(R.string.tailscale_ip, ip), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            Switch(
+                checked = ts?.active == true,
+                enabled = !busy && ts?.installed == true,
+                onCheckedChange = { on ->
+                    scope.launch { busy = true; session.setTailscale(on); reload(); busy = false }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun UpdateCard(session: PanelSession) {
+    val scope = rememberCoroutineScope()
+    var checking by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<String?>(null) }
+    var confirmUpdate by remember { mutableStateOf(false) }
+    var running by remember { mutableStateOf(false) }
+
+    SectionCard(stringResource(R.string.update_head)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                enabled = !checking,
+                onClick = {
+                    scope.launch {
+                        checking = true
+                        val c = session.updateCheck()
+                        result = when {
+                            c == null || !c.ok -> "fail"
+                            c.updateAvailable -> "avail"
+                            else -> "current"
+                        }
+                        checking = false
+                    }
+                },
+            ) {
+                if (checking) {
+                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.padding(end = 8.dp).size(16.dp))
+                }
+                Text(stringResource(R.string.update_check))
+            }
+            Button(onClick = { confirmUpdate = true }, enabled = !running) {
+                Text(stringResource(R.string.update_run))
+            }
+        }
+        val msg = when (result) {
+            "avail" -> stringResource(R.string.update_available)
+            "current" -> stringResource(R.string.update_current)
+            "fail" -> stringResource(R.string.update_checkfail)
+            else -> null
+        }
+        if (running) {
+            Text(stringResource(R.string.update_running), style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 8.dp))
+        } else if (msg != null) {
+            Text(msg, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+        }
+    }
+
+    if (confirmUpdate) {
+        ConfirmDialog(
+            title = stringResource(R.string.update_title),
+            text = stringResource(R.string.update_confirm),
+            onConfirm = {
+                confirmUpdate = false
+                running = true
+                scope.launch { session.updateRun() }
+            },
+            onDismiss = { confirmUpdate = false },
+        )
+    }
+}
+
+@Composable
+private fun ConfirmDialog(title: String, text: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(text) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.common_confirm)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
+    )
 }

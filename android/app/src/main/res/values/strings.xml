@@ -63,5 +63,38 @@
     <string name="bt_connected">połączony</string>
     <string name="bt_connecting">Łączę…</string>
 
+    <!-- Audio output -->
+    <string name="audio_head">🔊 Wyjście dźwięku</string>
+    <string name="audio_dac">DAC</string>
+    <string name="audio_hdmi">HDMI</string>
+    <string name="audio_test">🔔 Test dźwięku</string>
+    <string name="audio_reboot_required">Zmiana wymaga restartu urządzenia.</string>
+
+    <!-- Device / system -->
+    <string name="device_head">🎛️ Urządzenie</string>
+    <string name="device_name_label">Nazwa urządzenia</string>
+    <string name="device_rename">Zmień nazwę</string>
+    <string name="device_reboot">🔁 Zrestartuj urządzenie</string>
+    <string name="device_reboot_title">Zrestartować?</string>
+    <string name="device_reboot_confirm">Muzyka przestanie grać na około minutę.</string>
+
+    <!-- Tailscale -->
+    <string name="tailscale_head">🔗 Tailscale</string>
+    <string name="tailscale_ip">IP: %1$s</string>
+
+    <!-- Updates -->
+    <string name="update_head">🔄 Aktualizacje</string>
+    <string name="update_check">Sprawdź</string>
+    <string name="update_run">⬇ Aktualizuj</string>
+    <string name="update_available">🔔 Jest nowsza wersja.</string>
+    <string name="update_current">✅ Wersja aktualna.</string>
+    <string name="update_checkfail">Nie udało się sprawdzić.</string>
+    <string name="update_running">⏳ Aktualizuję…</string>
+    <string name="update_title">Zaktualizować?</string>
+    <string name="update_confirm">Potrwa minutę–dwie; panel na chwilę zniknie.</string>
+
+    <string name="common_cancel">Anuluj</string>
+    <string name="common_confirm">Potwierdź</string>
+
     <string name="lang_name">Polski</string>
 </resources>

@@ -60,5 +60,38 @@
     <string name="bt_connected">connected</string>
     <string name="bt_connecting">Connecting…</string>
 
+    <!-- Audio output -->
+    <string name="audio_head">🔊 Audio output</string>
+    <string name="audio_dac">DAC</string>
+    <string name="audio_hdmi">HDMI</string>
+    <string name="audio_test">🔔 Test sound</string>
+    <string name="audio_reboot_required">The change needs a device reboot.</string>
+
+    <!-- Device / system -->
+    <string name="device_head">🎛️ Device</string>
+    <string name="device_name_label">Device name</string>
+    <string name="device_rename">Rename</string>
+    <string name="device_reboot">🔁 Reboot the device</string>
+    <string name="device_reboot_title">Reboot?</string>
+    <string name="device_reboot_confirm">Music stops for about a minute.</string>
+
+    <!-- Tailscale -->
+    <string name="tailscale_head">🔗 Tailscale</string>
+    <string name="tailscale_ip">IP: %1$s</string>
+
+    <!-- Updates -->
+    <string name="update_head">🔄 Updates</string>
+    <string name="update_check">Check</string>
+    <string name="update_run">⬇ Update</string>
+    <string name="update_available">🔔 A new version is available.</string>
+    <string name="update_current">✅ Up to date.</string>
+    <string name="update_checkfail">Check failed.</string>
+    <string name="update_running">⏳ Updating…</string>
+    <string name="update_title">Update now?</string>
+    <string name="update_confirm">Takes a minute or two; the panel briefly disconnects.</string>
+
+    <string name="common_cancel">Cancel</string>
+    <string name="common_confirm">Confirm</string>
+
     <string name="lang_name">English</string>
 </resources>

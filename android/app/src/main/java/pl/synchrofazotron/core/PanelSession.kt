@@ -121,6 +121,16 @@ class PanelSession(
     suspend fun btConnect(mac: String) = io { client.btConnect(mac) }
     suspend fun btDisconnect(mac: String) = io { client.btDisconnect(mac) }
     suspend fun btForget(mac: String) = io { client.btForget(mac) }
+    suspend fun fetchAudio() = io { client.audio() }
+    suspend fun setAudio(output: String) = io { client.audioSet(output) }
+    suspend fun testAudio() = io { client.audioTest() }
+    suspend fun setName(name: String) = io { client.setName(name) }
+    suspend fun fetchTailscale() = io { client.tailscale() }
+    suspend fun setTailscale(up: Boolean) = io { client.tailscaleSet(up) }
+    suspend fun updateStatus() = io { client.updateStatus() }
+    suspend fun updateCheck() = io { client.updateCheck() }
+    suspend fun updateRun() = io { client.updateRun() }
+    suspend fun reboot() = io { client.reboot() }
 
     private suspend fun <T> io(block: suspend () -> T): T? =
         withContext(Dispatchers.IO) { runCatching { block() }.getOrNull() }
