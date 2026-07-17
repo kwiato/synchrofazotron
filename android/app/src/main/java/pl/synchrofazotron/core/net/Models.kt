@@ -43,3 +43,56 @@ data class VolumeRequest(
     val value: Int? = null,
     val delta: Int? = null,
 )
+
+/** Generic mutating-endpoint envelope. Branch on [ok]; [message] is device-
+ *  localized display text, used only as a detail line. */
+@Serializable
+data class OkMessage(val ok: Boolean = false, val message: String = "")
+
+// --- Wi-Fi ---------------------------------------------------------------
+@Serializable
+data class WifiInfo(
+    val iface: String = "",
+    val current: WifiCurrent? = null,
+    val saved: List<WifiSaved> = emptyList(),
+    @SerialName("free_slots") val freeSlots: Int = 0,
+    val hostname: String = "",
+    @SerialName("tailscale_ip") val tailscaleIp: String = "",
+)
+
+@Serializable
+data class WifiCurrent(val ssid: String = "", val signal: Int? = null, val ip: String = "")
+
+@Serializable
+data class WifiSaved(val slot: Int = 0, val ssid: String = "", val keymgr: String = "")
+
+@Serializable
+data class WifiScan(val networks: List<WifiNetwork> = emptyList())
+
+@Serializable
+data class WifiNetwork(val ssid: String = "", val signal: Int = 0)
+
+@Serializable
+data class WifiAddRequest(val ssid: String, val key: String)
+
+@Serializable
+data class SlotRequest(val slot: Int)
+
+// --- Bluetooth -----------------------------------------------------------
+@Serializable
+data class BtInfo(
+    val paired: List<BtDevice> = emptyList(),
+    val reconnect: BtReconnect = BtReconnect(),
+)
+
+@Serializable
+data class BtDevice(val mac: String = "", val name: String = "", val connected: Boolean = false)
+
+@Serializable
+data class BtReconnect(val enabled: Boolean = false, val interval: Int = 45)
+
+@Serializable
+data class MacRequest(val mac: String)
+
+@Serializable
+data class PairResponse(val ok: Boolean = false, val seconds: Int = 0)

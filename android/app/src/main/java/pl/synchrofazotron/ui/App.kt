@@ -7,12 +7,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import pl.synchrofazotron.MainActivity
 import pl.synchrofazotron.core.PanelSession
 import pl.synchrofazotron.core.prefs.DeviceStore
 import pl.synchrofazotron.ui.connect.ConnectScreen
 import pl.synchrofazotron.ui.now.NowScreen
+import pl.synchrofazotron.ui.settings.SettingsScreen
 
 private const val LOADING = " loading"
 
@@ -40,10 +44,19 @@ fun App() {
                 onDispose { activity?.volumeKeyHandler = null }
             }
 
-            NowScreen(
-                session = session,
-                onChangeDevice = { scope.launch { store.clear() } },
-            )
+            val nav = rememberNavController()
+            NavHost(navController = nav, startDestination = "now") {
+                composable("now") {
+                    NowScreen(
+                        session = session,
+                        onChangeDevice = { scope.launch { store.clear() } },
+                        onOpenSettings = { nav.navigate("settings") },
+                    )
+                }
+                composable("settings") {
+                    SettingsScreen(session = session, onBack = { nav.popBackStack() })
+                }
+            }
         }
     }
 }

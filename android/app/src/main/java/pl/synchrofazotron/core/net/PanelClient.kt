@@ -5,6 +5,7 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -63,6 +64,51 @@ class PanelClient(private val baseUrl: String) {
             setBody(VolumeRequest(source, value, delta))
         }
     }
+
+    // --- Wi-Fi -----------------------------------------------------------
+    suspend fun wifi(): WifiInfo = http.get("$baseUrl/api/wifi").body()
+
+    /** GET /api/wifi/scan — blocks up to ~25 s server-side. */
+    suspend fun wifiScan(): WifiScan = http.get("$baseUrl/api/wifi/scan") {
+        timeout { requestTimeoutMillis = 35_000; socketTimeoutMillis = 35_000 }
+    }.body()
+
+    suspend fun wifiAdd(ssid: String, key: String): OkMessage =
+        http.post("$baseUrl/api/wifi/add") {
+            contentType(ContentType.Application.Json)
+            setBody(WifiAddRequest(ssid, key))
+        }.body()
+
+    suspend fun wifiRemove(slot: Int): OkMessage =
+        http.post("$baseUrl/api/wifi/remove") {
+            contentType(ContentType.Application.Json)
+            setBody(SlotRequest(slot))
+        }.body()
+
+    // --- Bluetooth -------------------------------------------------------
+    suspend fun bt(): BtInfo = http.get("$baseUrl/api/bt").body()
+
+    suspend fun pair(): PairResponse = http.post("$baseUrl/api/pair").body()
+
+    /** POST /api/bt/connect — blocks up to ~25 s server-side. */
+    suspend fun btConnect(mac: String): OkMessage =
+        http.post("$baseUrl/api/bt/connect") {
+            contentType(ContentType.Application.Json)
+            setBody(MacRequest(mac))
+            timeout { requestTimeoutMillis = 35_000; socketTimeoutMillis = 35_000 }
+        }.body()
+
+    suspend fun btDisconnect(mac: String): OkMessage =
+        http.post("$baseUrl/api/bt/disconnect") {
+            contentType(ContentType.Application.Json)
+            setBody(MacRequest(mac))
+        }.body()
+
+    suspend fun btForget(mac: String): OkMessage =
+        http.post("$baseUrl/api/bt/forget") {
+            contentType(ContentType.Application.Json)
+            setBody(MacRequest(mac))
+        }.body()
 
     fun close() = http.close()
 }

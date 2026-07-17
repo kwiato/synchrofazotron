@@ -103,6 +103,20 @@ class PanelSession(
         }
     }
 
+    // On-demand data (not part of the fast poll) — one shared client, IO-bound.
+    suspend fun fetchWifi() = io { client.wifi() }
+    suspend fun scanWifi() = io { client.wifiScan() }
+    suspend fun addWifi(ssid: String, key: String) = io { client.wifiAdd(ssid, key) }
+    suspend fun removeWifi(slot: Int) = io { client.wifiRemove(slot) }
+    suspend fun fetchBt() = io { client.bt() }
+    suspend fun pair() = io { client.pair() }
+    suspend fun btConnect(mac: String) = io { client.btConnect(mac) }
+    suspend fun btDisconnect(mac: String) = io { client.btDisconnect(mac) }
+    suspend fun btForget(mac: String) = io { client.btForget(mac) }
+
+    private suspend fun <T> io(block: suspend () -> T): T? =
+        withContext(Dispatchers.IO) { runCatching { block() }.getOrNull() }
+
     fun close() {
         client.close()
         scope.cancel()

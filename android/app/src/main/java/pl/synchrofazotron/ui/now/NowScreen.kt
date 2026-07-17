@@ -18,11 +18,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -43,7 +45,7 @@ import pl.synchrofazotron.core.PanelSession
 import pl.synchrofazotron.core.net.Source
 
 @Composable
-fun NowScreen(session: PanelSession, onChangeDevice: () -> Unit) {
+fun NowScreen(session: PanelSession, onChangeDevice: () -> Unit, onOpenSettings: () -> Unit) {
     DisposableEffect(session) { onDispose { } }
 
     val status by session.status.collectAsStateWithLifecycle()
@@ -76,6 +78,12 @@ fun NowScreen(session: PanelSession, onChangeDevice: () -> Unit) {
                     }
                     TextButton(onClick = onChangeDevice) {
                         Text(stringResource(R.string.now_change_device))
+                    }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = stringResource(R.string.settings_title),
+                        )
                     }
                 }
 
