@@ -103,6 +103,14 @@ class PanelSession(
         }
     }
 
+    /** Immediate status + volume fetch (pull-to-refresh). */
+    suspend fun refreshNow() {
+        val s = io { client.status() }
+        if (s != null) { _status.value = s; _reconnecting.value = false }
+        val v = io { client.volume() }
+        if (v != null) _volumes.value = v.volumes
+    }
+
     // On-demand data (not part of the fast poll) — one shared client, IO-bound.
     suspend fun fetchWifi() = io { client.wifi() }
     suspend fun scanWifi() = io { client.wifiScan() }
