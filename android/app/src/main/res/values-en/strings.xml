@@ -35,7 +35,7 @@
     <string name="refresh">Refresh</string>
 
     <!-- Wi-Fi -->
-    <string name="wifi_head">📡 Wi-Fi</string>
+    <string name="wifi_head">Wi-Fi</string>
     <string name="wifi_current">Connected: %1$s</string>
     <string name="wifi_not_connected">Not connected to Wi-Fi</string>
     <string name="wifi_saved">Saved networks</string>
@@ -44,14 +44,14 @@
     <string name="wifi_ssid">Network name (SSID)</string>
     <string name="wifi_key">Password (empty = open)</string>
     <string name="wifi_save">Save network</string>
-    <string name="wifi_scan">🔍 Scan for networks</string>
+    <string name="wifi_scan">Scan for networks</string>
     <string name="wifi_scanning">Scanning…</string>
     <string name="wifi_remove">Remove</string>
     <string name="wifi_no_saved">No saved networks.</string>
 
     <!-- Bluetooth -->
-    <string name="bt_head">📶 Bluetooth</string>
-    <string name="bt_pair">🔵 Enable pairing</string>
+    <string name="bt_head">Bluetooth</string>
+    <string name="bt_pair">Enable pairing</string>
     <string name="bt_pairing_active">Pairing active — look for the device (%1$d s)</string>
     <string name="bt_none">Nothing paired yet — use “Enable pairing”.</string>
     <string name="bt_connect">Connect</string>
@@ -61,37 +61,48 @@
     <string name="bt_connecting">Connecting…</string>
 
     <!-- Audio output -->
-    <string name="audio_head">🔊 Audio output</string>
+    <string name="audio_head">Audio output</string>
     <string name="audio_dac">DAC</string>
     <string name="audio_hdmi">HDMI</string>
-    <string name="audio_test">🔔 Test sound</string>
+    <string name="audio_test">Test sound</string>
     <string name="audio_reboot_required">The change needs a device reboot.</string>
 
     <!-- Device / system -->
-    <string name="device_head">🎛️ Device</string>
+    <string name="device_head">Device</string>
     <string name="device_name_label">Device name</string>
     <string name="device_rename">Rename</string>
-    <string name="device_reboot">🔁 Reboot the device</string>
+    <string name="device_reboot">Reboot the device</string>
     <string name="device_reboot_title">Reboot?</string>
     <string name="device_reboot_confirm">Music stops for about a minute.</string>
 
     <!-- Tailscale -->
-    <string name="tailscale_head">🔗 Tailscale</string>
+    <string name="tailscale_head">Tailscale</string>
     <string name="tailscale_ip">IP: %1$s</string>
 
     <!-- Updates -->
-    <string name="update_head">🔄 Updates</string>
+    <string name="update_head">Updates</string>
     <string name="update_check">Check</string>
-    <string name="update_run">⬇ Update</string>
-    <string name="update_available">🔔 A new version is available.</string>
-    <string name="update_current">✅ Up to date.</string>
+    <string name="update_run">Update</string>
+    <string name="update_available">A new version is available.</string>
+    <string name="update_current">Up to date.</string>
     <string name="update_checkfail">Check failed.</string>
-    <string name="update_running">⏳ Updating…</string>
+    <string name="update_running">Updating…</string>
     <string name="update_title">Update now?</string>
     <string name="update_confirm">Takes a minute or two; the panel briefly disconnects.</string>
 
     <string name="common_cancel">Cancel</string>
     <string name="common_confirm">Confirm</string>
+
+    <!-- Visualizer -->
+    <string name="viz_head">Visualizer (HDMI)</string>
+    <string name="viz_not_installed">Not installed — run setup.sh with the visualizer.</string>
+    <string name="viz_enable">Enabled</string>
+    <string name="viz_engine_cava">Bars (cava)</string>
+    <string name="viz_engine_glsl">Shaders</string>
+    <string name="viz_preset">Preset</string>
+    <string name="viz_shader">Shader</string>
+    <string name="viz_scale">Scale</string>
+    <string name="viz_studio">Shader studio</string>
 
     <string name="lang_name">English</string>
 </resources>

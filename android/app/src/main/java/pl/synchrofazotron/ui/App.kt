@@ -17,6 +17,7 @@ import pl.synchrofazotron.core.prefs.DeviceStore
 import pl.synchrofazotron.ui.connect.ConnectScreen
 import pl.synchrofazotron.ui.now.NowScreen
 import pl.synchrofazotron.ui.settings.SettingsScreen
+import pl.synchrofazotron.ui.studio.StudioScreen
 
 private const val LOADING = " loading"
 
@@ -54,7 +55,14 @@ fun App() {
                     )
                 }
                 composable("settings") {
-                    SettingsScreen(session = session, onBack = { nav.popBackStack() })
+                    SettingsScreen(
+                        session = session,
+                        onBack = { nav.popBackStack() },
+                        onOpenStudio = { nav.navigate("studio") },
+                    )
+                }
+                composable("studio") {
+                    StudioScreen(baseUrl = session.baseUrl, onBack = { nav.popBackStack() })
                 }
             }
         }

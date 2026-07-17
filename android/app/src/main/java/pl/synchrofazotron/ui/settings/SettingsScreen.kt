@@ -2,6 +2,8 @@ package pl.synchrofazotron.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,11 +13,24 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Speaker
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,12 +62,13 @@ import pl.synchrofazotron.core.net.AudioState
 import pl.synchrofazotron.core.net.BtDevice
 import pl.synchrofazotron.core.net.BtInfo
 import pl.synchrofazotron.core.net.TailscaleState
+import pl.synchrofazotron.core.net.VizState
 import pl.synchrofazotron.core.net.WifiInfo
 import pl.synchrofazotron.core.net.WifiNetwork
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(session: PanelSession, onBack: () -> Unit) {
+fun SettingsScreen(session: PanelSession, onBack: () -> Unit, onOpenStudio: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -76,6 +92,7 @@ fun SettingsScreen(session: PanelSession, onBack: () -> Unit) {
             WifiCard(session)
             BluetoothCard(session)
             AudioCard(session)
+            VizCard(session, onOpenStudio)
             DeviceCard(session)
             TailscaleCard(session)
             UpdateCard(session)
@@ -85,10 +102,18 @@ fun SettingsScreen(session: PanelSession, onBack: () -> Unit) {
 }
 
 @Composable
-private fun SectionCard(title: String, content: @Composable () -> Unit) {
+private fun SectionCard(icon: ImageVector, title: String, content: @Composable () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
             Column(Modifier.padding(top = 12.dp)) { content() }
         }
     }
@@ -107,7 +132,7 @@ private fun WifiCard(session: PanelSession) {
     suspend fun reload() { info = session.fetchWifi() }
     LaunchedEffect(session) { reload() }
 
-    SectionCard(stringResource(R.string.wifi_head)) {
+    SectionCard(Icons.Filled.Wifi, stringResource(R.string.wifi_head)) {
         val cur = info?.current
         Text(
             text = if (cur != null && cur.ssid.isNotBlank())
@@ -177,7 +202,10 @@ private fun WifiCard(session: PanelSession) {
                 if (scanning) {
                     CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.padding(end = 8.dp).size(16.dp))
                     Text(stringResource(R.string.wifi_scanning))
-                } else Text(stringResource(R.string.wifi_scan))
+                } else {
+                    Icon(Icons.Filled.Search, null, Modifier.padding(end = 8.dp).size(18.dp))
+                    Text(stringResource(R.string.wifi_scan))
+                }
             }
         }
         scanned.forEach { net ->
@@ -201,12 +229,15 @@ private fun BluetoothCard(session: PanelSession) {
     suspend fun reload() { bt = session.fetchBt() }
     LaunchedEffect(session) { reload() }
 
-    SectionCard(stringResource(R.string.bt_head)) {
+    SectionCard(Icons.Filled.Bluetooth, stringResource(R.string.bt_head)) {
         val secs = status?.pairSecondsLeft ?: 0
         Button(
             onClick = { scope.launch { session.pair() } },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text(stringResource(R.string.bt_pair)) }
+        ) {
+            Icon(Icons.Filled.Bluetooth, null, Modifier.padding(end = 8.dp).size(18.dp))
+            Text(stringResource(R.string.bt_pair))
+        }
         if (secs > 0) {
             Text(
                 text = stringResource(R.string.bt_pairing_active, secs),
@@ -274,7 +305,7 @@ private fun AudioCard(session: PanelSession) {
     suspend fun reload() { audio = session.fetchAudio() }
     LaunchedEffect(session) { reload() }
 
-    SectionCard(stringResource(R.string.audio_head)) {
+    SectionCard(Icons.Filled.Speaker, stringResource(R.string.audio_head)) {
         val out = audio?.output ?: ""
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutputButton(stringResource(R.string.audio_dac), out == "dac", busy) {
@@ -295,7 +326,10 @@ private fun AudioCard(session: PanelSession) {
         OutlinedButton(
             onClick = { scope.launch { session.testAudio() } },
             modifier = Modifier.padding(top = 8.dp),
-        ) { Text(stringResource(R.string.audio_test)) }
+        ) {
+            Icon(Icons.Filled.NotificationsActive, null, Modifier.padding(end = 8.dp).size(18.dp))
+            Text(stringResource(R.string.audio_test))
+        }
     }
 }
 
@@ -320,7 +354,7 @@ private fun DeviceCard(session: PanelSession) {
         if (!prefilled && dn.isNotBlank()) { name = dn; prefilled = true }
     }
 
-    SectionCard(stringResource(R.string.device_head)) {
+    SectionCard(Icons.Filled.Tune, stringResource(R.string.device_head)) {
         OutlinedTextField(
             value = name, onValueChange = { name = it }, singleLine = true,
             label = { Text(stringResource(R.string.device_name_label)) },
@@ -332,6 +366,7 @@ private fun DeviceCard(session: PanelSession) {
                 onClick = { scope.launch { session.setName(name.trim()) } },
             ) { Text(stringResource(R.string.device_rename)) }
             OutlinedButton(onClick = { confirmReboot = true }) {
+                Icon(Icons.Filled.RestartAlt, null, Modifier.padding(end = 8.dp).size(18.dp))
                 Text(stringResource(R.string.device_reboot))
             }
         }
@@ -355,7 +390,7 @@ private fun TailscaleCard(session: PanelSession) {
     suspend fun reload() { ts = session.fetchTailscale() }
     LaunchedEffect(session) { reload() }
 
-    SectionCard(stringResource(R.string.tailscale_head)) {
+    SectionCard(Icons.Filled.Link, stringResource(R.string.tailscale_head)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 val ip = ts?.ip.orEmpty()
@@ -382,7 +417,7 @@ private fun UpdateCard(session: PanelSession) {
     var confirmUpdate by remember { mutableStateOf(false) }
     var running by remember { mutableStateOf(false) }
 
-    SectionCard(stringResource(R.string.update_head)) {
+    SectionCard(Icons.Filled.SystemUpdate, stringResource(R.string.update_head)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 enabled = !checking,
@@ -405,6 +440,7 @@ private fun UpdateCard(session: PanelSession) {
                 Text(stringResource(R.string.update_check))
             }
             Button(onClick = { confirmUpdate = true }, enabled = !running) {
+                Icon(Icons.Filled.Download, null, Modifier.padding(end = 8.dp).size(18.dp))
                 Text(stringResource(R.string.update_run))
             }
         }
@@ -433,6 +469,71 @@ private fun UpdateCard(session: PanelSession) {
             },
             onDismiss = { confirmUpdate = false },
         )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun VizCard(session: PanelSession, onOpenStudio: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var viz by remember { mutableStateOf<VizState?>(null) }
+    suspend fun reload() { viz = session.fetchViz() }
+    LaunchedEffect(session) { reload() }
+
+    SectionCard(Icons.Filled.GraphicEq, stringResource(R.string.viz_head)) {
+        val v = viz
+        if (v == null || !v.installed) {
+            Text(
+                stringResource(R.string.viz_not_installed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            return@SectionCard
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.viz_enable), Modifier.weight(1f))
+            Switch(
+                checked = v.active,
+                onCheckedChange = { scope.launch { session.vizToggle(); reload() } },
+            )
+        }
+        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutputButton(stringResource(R.string.viz_engine_cava), v.engine == "cava", false) {
+                scope.launch { session.vizEngine("cava"); reload() }
+            }
+            OutputButton(stringResource(R.string.viz_engine_glsl), v.engine == "glsl", !v.glslAvailable) {
+                scope.launch { session.vizEngine("glsl", v.shader.ifBlank { v.shaders.firstOrNull()?.id ?: "" }); reload() }
+            }
+        }
+        if (v.engine == "cava") {
+            ChipRow(stringResource(R.string.viz_preset), v.presets.map { it.id to it.label }, v.preset) {
+                scope.launch { session.vizPreset(it); reload() }
+            }
+        } else {
+            ChipRow(stringResource(R.string.viz_shader), v.shaders.map { it.id to it.label }, v.shader) {
+                scope.launch { session.vizEngine("glsl", it); reload() }
+            }
+        }
+        if (v.scales.isNotEmpty()) {
+            ChipRow(stringResource(R.string.viz_scale), v.scales.map { it to it }, v.scale) {
+                scope.launch { session.vizScale(it); reload() }
+            }
+        }
+        OutlinedButton(onClick = onOpenStudio, modifier = Modifier.padding(top = 8.dp)) {
+            Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.padding(end = 8.dp).size(18.dp))
+            Text(stringResource(R.string.viz_studio))
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ChipRow(label: String, options: List<Pair<String, String>>, selected: String, onPick: (String) -> Unit) {
+    Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (id, lbl) ->
+            FilterChip(selected = id == selected, onClick = { onPick(id) }, label = { Text(lbl) })
+        }
     }
 }
 

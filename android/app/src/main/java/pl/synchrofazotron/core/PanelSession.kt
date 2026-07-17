@@ -131,6 +131,11 @@ class PanelSession(
     suspend fun updateCheck() = io { client.updateCheck() }
     suspend fun updateRun() = io { client.updateRun() }
     suspend fun reboot() = io { client.reboot() }
+    suspend fun fetchViz() = io { client.viz() }
+    suspend fun vizToggle() = io { client.vizToggle() }
+    suspend fun vizEngine(engine: String, shader: String = "") = io { client.vizEngine(engine, shader) }
+    suspend fun vizPreset(name: String) = io { client.vizPreset(name) }
+    suspend fun vizScale(scale: String) = io { client.vizScale(scale) }
 
     private suspend fun <T> io(block: suspend () -> T): T? =
         withContext(Dispatchers.IO) { runCatching { block() }.getOrNull() }

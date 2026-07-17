@@ -130,3 +130,36 @@ data class NameRequest(val name: String)
 
 @Serializable
 data class UpRequest(val up: Boolean)
+
+// --- Visualizer ----------------------------------------------------------
+@Serializable
+data class VizState(
+    val installed: Boolean = false,
+    val active: Boolean = false,
+    val enabled: Boolean = false,
+    @SerialName("hdmi_connected") val hdmiConnected: Boolean = false,
+    val preset: String = "",
+    val engine: String = "cava",
+    val shader: String = "",
+    val scale: String = "",
+    val scales: List<String> = emptyList(),
+    @SerialName("glsl_available") val glslAvailable: Boolean = false,
+    @SerialName("glsl_error") val glslError: String = "",
+    val presets: List<VizPreset> = emptyList(),
+    val shaders: List<VizShader> = emptyList(),
+)
+
+@Serializable
+data class VizPreset(val id: String = "", val label: String = "")
+
+@Serializable
+data class VizShader(val id: String = "", val label: String = "")
+
+@Serializable
+data class VizPresetRequest(val name: String)
+
+@Serializable
+data class VizEngineRequest(val engine: String, val shader: String = "")
+
+@Serializable
+data class VizScaleRequest(val scale: String)

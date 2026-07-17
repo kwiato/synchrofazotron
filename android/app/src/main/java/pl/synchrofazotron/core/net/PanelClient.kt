@@ -153,6 +153,29 @@ class PanelClient(private val baseUrl: String) {
         http.post("$baseUrl/api/reboot")
     }
 
+    // --- Visualizer ------------------------------------------------------
+    suspend fun viz(): VizState = http.get("$baseUrl/api/viz").body()
+
+    suspend fun vizToggle(): OkMessage = http.post("$baseUrl/api/viz/toggle").body()
+
+    suspend fun vizEngine(engine: String, shader: String = ""): OkMessage =
+        http.post("$baseUrl/api/viz/engine") {
+            contentType(ContentType.Application.Json)
+            setBody(VizEngineRequest(engine, shader))
+        }.body()
+
+    suspend fun vizPreset(name: String): OkMessage =
+        http.post("$baseUrl/api/viz/preset") {
+            contentType(ContentType.Application.Json)
+            setBody(VizPresetRequest(name))
+        }.body()
+
+    suspend fun vizScale(scale: String): OkMessage =
+        http.post("$baseUrl/api/viz/scale") {
+            contentType(ContentType.Application.Json)
+            setBody(VizScaleRequest(scale))
+        }.body()
+
     fun close() = http.close()
 }
 
