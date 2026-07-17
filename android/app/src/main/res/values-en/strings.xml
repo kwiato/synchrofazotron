@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Synchrofazotron</string>
+
+    <!-- Connect -->
+    <string name="connect_title">Connect to a device</string>
+    <string name="connect_host_label">Address (host or IP)</string>
+    <string name="connect_host_hint">e.g. pistream or 192.168.0.187</string>
+    <string name="connect_button">Connect</string>
+    <string name="connect_checking">Checking…</string>
+    <string name="connect_unreachable">Could not reach the device.</string>
+
+    <!-- Now playing -->
+    <string name="now_title">Now playing</string>
+    <string name="now_nothing">Silence — nothing is playing.</string>
+    <string name="now_device">Device</string>
+    <string name="now_change_device">Change device</string>
+    <string name="now_multi_warning">Several sources are playing at once — the first one owns the output.</string>
+    <string name="now_reconnecting">Reconnecting…</string>
+
+    <!-- Source states -->
+    <string name="state_playing">playing</string>
+    <string name="state_paused">paused</string>
+    <string name="state_idle">idle</string>
+    <string name="state_connected">connected</string>
+
+    <string name="lang_name">English</string>
+</resources>

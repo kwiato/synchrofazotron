@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Base language = Polish. English lives in values-en/. The app renders its
+     OWN strings and never pulls /api/i18n; the app language is a per-app
+     setting, independent of the device's language. -->
+<resources>
+    <string name="app_name">Synchrofazotron</string>
+
+    <!-- Connect -->
+    <string name="connect_title">Połącz z urządzeniem</string>
+    <string name="connect_host_label">Adres (host lub IP)</string>
+    <string name="connect_host_hint">np. pistream albo 192.168.0.187</string>
+    <string name="connect_button">Połącz</string>
+    <string name="connect_checking">Sprawdzam…</string>
+    <string name="connect_unreachable">Nie udało się połączyć z urządzeniem.</string>
+
+    <!-- Now playing -->
+    <string name="now_title">Teraz gra</string>
+    <string name="now_nothing">Cisza — nic nie gra.</string>
+    <string name="now_device">Urządzenie</string>
+    <string name="now_change_device">Zmień urządzenie</string>
+    <string name="now_multi_warning">Kilka źródeł gra naraz — pierwsze zajmuje wyjście.</string>
+    <string name="now_reconnecting">Łączę ponownie…</string>
+
+    <!-- Source states -->
+    <string name="state_playing">gra</string>
+    <string name="state_paused">pauza</string>
+    <string name="state_idle">cisza</string>
+    <string name="state_connected">połączony</string>
+
+    <string name="lang_name">Polski</string>
+</resources>
