@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,29 +55,27 @@ fun Header(
                 modifier = Modifier.padding(start = 10.dp),
             )
         }
-        IconButton(onClick = { scope.launch { session.pair() } }) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Filled.Bluetooth,
-                    contentDescription = stringResource(R.string.bt_pair),
-                    tint = if (pairActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                )
-                if (secs > 0) {
-                    Text(
-                        "${secs}s",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(start = 2.dp),
-                    )
-                }
-            }
-        }
-        IconButton(onClick = onToggleSettings) {
-            Icon(
-                Icons.Filled.Settings,
-                contentDescription = stringResource(R.string.settings_title),
-                tint = if (isSettings) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        if (secs > 0) {
+            Text(
+                "${secs}s",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(end = 6.dp),
             )
         }
+        FramedIconButton(
+            onClick = { scope.launch { session.pair() } },
+            icon = Icons.Filled.Bluetooth,
+            contentDescription = stringResource(R.string.bt_pair),
+            active = pairActive,
+        )
+        FramedIconButton(
+            onClick = onToggleSettings,
+            icon = Icons.Filled.Settings,
+            contentDescription = stringResource(R.string.settings_title),
+            active = isSettings,
+            modifier = Modifier.padding(start = 6.dp),
+        )
     }
 }

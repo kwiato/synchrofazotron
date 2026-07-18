@@ -72,10 +72,20 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
     val progress = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     var contentH by remember { mutableIntStateOf(0) }
+    var netDrag by remember { mutableFloatStateOf(0f) } // per-gesture: <0 up (open), >0 down (close)
     val density = LocalDensity.current
     val fallbackPx = with(density) { 280.dp.toPx() }
     fun dragSpan() = if (contentH > 0) contentH.toFloat() else fallbackPx
-    fun settle() { scope.launch { progress.animateTo(if (progress.value > 0.4f) 1f else 0f) } }
+    // Settle by drag direction so a downward drag always collapses (not just when
+    // it crosses a fixed fraction); a near-zero net drag snaps to the nearest end.
+    fun settle() {
+        val target = when {
+            netDrag < 0f -> 1f
+            netDrag > 0f -> 0f
+            else -> if (progress.value > 0.5f) 1f else 0f
+        }
+        scope.launch { progress.animateTo(target) }
+    }
     val open = progress.value > 0.5f
 
     Surface(
@@ -107,10 +117,12 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
                     .fillMaxWidth()
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(
+                            onDragStart = { netDrag = 0f },
                             onDragEnd = { settle() },
                             onDragCancel = { settle() },
                         ) { change, dy ->
                             change.consume()
+                            netDrag += dy
                             scope.launch { progress.snapTo((progress.value - dy / dragSpan()).coerceIn(0f, 1f)) }
                         }
                     }
