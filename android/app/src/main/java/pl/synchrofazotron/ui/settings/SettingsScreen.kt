@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.GraphicEq
@@ -32,6 +33,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +53,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,6 +61,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pl.synchrofazotron.R
 import pl.synchrofazotron.core.PanelSession
+import pl.synchrofazotron.core.update.AppUpdater
 import pl.synchrofazotron.core.net.AudioState
 import pl.synchrofazotron.core.net.BtDevice
 import pl.synchrofazotron.core.net.BtInfo
@@ -96,6 +100,7 @@ fun SettingsScreen(session: PanelSession, onBack: () -> Unit, onOpenStudio: () -
             DeviceCard(session)
             TailscaleCard(session)
             UpdateCard(session)
+            AppUpdateCard()
             Column(Modifier.padding(bottom = 24.dp)) {}
         }
     }
@@ -533,6 +538,78 @@ private fun ChipRow(label: String, options: List<Pair<String, String>>, selected
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { (id, lbl) ->
             FilterChip(selected = id == selected, onClick = { onPick(id) }, label = { Text(lbl) })
+        }
+    }
+}
+
+@Composable
+private fun AppUpdateCard() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var checking by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) } // avail|current|fail|perm
+    var progress by remember { mutableStateOf<Int?>(null) }
+
+    SectionCard(Icons.Filled.Android, stringResource(R.string.app_head)) {
+        Text(
+            stringResource(R.string.app_version, AppUpdater.currentSha),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                enabled = !checking && progress == null,
+                onClick = {
+                    scope.launch {
+                        checking = true
+                        status = when (AppUpdater.updateAvailable()) {
+                            true -> "avail"; false -> "current"; null -> "fail"
+                        }
+                        checking = false
+                    }
+                },
+            ) {
+                if (checking) {
+                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.padding(end = 8.dp).size(16.dp))
+                }
+                Text(stringResource(R.string.app_check))
+            }
+            if (status == "avail" || status == "perm") {
+                Button(
+                    enabled = progress == null,
+                    onClick = {
+                        scope.launch {
+                            if (!AppUpdater.canInstall(context)) {
+                                AppUpdater.openInstallSettings(context)
+                                status = "perm"
+                                return@launch
+                            }
+                            progress = 0
+                            val file = AppUpdater.download(context) { progress = it }
+                            progress = null
+                            if (file != null) AppUpdater.install(context, file) else status = "fail"
+                        }
+                    },
+                ) {
+                    Icon(Icons.Filled.Download, null, Modifier.padding(end = 8.dp).size(18.dp))
+                    Text(stringResource(R.string.app_download_install))
+                }
+            }
+        }
+        val p = progress
+        if (p != null) {
+            Text(stringResource(R.string.app_downloading, p), style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 8.dp))
+            LinearProgressIndicator(progress = { p / 100f }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+        } else {
+            val msg = when (status) {
+                "avail" -> stringResource(R.string.app_update_available)
+                "current" -> stringResource(R.string.app_up_to_date)
+                "fail" -> stringResource(R.string.app_check_fail)
+                "perm" -> stringResource(R.string.app_allow_install)
+                else -> null
+            }
+            if (msg != null) Text(msg, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }

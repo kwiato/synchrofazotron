@@ -96,6 +96,17 @@
     <string name="common_cancel">Anuluj</string>
     <string name="common_confirm">Potwierdź</string>
 
+    <!-- App self-update -->
+    <string name="app_head">Aplikacja</string>
+    <string name="app_version">Wersja: %1$s</string>
+    <string name="app_check">Sprawdź aktualizację</string>
+    <string name="app_up_to_date">Apka aktualna.</string>
+    <string name="app_update_available">Jest nowsza wersja apki.</string>
+    <string name="app_download_install">Pobierz i zainstaluj</string>
+    <string name="app_downloading">Pobieram… %1$d%%</string>
+    <string name="app_allow_install">Zezwól na instalację z tej apki, potem spróbuj ponownie.</string>
+    <string name="app_check_fail">Nie udało się sprawdzić.</string>
+
     <!-- Visualizer -->
     <string name="viz_head">Wizualizer (HDMI)</string>
     <string name="viz_not_installed">Nie zainstalowany — odpal setup.sh z wizualizerem.</string>
