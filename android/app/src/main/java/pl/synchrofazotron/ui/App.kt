@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -23,6 +24,7 @@ import kotlinx.coroutines.launch
 import pl.synchrofazotron.MainActivity
 import pl.synchrofazotron.core.PanelSession
 import pl.synchrofazotron.core.prefs.DeviceStore
+import pl.synchrofazotron.ui.components.Droplet
 import pl.synchrofazotron.ui.components.Header
 import pl.synchrofazotron.ui.components.PlayerBar
 import pl.synchrofazotron.ui.connect.ConnectScreen
@@ -65,33 +67,40 @@ fun App() {
             // Persistent shell: header + a single view slot + bottom player bar.
             var screen by remember { mutableStateOf("panel") } // panel | settings | studio
 
+            val notice by session.notice.collectAsStateWithLifecycle()
             Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { pad ->
-                Column(Modifier.fillMaxSize().padding(pad)) {
-                    Header(
-                        session = session,
-                        onHome = { screen = "panel" },
-                        onToggleSettings = { screen = if (screen == "settings") "panel" else "settings" },
-                        isSettings = screen == "settings",
-                    )
-                    HorizontalDivider()
-                    Box(Modifier.weight(1f)) {
-                        when (screen) {
-                            "settings" -> SettingsScreen(
-                                session = session,
-                                onOpenStudio = { screen = "studio" },
-                                onChangeDevice = { scope.launch { store.clear() } },
-                            )
-                            "studio" -> StudioScreen(session.baseUrl, onBack = { screen = "settings" })
-                            else -> PanelScreen(session, onOpenStudio = { screen = "studio" })
-                        }
-                    }
-                    if (screen != "studio") {
-                        PlayerBar(
+                Box(Modifier.fillMaxSize().padding(pad)) {
+                    Column(Modifier.fillMaxSize()) {
+                        Header(
                             session = session,
                             onHome = { screen = "panel" },
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            onToggleSettings = { screen = if (screen == "settings") "panel" else "settings" },
+                            isSettings = screen == "settings",
                         )
+                        HorizontalDivider()
+                        Box(Modifier.weight(1f)) {
+                            when (screen) {
+                                "settings" -> SettingsScreen(
+                                    session = session,
+                                    onOpenStudio = { screen = "studio" },
+                                    onChangeDevice = { scope.launch { store.clear() } },
+                                )
+                                "studio" -> StudioScreen(session.baseUrl, onBack = { screen = "settings" })
+                                else -> PanelScreen(session, onOpenStudio = { screen = "studio" })
+                            }
+                        }
+                        if (screen != "studio") {
+                            PlayerBar(
+                                session = session,
+                                onHome = { screen = "panel" },
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            )
+                        }
                     }
+                    Droplet(
+                        text = notice,
+                        modifier = Modifier.align(Alignment.TopCenter).padding(top = 52.dp),
+                    )
                 }
             }
         }

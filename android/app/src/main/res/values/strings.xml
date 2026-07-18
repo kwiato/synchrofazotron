@@ -39,6 +39,17 @@
     <string name="lang_pl">Polski</string>
     <string name="lang_en">English</string>
 
+    <!-- Card notes -->
+    <string name="note_wifi">Sieci trafiają do bazy DietPi i przeładowują się w locie — bez restartu. Sieci spoza zasięgu też można dodać.</string>
+    <string name="note_bt">Kliknij „Włącz parowanie", potem w telefonie wybierz to urządzenie. Sparowane łączą się same po starcie.</string>
+    <string name="note_audio">Którędy wychodzi dźwięk: DAC albo monitor po HDMI. Zmiana działa po restarcie.</string>
+    <string name="note_device">Nazwa widoczna w apce, Bluetooth i AirPlay. Restart przerywa muzykę na około minutę.</string>
+    <string name="note_tailscale">Zdalny dostęp do urządzenia przez Twoją sieć Tailscale.</string>
+    <string name="note_update">Pobiera najnowszy Synchrofazotron z GitHuba (bezpieczne, ustawienia zostają).</string>
+    <string name="note_tidal">TIDAL przez wtyczkę LMS. Połącz konto raz — logujesz się w przeglądarce telefonu.</string>
+    <string name="note_app">Aktualizacja samej apki (sideload). Wymaga zgody na instalację z tej aplikacji.</string>
+    <string name="note_volume">Głośność osobno dla każdego sterowalnego źródła.</string>
+
     <!-- Now playing -->
     <string name="now_title">Teraz gra</string>
     <string name="now_nothing">Cisza — nic nie gra.</string>

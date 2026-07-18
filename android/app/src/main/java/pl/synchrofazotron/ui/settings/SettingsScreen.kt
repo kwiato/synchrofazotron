@@ -95,7 +95,7 @@ fun SettingsScreen(session: PanelSession, onOpenStudio: () -> Unit, onChangeDevi
         "config" to stringResource(R.string.nav_config),
         "about" to stringResource(R.string.nav_about),
     )
-    val pager = rememberPagerState(initialPage = 2, pageCount = { sections.size }) // default Config
+    val pager = rememberPagerState(initialPage = 0, pageCount = { sections.size }) // Customize first
     val scope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize()) {
@@ -160,6 +160,16 @@ private fun SectionCard(icon: ImageVector, title: String, content: @Composable (
 }
 
 @Composable
+private fun CardNote(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(bottom = 10.dp),
+    )
+}
+
+@Composable
 private fun WifiCard(session: PanelSession) {
     val scope = rememberCoroutineScope()
     var info by remember { mutableStateOf<WifiInfo?>(null) }
@@ -173,6 +183,7 @@ private fun WifiCard(session: PanelSession) {
     LaunchedEffect(session) { reload() }
 
     SectionCard(Icons.Filled.Wifi, stringResource(R.string.wifi_head)) {
+        CardNote(stringResource(R.string.note_wifi))
         val cur = info?.current
         Text(
             text = if (cur != null && cur.ssid.isNotBlank())
@@ -270,6 +281,7 @@ private fun BluetoothCard(session: PanelSession) {
     LaunchedEffect(session) { reload() }
 
     SectionCard(Icons.Filled.Bluetooth, stringResource(R.string.bt_head)) {
+        CardNote(stringResource(R.string.note_bt))
         val secs = status?.pairSecondsLeft ?: 0
         Button(
             onClick = { scope.launch { session.pair() } },
@@ -359,6 +371,7 @@ private fun TidalCard(session: PanelSession) {
     LaunchedEffect(session) { reload() }
 
     SectionCard(Icons.Filled.LibraryMusic, stringResource(R.string.tidal_head)) {
+        CardNote(stringResource(R.string.note_tidal))
         val t = tidal
         if (t == null) {
             CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
@@ -459,6 +472,7 @@ private fun AudioCard(session: PanelSession) {
     LaunchedEffect(session) { reload() }
 
     SectionCard(Icons.Filled.Speaker, stringResource(R.string.audio_head)) {
+        CardNote(stringResource(R.string.note_audio))
         val out = audio?.output ?: ""
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutputButton(stringResource(R.string.audio_dac), out == "dac", busy) {
@@ -549,6 +563,7 @@ private fun AppearanceCard() {
 private fun VolumeCard(session: PanelSession) {
     val volumes by session.volumes.collectAsStateWithLifecycle()
     SectionCard(Icons.Filled.VolumeUp, stringResource(R.string.volume_label)) {
+        CardNote(stringResource(R.string.note_volume))
         val order = listOf("lms" to "LMS", "airplay" to "AirPlay", "bt" to "Bluetooth")
         val shown = order.filter { volumes.containsKey(it.first) }
         if (shown.isEmpty()) {
@@ -619,6 +634,7 @@ private fun DeviceCard(session: PanelSession, onChangeDevice: () -> Unit) {
     }
 
     SectionCard(Icons.Filled.Tune, stringResource(R.string.device_head)) {
+        CardNote(stringResource(R.string.note_device))
         OutlinedTextField(
             value = name, onValueChange = { name = it }, singleLine = true,
             label = { Text(stringResource(R.string.device_name_label)) },
@@ -658,6 +674,7 @@ private fun TailscaleCard(session: PanelSession) {
     LaunchedEffect(session) { reload() }
 
     SectionCard(Icons.Filled.Link, stringResource(R.string.tailscale_head)) {
+        CardNote(stringResource(R.string.note_tailscale))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 val ip = ts?.ip.orEmpty()
@@ -685,6 +702,7 @@ private fun UpdateCard(session: PanelSession) {
     var running by remember { mutableStateOf(false) }
 
     SectionCard(Icons.Filled.SystemUpdate, stringResource(R.string.update_head)) {
+        CardNote(stringResource(R.string.note_update))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 enabled = !checking,
@@ -813,6 +831,7 @@ private fun AppUpdateCard() {
     var progress by remember { mutableStateOf<Int?>(null) }
 
     SectionCard(Icons.Filled.Android, stringResource(R.string.app_head)) {
+        CardNote(stringResource(R.string.note_app))
         Text(
             stringResource(R.string.app_version, AppUpdater.currentSha),
             style = MaterialTheme.typography.bodySmall,

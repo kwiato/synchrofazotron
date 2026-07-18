@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -30,11 +31,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -43,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
@@ -66,8 +71,10 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
     // Drag-follow sheet: progress 0(closed)..1(open) tracks the finger, snaps on release.
     val progress = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
-    val maxSheet = 300.dp
-    val maxPx = with(LocalDensity.current) { maxSheet.toPx() }
+    var contentH by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    val fallbackPx = with(density) { 280.dp.toPx() }
+    fun dragSpan() = if (contentH > 0) contentH.toFloat() else fallbackPx
     fun settle() { scope.launch { progress.animateTo(if (progress.value > 0.4f) 1f else 0f) } }
     val open = progress.value > 0.5f
 
@@ -80,13 +87,19 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
         modifier = modifier.fillMaxWidth(),
     ) {
         Column {
-            if (progress.value > 0.001f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(with(density) { (contentH * progress.value).toDp() })
+                    .clipToBounds(),
+            ) {
                 Box(
-                    modifier = Modifier.fillMaxWidth().height(maxSheet * progress.value).clipToBounds(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(align = Alignment.Top, unbounded = true)
+                        .onSizeChanged { contentH = it.height },
                 ) {
-                    Box(Modifier.fillMaxWidth().align(Alignment.BottomCenter)) {
-                        SourcesSheet(status = status, volumes = volumes, session = session)
-                    }
+                    SourcesSheet(status = status, volumes = volumes, session = session)
                 }
             }
             Row(
@@ -98,7 +111,7 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
                             onDragCancel = { settle() },
                         ) { change, dy ->
                             change.consume()
-                            scope.launch { progress.snapTo((progress.value - dy / maxPx).coerceIn(0f, 1f)) }
+                            scope.launch { progress.snapTo((progress.value - dy / dragSpan()).coerceIn(0f, 1f)) }
                         }
                     }
                     .padding(horizontal = 8.dp, vertical = 8.dp),
@@ -214,6 +227,11 @@ private fun SourcesSheet(status: StatusResponse?, volumes: Map<String, Int>, ses
                     onValueChange = { dragging = true; local = it },
                     onValueChangeFinished = { dragging = false; session.setVolume(p.id, local.toInt()) },
                     valueRange = 0f..100f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = LocalContentColor.current,
+                        activeTrackColor = LocalContentColor.current,
+                        inactiveTrackColor = LocalContentColor.current.copy(alpha = 0.3f),
+                    ),
                     modifier = Modifier.weight(1f),
                 )
             }

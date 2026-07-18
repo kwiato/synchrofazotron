@@ -36,6 +36,17 @@
     <string name="lang_pl">Polski</string>
     <string name="lang_en">English</string>
 
+    <!-- Card notes -->
+    <string name="note_wifi">Networks go into the DietPi database and reload on the fly — no reboot. Out-of-range networks can be added too.</string>
+    <string name="note_bt">Tap “Enable pairing”, then pick this device on your phone. Paired devices reconnect on their own after boot.</string>
+    <string name="note_audio">Where the sound comes out: the DAC or the monitor over HDMI. The change takes effect after a reboot.</string>
+    <string name="note_device">Name shown in the app, Bluetooth and AirPlay. Rebooting stops the music for about a minute.</string>
+    <string name="note_tailscale">Remote access to the device over your Tailscale network.</string>
+    <string name="note_update">Fetches the latest Synchrofazotron from GitHub (safe, settings are kept).</string>
+    <string name="note_tidal">TIDAL via the LMS plugin. Connect an account once — you sign in in the phone browser.</string>
+    <string name="note_app">Updates the app itself (sideload). Needs permission to install from this app.</string>
+    <string name="note_volume">Volume per controllable source.</string>
+
     <!-- Now playing -->
     <string name="now_title">Now playing</string>
     <string name="now_nothing">Silence — nothing is playing.</string>

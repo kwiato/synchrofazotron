@@ -12,64 +12,66 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.sin
 
-// The accent used by the ring shimmer — cyan/magenta, kept in every theme just
-// like the web app's ConsoleLogo (which flickers the accent even in mono).
+// Accent kept in every theme, like the web ConsoleLogo (flickers even in mono).
 private val ShimmerCyan = Color(0xFF2DD4EE)
 private val ShimmerMagenta = Color(0xFFC26BF5)
 
-/**
- * The Synchrophasotron monitoring ring — two concentric rows of radial segments
- * in four arcs, with a slow shimmer sweep that lights segments in the accent as
- * it rotates. Evokes the web app's ConsoleLogo.
- */
+// Ported from ConsoleLogo.jsx: four arcs (gaps at 0/90/180/270), 5 rectangular
+// segments each, two concentric rows. viewBox 124, W=6 H=10, radii 40/54.
+private val ARCS = listOf(45f, 135f, 225f, 315f)
+private val OFFS = listOf(-32f, -16f, 0f, 16f, 32f)
+private val ROWS = listOf(40f, 54f)
+
+/** The Synchrophasotron monitoring ring — rectangular segments with an accent
+ *  shimmer sweeping around it. */
 @Composable
 fun RingMark(modifier: Modifier = Modifier, size: Dp = 28.dp, color: Color = LocalContentColor.current) {
     val transition = rememberInfiniteTransition(label = "ring")
     val sweep by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(6000, easing = LinearEasing)),
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(5000, easing = LinearEasing)),
         label = "sweep",
     )
     val hue by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Reverse),
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(8000, easing = LinearEasing), RepeatMode.Reverse),
         label = "hue",
     )
     val accent = lerp(ShimmerCyan, ShimmerMagenta, hue)
 
     Canvas(modifier = modifier.size(size)) {
-        val c = Offset(this.size.width / 2f, this.size.height / 2f)
-        val stroke = this.size.minDimension * 0.06f
-        val rings = listOf(this.size.minDimension * 0.30f, this.size.minDimension * 0.44f)
-        val perArc = 5
-        for (r in rings) {
-            for (arc in 0 until 4) {
-                val base = arc * 90.0 + 8.0
-                for (k in 0 until perArc) {
-                    val deg = base + k * (74.0 / (perArc - 1))
-                    val ang = Math.toRadians(deg)
-                    val inner = r - stroke
-                    val outer = r + stroke
-                    val p1 = Offset(c.x + (cos(ang) * inner).toFloat(), c.y + (sin(ang) * inner).toFloat())
-                    val p2 = Offset(c.x + (cos(ang) * outer).toFloat(), c.y + (sin(ang) * outer).toFloat())
-                    // angular distance to the sweep -> hotness
+        val s = this.size.minDimension / 124f
+        val w = 6f * s
+        val h = 10f * s
+        val cx = this.size.width / 2f
+        val cy = this.size.height / 2f
+        for (arc in ARCS) {
+            for (off in OFFS) {
+                val deg = arc + off
+                for (rowR in ROWS) {
+                    val r = rowR * s
                     val diff = abs(deg - sweep) % 360.0
                     val dist = minOf(diff, 360.0 - diff)
-                    val hot = (1f - (dist / 45.0).toFloat()).coerceIn(0f, 1f)
-                    val segColor = lerp(color, accent, hot * 0.9f)
-                    drawLine(color = segColor, start = p1, end = p2, strokeWidth = stroke, cap = StrokeCap.Round)
+                    val hot = (1f - (dist / 40.0).toFloat()).coerceIn(0f, 1f)
+                    val segColor = lerp(color, accent, hot)
+                    rotate(degrees = deg, pivot = Offset(cx, cy)) {
+                        drawRoundRect(
+                            color = segColor,
+                            topLeft = Offset(cx - w / 2f, cy - r - h / 2f),
+                            size = Size(w, h),
+                            cornerRadius = CornerRadius(w * 0.35f, w * 0.35f),
+                        )
+                    }
                 }
             }
         }
