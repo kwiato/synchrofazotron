@@ -16,6 +16,7 @@ import pl.synchrofazotron.core.PanelSession
 import pl.synchrofazotron.core.prefs.DeviceStore
 import pl.synchrofazotron.ui.connect.ConnectScreen
 import pl.synchrofazotron.ui.now.NowScreen
+import pl.synchrofazotron.ui.radio.RadioScreen
 import pl.synchrofazotron.ui.settings.SettingsScreen
 import pl.synchrofazotron.ui.studio.StudioScreen
 
@@ -52,7 +53,11 @@ fun App() {
                         session = session,
                         onChangeDevice = { scope.launch { store.clear() } },
                         onOpenSettings = { nav.navigate("settings") },
+                        onOpenRadio = { nav.navigate("radio") },
                     )
+                }
+                composable("radio") {
+                    RadioScreen(session = session, onBack = { nav.popBackStack() })
                 }
                 composable("settings") {
                     SettingsScreen(

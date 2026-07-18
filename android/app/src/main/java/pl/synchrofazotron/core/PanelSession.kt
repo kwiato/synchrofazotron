@@ -136,6 +136,15 @@ class PanelSession(
     suspend fun vizEngine(engine: String, shader: String = "") = io { client.vizEngine(engine, shader) }
     suspend fun vizPreset(name: String) = io { client.vizPreset(name) }
     suspend fun vizScale(scale: String) = io { client.vizScale(scale) }
+    suspend fun lmsRadio() = io { client.lmsRadio() }
+    suspend fun lmsRadioBrowse(verb: String, itemId: String) = io { client.lmsRadioBrowse(verb, itemId) }
+    suspend fun lmsRadioSearch(q: String) = io { client.lmsRadioSearch(q) }
+    suspend fun lmsFavorites(itemId: String = "") = io { client.lmsFavorites(itemId) }
+    suspend fun lmsRadioPlay(verb: String, itemId: String, add: Boolean = false) = io { client.lmsRadioPlay(verb, itemId, add) }
+    suspend fun lmsPlayUrl(url: String, title: String) = io { client.lmsPlayUrl(url, title) }
+    suspend fun lmsFavPlay(id: String, url: String, title: String) = io { client.lmsFavPlay(id, url, title) }
+    suspend fun lmsFavAdd(url: String, title: String, icon: String) = io { client.lmsFavAdd(url, title, icon) }
+    suspend fun lmsFavRemove(id: String) = io { client.lmsFavRemove(id) }
 
     private suspend fun <T> io(block: suspend () -> T): T? =
         withContext(Dispatchers.IO) { runCatching { block() }.getOrNull() }

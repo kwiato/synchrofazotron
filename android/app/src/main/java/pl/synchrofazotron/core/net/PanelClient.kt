@@ -7,6 +7,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -174,6 +175,51 @@ class PanelClient(private val baseUrl: String) {
         http.post("$baseUrl/api/viz/scale") {
             contentType(ContentType.Application.Json)
             setBody(VizScaleRequest(scale))
+        }.body()
+
+    // --- LMS radio / favorites -------------------------------------------
+    suspend fun lmsRadio(): LmsList = http.get("$baseUrl/api/lms/radio").body()
+
+    suspend fun lmsRadioBrowse(verb: String, itemId: String): LmsList =
+        http.get("$baseUrl/api/lms/radio/browse") {
+            parameter("verb", verb)
+            parameter("item_id", itemId)
+        }.body()
+
+    suspend fun lmsRadioSearch(q: String): LmsList =
+        http.get("$baseUrl/api/lms/radio/search") { parameter("q", q) }.body()
+
+    suspend fun lmsFavorites(itemId: String = ""): LmsList =
+        http.get("$baseUrl/api/lms/favorites") { parameter("item_id", itemId) }.body()
+
+    suspend fun lmsRadioPlay(verb: String, itemId: String, add: Boolean = false): OkResp =
+        http.post("$baseUrl/api/lms/radio/play") {
+            contentType(ContentType.Application.Json)
+            setBody(RadioPlayRequest(verb, itemId, add))
+        }.body()
+
+    suspend fun lmsPlayUrl(url: String, title: String): OkResp =
+        http.post("$baseUrl/api/lms/playurl") {
+            contentType(ContentType.Application.Json)
+            setBody(PlayUrlRequest(url, title))
+        }.body()
+
+    suspend fun lmsFavPlay(id: String, url: String, title: String): OkResp =
+        http.post("$baseUrl/api/lms/favorites/play") {
+            contentType(ContentType.Application.Json)
+            setBody(FavPlayRequest(id, url, title))
+        }.body()
+
+    suspend fun lmsFavAdd(url: String, title: String, icon: String): OkResp =
+        http.post("$baseUrl/api/lms/favorites/add") {
+            contentType(ContentType.Application.Json)
+            setBody(FavAddRequest(url, title, icon))
+        }.body()
+
+    suspend fun lmsFavRemove(id: String): OkResp =
+        http.post("$baseUrl/api/lms/favorites/remove") {
+            contentType(ContentType.Application.Json)
+            setBody(IdRequest(id))
         }.body()
 
     fun close() = http.close()

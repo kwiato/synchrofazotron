@@ -163,3 +163,50 @@ data class VizEngineRequest(val engine: String, val shader: String = "")
 
 @Serializable
 data class VizScaleRequest(val scale: String)
+
+// --- LMS radio / favorites ----------------------------------------------
+@Serializable
+data class LmsList(
+    val title: String = "",
+    val items: List<LmsItem> = emptyList(),
+    val verb: String = "",
+    val error: String = "",
+)
+
+@Serializable
+data class LmsItem(
+    val title: String = "",
+    val icon: String = "",
+    val playable: Boolean = false,
+    val browsable: Boolean = false,
+    @SerialName("item_id") val itemId: String = "",
+    val verb: String = "",
+    val id: String = "",
+    val url: String = "",
+    val fav: LmsFav? = null,
+)
+
+@Serializable
+data class LmsFav(val url: String = "", val title: String = "", val icon: String = "")
+
+@Serializable
+data class OkResp(val ok: Boolean = false)
+
+@Serializable
+data class RadioPlayRequest(
+    val verb: String,
+    @SerialName("item_id") val itemId: String,
+    val add: Boolean = false,
+)
+
+@Serializable
+data class PlayUrlRequest(val url: String, val title: String = "")
+
+@Serializable
+data class FavPlayRequest(val id: String = "", val url: String = "", val title: String = "")
+
+@Serializable
+data class FavAddRequest(val url: String, val title: String = "", val icon: String = "")
+
+@Serializable
+data class IdRequest(val id: String)

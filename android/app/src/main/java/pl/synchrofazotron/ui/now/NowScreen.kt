@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Card
@@ -53,7 +54,12 @@ import pl.synchrofazotron.core.net.Source
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NowScreen(session: PanelSession, onChangeDevice: () -> Unit, onOpenSettings: () -> Unit) {
+fun NowScreen(
+    session: PanelSession,
+    onChangeDevice: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenRadio: () -> Unit,
+) {
     val status by session.status.collectAsStateWithLifecycle()
     val reconnecting by session.reconnecting.collectAsStateWithLifecycle()
     val volumes by session.volumes.collectAsStateWithLifecycle()
@@ -92,12 +98,18 @@ fun NowScreen(session: PanelSession, onChangeDevice: () -> Unit, onOpenSettings:
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
-                        TextButton(onClick = onChangeDevice) {
-                            Text(stringResource(R.string.now_change_device))
+                        IconButton(onClick = onOpenRadio) {
+                            Icon(Icons.Filled.Radio, stringResource(R.string.radio_title))
                         }
                         IconButton(onClick = onOpenSettings) {
                             Icon(Icons.Filled.Settings, stringResource(R.string.settings_title))
                         }
+                    }
+                    TextButton(
+                        onClick = onChangeDevice,
+                        modifier = Modifier.align(Alignment.End),
+                    ) {
+                        Text(stringResource(R.string.now_change_device))
                     }
 
                     AnimatedVisibility(visible = reconnecting) {

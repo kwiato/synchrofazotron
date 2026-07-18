@@ -115,5 +115,16 @@
     <string name="viz_scale">Scale</string>
     <string name="viz_studio">Shader studio</string>
 
+    <!-- Radio -->
+    <string name="radio_title">Radio</string>
+    <string name="radio_browse">Browse</string>
+    <string name="radio_search">Search</string>
+    <string name="radio_favorites">Favorites</string>
+    <string name="radio_search_hint">Search stations…</string>
+    <string name="radio_empty">Nothing here.</string>
+    <string name="radio_play">Play</string>
+    <string name="radio_fav_add">Add to favorites</string>
+    <string name="radio_fav_remove">Remove from favorites</string>
+
     <string name="lang_name">English</string>
 </resources>
