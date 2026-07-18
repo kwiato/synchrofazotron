@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -49,6 +49,7 @@ import pl.synchrofazotron.ui.components.SegTabs
 import pl.synchrofazotron.ui.components.primarySource
 import pl.synchrofazotron.ui.components.srcSub
 import pl.synchrofazotron.ui.radio.RadioTab
+import pl.synchrofazotron.ui.theme.Spacing
 import java.net.URLEncoder
 
 @Composable
@@ -69,7 +70,7 @@ fun PanelScreen(session: PanelSession, onOpenStudio: () -> Unit) {
                 val idx = tabs.indexOfFirst { it.first == id }
                 if (idx >= 0) scope.launch { pager.animateScrollToPage(idx) }
             },
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = Spacing.xs, vertical = Spacing.xs2),
         )
         HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
             when (page) {
@@ -96,12 +97,12 @@ private fun NowTab(session: PanelSession) {
     } else null
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.base),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if ((status?.playingCount ?: 0) >= 2) {
-            Card(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            Card(Modifier.fillMaxWidth().padding(bottom = Spacing.xs)) {
                 Text(
                     stringResource(R.string.now_multi_warning),
                     style = MaterialTheme.typography.bodySmall,
@@ -115,7 +116,7 @@ private fun NowTab(session: PanelSession) {
                 .fillMaxWidth(0.62f)
                 .aspectRatio(1f)
                 .clip(RoundedCornerShape(22.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(22.dp)),
             contentAlignment = Alignment.Center,
         ) {
             // Placeholder underneath: animated EQ while playing, calm bars otherwise.
@@ -134,7 +135,7 @@ private fun NowTab(session: PanelSession) {
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 20.dp),
+            modifier = Modifier.padding(top = Spacing.sm),
         )
         if (p != null) {
             Text(
@@ -142,7 +143,7 @@ private fun NowTab(session: PanelSession) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = Spacing.xs3),
             )
         }
     }

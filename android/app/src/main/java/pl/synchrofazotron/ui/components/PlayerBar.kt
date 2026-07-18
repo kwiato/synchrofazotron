@@ -6,14 +6,20 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.em
+import pl.synchrofazotron.ui.theme.Spacing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -214,40 +220,81 @@ private fun SourcesSheet(status: StatusResponse?, volumes: Map<String, Int>, ses
         }
 
         Text(
-            stringResource(R.string.sheet_sources),
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+            stringResource(R.string.sheet_sources).uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.08.em,
+            color = LocalContentColor.current.copy(alpha = 0.6f),
+            modifier = Modifier.padding(top = Spacing.xs, bottom = Spacing.xs3),
         )
         val sources = status?.sources.orEmpty()
+        val p = primarySource(status)
         if (sources.isEmpty()) {
             Text(stringResource(R.string.now_nothing), style = MaterialTheme.typography.bodySmall)
         } else {
-            sources.forEach { s -> SheetRow(s) { if (s.controllable && s.id.isNotBlank()) session.control(s.id, "toggle") } }
-        }
-
-        // primary volume
-        val p = primarySource(status)
-        if (p != null && volumes.containsKey(p.id)) {
-            val v = volumes[p.id] ?: 0
-            var dragging by remember { mutableStateOf(false) }
-            var local by remember { mutableFloatStateOf(v.toFloat()) }
-            if (!dragging) local = v.toFloat()
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("${local.toInt()}%", style = MaterialTheme.typography.labelSmall, modifier = Modifier.size(width = 40.dp, height = 20.dp))
-                Slider(
-                    value = local,
-                    onValueChange = { dragging = true; local = it },
-                    onValueChangeFinished = { dragging = false; session.setVolume(p.id, local.toInt()) },
-                    valueRange = 0f..100f,
-                    colors = SliderDefaults.colors(
-                        thumbColor = LocalContentColor.current,
-                        activeTrackColor = LocalContentColor.current,
-                        inactiveTrackColor = LocalContentColor.current.copy(alpha = 0.3f),
-                    ),
-                    modifier = Modifier.weight(1f),
-                )
+            // Non-followed sources sit as plain rows; the followed one is boxed below.
+            sources.filter { it.id != p?.id }.forEach { s ->
+                SheetRow(s) { if (s.controllable && s.id.isNotBlank()) session.control(s.id, "toggle") }
+            }
+            if (p != null) {
+                DacOwnerBox(state = p.state) {
+                    SheetRow(p) { if (p.controllable && p.id.isNotBlank()) session.control(p.id, "toggle") }
+                    if (volumes.containsKey(p.id)) {
+                        VolumeRow(sourceId = p.id, value = volumes[p.id] ?: 0, session = session)
+                    }
+                }
             }
         }
+    }
+}
+
+/**
+ * The followed source's row + volume inside a subtle outline, with its output
+ * state sitting on the top border (fieldset-legend style, the web `.dac-owner`).
+ */
+@Composable
+private fun DacOwnerBox(state: String, content: @Composable ColumnScope.() -> Unit) {
+    val line = LocalContentColor.current.copy(alpha = 0.28f)
+    Box(Modifier.padding(top = Spacing.xs)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, line, RoundedCornerShape(12.dp))
+                .padding(horizontal = Spacing.xs2, vertical = Spacing.xs3),
+            content = content,
+        )
+        Text(
+            text = state,
+            style = MaterialTheme.typography.labelSmall,
+            color = LocalContentColor.current.copy(alpha = 0.6f),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = (-12).dp, y = (-7).dp)
+                .background(MaterialTheme.colorScheme.inverseSurface)
+                .padding(horizontal = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun VolumeRow(sourceId: String, value: Int, session: PanelSession) {
+    var dragging by remember { mutableStateOf(false) }
+    var local by remember { mutableFloatStateOf(value.toFloat()) }
+    if (!dragging) local = value.toFloat()
+    Row(Modifier.fillMaxWidth().padding(top = Spacing.xs3), verticalAlignment = Alignment.CenterVertically) {
+        Text("${local.toInt()}%", style = MaterialTheme.typography.labelSmall, modifier = Modifier.size(width = 40.dp, height = 20.dp))
+        Slider(
+            value = local,
+            onValueChange = { dragging = true; local = it },
+            onValueChangeFinished = { dragging = false; session.setVolume(sourceId, local.toInt()) },
+            valueRange = 0f..100f,
+            colors = SliderDefaults.colors(
+                thumbColor = LocalContentColor.current,
+                activeTrackColor = LocalContentColor.current,
+                inactiveTrackColor = LocalContentColor.current.copy(alpha = 0.3f),
+            ),
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 

@@ -78,6 +78,7 @@ import pl.synchrofazotron.core.prefs.DeviceStore
 import pl.synchrofazotron.core.update.AppUpdater
 import pl.synchrofazotron.ui.components.RingMark
 import pl.synchrofazotron.ui.components.SegTabs
+import pl.synchrofazotron.ui.theme.Spacing
 import pl.synchrofazotron.core.net.AudioState
 import pl.synchrofazotron.core.net.BtDevice
 import pl.synchrofazotron.core.net.BtInfo
@@ -106,15 +107,15 @@ fun SettingsScreen(session: PanelSession, onOpenStudio: () -> Unit, onChangeDevi
                 val idx = sections.indexOfFirst { it.first == id }
                 if (idx >= 0) scope.launch { pager.animateScrollToPage(idx) }
             },
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = Spacing.xs, vertical = Spacing.xs2),
         )
         HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(horizontal = Spacing.xs),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
             ) {
                 when (page) {
                     0 -> {
@@ -144,17 +145,17 @@ fun SettingsScreen(session: PanelSession, onOpenStudio: () -> Unit, onChangeDevi
 @Composable
 private fun SectionCard(icon: ImageVector, title: String, content: @Composable () -> Unit) {
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(horizontal = Spacing.base, vertical = Spacing.sm)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
                 Text(
                     title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 8.dp),
+                    modifier = Modifier.padding(start = Spacing.xs2),
                 )
             }
-            Column(Modifier.padding(top = 12.dp)) { content() }
+            Column(Modifier.padding(top = Spacing.xs)) { content() }
         }
     }
 }
@@ -165,7 +166,7 @@ private fun CardNote(text: String) {
         text = text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(bottom = 10.dp),
+        modifier = Modifier.padding(bottom = Spacing.xs2),
     )
 }
 
