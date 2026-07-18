@@ -2,8 +2,10 @@ package pl.synchrofazotron.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Settings
@@ -14,16 +16,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pl.synchrofazotron.R
 import pl.synchrofazotron.core.PanelSession
+import pl.synchrofazotron.ui.theme.Spacing
 
-/** Persistent top chrome: ring mark + device name (tap = Now), BT pair, cog. */
+/** Persistent top chrome: ring mark (tap = Now), BT pair, cog. */
 @Composable
 fun Header(
     session: PanelSession,
@@ -38,23 +41,14 @@ fun Header(
     val pairActive = secs > 0 || connected.isNotEmpty()
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.xs, vertical = Spacing.xs2),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.weight(1f).clickable(onClick = onHome),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RingMark()
-            Text(
-                text = status?.deviceName?.ifBlank { session.baseUrl } ?: session.baseUrl,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 10.dp),
-            )
-        }
+        RingMark(
+            modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onHome),
+            size = 34.dp,
+        )
+        Spacer(Modifier.weight(1f))
         if (secs > 0) {
             Text(
                 "${secs}s",

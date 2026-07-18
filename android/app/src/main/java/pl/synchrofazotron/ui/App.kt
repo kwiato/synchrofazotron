@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -31,6 +30,7 @@ import pl.synchrofazotron.ui.connect.ConnectScreen
 import pl.synchrofazotron.ui.panel.PanelScreen
 import pl.synchrofazotron.ui.settings.SettingsScreen
 import pl.synchrofazotron.ui.studio.StudioScreen
+import pl.synchrofazotron.ui.theme.Spacing
 import pl.synchrofazotron.ui.theme.SynchrofazotronTheme
 
 private const val LOADING = " loading"
@@ -77,7 +77,6 @@ fun App() {
                             onToggleSettings = { screen = if (screen == "settings") "panel" else "settings" },
                             isSettings = screen == "settings",
                         )
-                        HorizontalDivider()
                         Box(Modifier.weight(1f)) {
                             when (screen) {
                                 "settings" -> SettingsScreen(
@@ -93,7 +92,12 @@ fun App() {
                             PlayerBar(
                                 session = session,
                                 onHome = { screen = "panel" },
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                modifier = Modifier.padding(
+                                    start = Spacing.xs,
+                                    end = Spacing.xs,
+                                    top = Spacing.xs2,
+                                    bottom = Spacing.xs,
+                                ),
                             )
                         }
                     }

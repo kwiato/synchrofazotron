@@ -97,7 +97,7 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
     Surface(
         color = MaterialTheme.colorScheme.inverseSurface,
         contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(18.dp),
         tonalElevation = 6.dp,
         shadowElevation = 8.dp,
         modifier = modifier.fillMaxWidth(),
@@ -132,8 +132,9 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
                             scope.launch { progress.snapTo((progress.value - dy / dragSpan()).coerceIn(0f, 1f)) }
                         }
                     }
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = Spacing.xs, vertical = Spacing.xs2),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs3),
             ) {
                 IconButton(onClick = { scope.launch { progress.animateTo(if (open) 0f else 1f) } }) {
                     Icon(
@@ -141,9 +142,9 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
                         contentDescription = stringResource(R.string.sheet_sources),
                     )
                 }
-                Eq(on = p?.playing == true, modifier = Modifier.padding(horizontal = 4.dp))
+                Eq(on = p?.playing == true)
                 Column(
-                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp).clickable(onClick = onHome),
+                    modifier = Modifier.weight(1f).padding(horizontal = Spacing.xs3).clickable(onClick = onHome),
                 ) {
                     Text(
                         text = p?.let { it.detail.ifBlank { it.name } } ?: stringResource(R.string.now_nothing),
@@ -167,6 +168,7 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
                 FilledIconButton(
                     enabled = !ctrlOff,
                     onClick = { p?.let { session.control(it.id, "toggle") } },
+                    modifier = Modifier.size(52.dp),
                     colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.inverseOnSurface,
                         contentColor = MaterialTheme.colorScheme.inverseSurface,
@@ -175,6 +177,7 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
                     Icon(
                         if (p?.playing == true) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = null,
+                        modifier = Modifier.size(26.dp),
                     )
                 }
                 IconButton(enabled = !ctrlOff, onClick = { p?.let { session.control(it.id, "next") } }) {

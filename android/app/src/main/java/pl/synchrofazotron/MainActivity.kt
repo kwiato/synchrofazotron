@@ -2,12 +2,12 @@ package pl.synchrofazotron
 
 import android.os.Bundle
 import android.view.KeyEvent
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import pl.synchrofazotron.ui.AppRoot
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     /**
      * Set by the composition when a device with a controllable source is
