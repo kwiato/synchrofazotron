@@ -7,6 +7,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -108,6 +109,139 @@ class PanelClient(private val baseUrl: String) {
         http.post("$baseUrl/api/bt/forget") {
             contentType(ContentType.Application.Json)
             setBody(MacRequest(mac))
+        }.body()
+
+    // --- Audio -----------------------------------------------------------
+    suspend fun audio(): AudioState = http.get("$baseUrl/api/audio").body()
+
+    suspend fun audioSet(output: String): OkMessage =
+        http.post("$baseUrl/api/audio/set") {
+            contentType(ContentType.Application.Json)
+            setBody(OutputRequest(output))
+        }.body()
+
+    /** POST /api/audio/test — plays a test tone, blocks up to ~15 s. */
+    suspend fun audioTest(): OkMessage =
+        http.post("$baseUrl/api/audio/test") {
+            timeout { requestTimeoutMillis = 25_000; socketTimeoutMillis = 25_000 }
+        }.body()
+
+    // --- System ----------------------------------------------------------
+    suspend fun setName(name: String): OkMessage =
+        http.post("$baseUrl/api/name") {
+            contentType(ContentType.Application.Json)
+            setBody(NameRequest(name))
+        }.body()
+
+    suspend fun tailscale(): TailscaleState = http.get("$baseUrl/api/tailscale").body()
+
+    suspend fun tailscaleSet(up: Boolean): OkMessage =
+        http.post("$baseUrl/api/tailscale/set") {
+            contentType(ContentType.Application.Json)
+            setBody(UpRequest(up))
+        }.body()
+
+    suspend fun updateStatus(): UpdateState = http.get("$baseUrl/api/update").body()
+
+    /** GET /api/update/check — compares against GitHub, blocks up to ~15 s. */
+    suspend fun updateCheck(): UpdateCheck = http.get("$baseUrl/api/update/check") {
+        timeout { requestTimeoutMillis = 25_000; socketTimeoutMillis = 25_000 }
+    }.body()
+
+    suspend fun updateRun(): OkMessage = http.post("$baseUrl/api/update/run").body()
+
+    suspend fun reboot() {
+        http.post("$baseUrl/api/reboot")
+    }
+
+    // --- Visualizer ------------------------------------------------------
+    suspend fun viz(): VizState = http.get("$baseUrl/api/viz").body()
+
+    suspend fun vizToggle(): OkMessage = http.post("$baseUrl/api/viz/toggle").body()
+
+    suspend fun vizEngine(engine: String, shader: String = ""): OkMessage =
+        http.post("$baseUrl/api/viz/engine") {
+            contentType(ContentType.Application.Json)
+            setBody(VizEngineRequest(engine, shader))
+        }.body()
+
+    suspend fun vizPreset(name: String): OkMessage =
+        http.post("$baseUrl/api/viz/preset") {
+            contentType(ContentType.Application.Json)
+            setBody(VizPresetRequest(name))
+        }.body()
+
+    suspend fun vizScale(scale: String): OkMessage =
+        http.post("$baseUrl/api/viz/scale") {
+            contentType(ContentType.Application.Json)
+            setBody(VizScaleRequest(scale))
+        }.body()
+
+    // --- LMS radio / favorites -------------------------------------------
+    suspend fun lmsRadio(): LmsList = http.get("$baseUrl/api/lms/radio").body()
+
+    suspend fun lmsRadioBrowse(verb: String, itemId: String): LmsList =
+        http.get("$baseUrl/api/lms/radio/browse") {
+            parameter("verb", verb)
+            parameter("item_id", itemId)
+        }.body()
+
+    suspend fun lmsRadioSearch(q: String): LmsList =
+        http.get("$baseUrl/api/lms/radio/search") { parameter("q", q) }.body()
+
+    suspend fun lmsFavorites(itemId: String = ""): LmsList =
+        http.get("$baseUrl/api/lms/favorites") { parameter("item_id", itemId) }.body()
+
+    suspend fun lmsRadioPlay(verb: String, itemId: String, add: Boolean = false): OkResp =
+        http.post("$baseUrl/api/lms/radio/play") {
+            contentType(ContentType.Application.Json)
+            setBody(RadioPlayRequest(verb, itemId, add))
+        }.body()
+
+    suspend fun lmsPlayUrl(url: String, title: String): OkResp =
+        http.post("$baseUrl/api/lms/playurl") {
+            contentType(ContentType.Application.Json)
+            setBody(PlayUrlRequest(url, title))
+        }.body()
+
+    suspend fun lmsFavPlay(id: String, url: String, title: String): OkResp =
+        http.post("$baseUrl/api/lms/favorites/play") {
+            contentType(ContentType.Application.Json)
+            setBody(FavPlayRequest(id, url, title))
+        }.body()
+
+    suspend fun lmsFavAdd(url: String, title: String, icon: String): OkResp =
+        http.post("$baseUrl/api/lms/favorites/add") {
+            contentType(ContentType.Application.Json)
+            setBody(FavAddRequest(url, title, icon))
+        }.body()
+
+    suspend fun lmsFavRemove(id: String): OkResp =
+        http.post("$baseUrl/api/lms/favorites/remove") {
+            contentType(ContentType.Application.Json)
+            setBody(IdRequest(id))
+        }.body()
+
+    // --- TIDAL -----------------------------------------------------------
+    suspend fun tidal(): TidalState = http.get("$baseUrl/api/tidal").body()
+
+    suspend fun tidalInstall(): OkResp = http.post("$baseUrl/api/tidal/install").body()
+
+    suspend fun tidalAuthStart(): TidalAuthStart = http.post("$baseUrl/api/tidal/auth/start").body()
+
+    suspend fun tidalAuthStatus(code: String): TidalAuthStatus =
+        http.get("$baseUrl/api/tidal/auth/status") { parameter("code", code) }.body()
+
+    suspend fun tidalShow(show: Boolean): OkResp =
+        http.post("$baseUrl/api/tidal/show") {
+            contentType(ContentType.Application.Json)
+            setBody(ShowRequest(show))
+        }.body()
+
+    suspend fun tidalForget(id: String): OkResp =
+        http.post("$baseUrl/api/tidal/forget") {
+            contentType(ContentType.Application.Json)
+            setBody(IdRequest(id))
         }.body()
 
     fun close() = http.close()

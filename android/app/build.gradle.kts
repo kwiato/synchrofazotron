@@ -18,6 +18,19 @@ android {
         versionCode = (System.getenv("ANDROID_VERSION_CODE") ?: "1").toInt()
         versionName = System.getenv("ANDROID_VERSION_NAME") ?: "0.1"
         vectorDrawables { useSupportLibrary = true }
+        // Build identity for the in-app self-update check (CI sets GITHUB_SHA).
+        buildConfigField("String", "GIT_SHA", "\"${System.getenv("GITHUB_SHA") ?: "dev"}\"")
+    }
+
+    // A fixed (committed) debug keystore so every CI build shares one signature
+    // — required for the sideload/self-update channel to install in place.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
@@ -69,5 +82,7 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.coil.compose)
+    implementation(libs.androidx.appcompat)
     debugImplementation(libs.androidx.ui.tooling)
 }

@@ -13,6 +13,43 @@
     <string name="connect_checking">Sprawdzam…</string>
     <string name="connect_unreachable">Nie udało się połączyć z urządzeniem.</string>
 
+    <!-- Panel tabs / player bar / settings sections -->
+    <string name="tab_now">Teraz gra</string>
+    <string name="tab_radio">Radio</string>
+    <string name="tab_viz">Wizualizer</string>
+    <string name="sheet_sources">Źródła</string>
+    <string name="glance_wifi_off">brak</string>
+    <string name="glance_bt_ready">gotowy</string>
+    <string name="glance_bt_off">wyłączony</string>
+    <string name="glance_bt_pairing">parowanie %1$ds</string>
+    <string name="nav_customize">Wygląd</string>
+    <string name="nav_connections">Połączenia</string>
+    <string name="nav_config">Konfiguracja</string>
+    <string name="nav_about">O apce</string>
+
+    <!-- Appearance -->
+    <string name="appearance_head">Wygląd i język</string>
+    <string name="theme_label">Motyw</string>
+    <string name="theme_system">System</string>
+    <string name="theme_mono_light">Jasny</string>
+    <string name="theme_mono_dark">Ciemny</string>
+    <string name="theme_neon">Neon</string>
+    <string name="language_label">Język</string>
+    <string name="lang_system">System</string>
+    <string name="lang_pl">Polski</string>
+    <string name="lang_en">English</string>
+
+    <!-- Card notes -->
+    <string name="note_wifi">Sieci trafiają do bazy DietPi i przeładowują się w locie — bez restartu. Sieci spoza zasięgu też można dodać.</string>
+    <string name="note_bt">Kliknij „Włącz parowanie", potem w telefonie wybierz to urządzenie. Sparowane łączą się same po starcie.</string>
+    <string name="note_audio">Którędy wychodzi dźwięk: DAC albo monitor po HDMI. Zmiana działa po restarcie.</string>
+    <string name="note_device">Nazwa widoczna w apce, Bluetooth i AirPlay. Restart przerywa muzykę na około minutę.</string>
+    <string name="note_tailscale">Zdalny dostęp do urządzenia przez Twoją sieć Tailscale.</string>
+    <string name="note_update">Pobiera najnowszy Synchrofazotron z GitHuba (bezpieczne, ustawienia zostają).</string>
+    <string name="note_tidal">TIDAL przez wtyczkę LMS. Połącz konto raz — logujesz się w przeglądarce telefonu.</string>
+    <string name="note_app">Aktualizacja samej apki (sideload). Wymaga zgody na instalację z tej aplikacji.</string>
+    <string name="note_volume">Głośność osobno dla każdego sterowalnego źródła.</string>
+
     <!-- Now playing -->
     <string name="now_title">Teraz gra</string>
     <string name="now_nothing">Cisza — nic nie gra.</string>
@@ -38,7 +75,7 @@
     <string name="refresh">Odśwież</string>
 
     <!-- Wi-Fi -->
-    <string name="wifi_head">📡 Wi-Fi</string>
+    <string name="wifi_head">Wi-Fi</string>
     <string name="wifi_current">Połączono: %1$s</string>
     <string name="wifi_not_connected">Brak połączenia Wi-Fi</string>
     <string name="wifi_saved">Zapisane sieci</string>
@@ -47,14 +84,14 @@
     <string name="wifi_ssid">Nazwa sieci (SSID)</string>
     <string name="wifi_key">Hasło (puste = otwarta)</string>
     <string name="wifi_save">Zapisz sieć</string>
-    <string name="wifi_scan">🔍 Skanuj otoczenie</string>
+    <string name="wifi_scan">Skanuj otoczenie</string>
     <string name="wifi_scanning">Skanuję…</string>
     <string name="wifi_remove">Usuń</string>
     <string name="wifi_no_saved">Brak zapisanych sieci.</string>
 
     <!-- Bluetooth -->
-    <string name="bt_head">📶 Bluetooth</string>
-    <string name="bt_pair">🔵 Włącz parowanie</string>
+    <string name="bt_head">Bluetooth</string>
+    <string name="bt_pair">Włącz parowanie</string>
     <string name="bt_pairing_active">Parowanie aktywne — szukaj urządzenia (%1$d s)</string>
     <string name="bt_none">Nic nie sparowano — użyj „Włącz parowanie".</string>
     <string name="bt_connect">Połącz</string>
@@ -62,6 +99,86 @@
     <string name="bt_forget">Zapomnij</string>
     <string name="bt_connected">połączony</string>
     <string name="bt_connecting">Łączę…</string>
+
+    <!-- Audio output -->
+    <string name="audio_head">Wyjście dźwięku</string>
+    <string name="audio_dac">DAC</string>
+    <string name="audio_hdmi">HDMI</string>
+    <string name="audio_test">Test dźwięku</string>
+    <string name="audio_reboot_required">Zmiana wymaga restartu urządzenia.</string>
+
+    <!-- Device / system -->
+    <string name="device_head">Urządzenie</string>
+    <string name="device_name_label">Nazwa urządzenia</string>
+    <string name="device_rename">Zmień nazwę</string>
+    <string name="device_reboot">Zrestartuj urządzenie</string>
+    <string name="device_reboot_title">Zrestartować?</string>
+    <string name="device_reboot_confirm">Muzyka przestanie grać na około minutę.</string>
+
+    <!-- Tailscale -->
+    <string name="tailscale_head">Tailscale</string>
+    <string name="tailscale_ip">IP: %1$s</string>
+
+    <!-- Updates -->
+    <string name="update_head">Aktualizacje</string>
+    <string name="update_check">Sprawdź</string>
+    <string name="update_run">Aktualizuj</string>
+    <string name="update_available">Jest nowsza wersja.</string>
+    <string name="update_current">Wersja aktualna.</string>
+    <string name="update_checkfail">Nie udało się sprawdzić.</string>
+    <string name="update_running">Aktualizuję…</string>
+    <string name="update_title">Zaktualizować?</string>
+    <string name="update_confirm">Potrwa minutę–dwie; panel na chwilę zniknie.</string>
+
+    <string name="common_cancel">Anuluj</string>
+    <string name="common_confirm">Potwierdź</string>
+
+    <!-- App self-update -->
+    <string name="app_head">Aplikacja</string>
+    <string name="app_version">Wersja: %1$s</string>
+    <string name="app_check">Sprawdź aktualizację</string>
+    <string name="app_up_to_date">Apka aktualna.</string>
+    <string name="app_update_available">Jest nowsza wersja apki.</string>
+    <string name="app_download_install">Pobierz i zainstaluj</string>
+    <string name="app_downloading">Pobieram… %1$d%%</string>
+    <string name="app_allow_install">Zezwól na instalację z tej apki, potem spróbuj ponownie.</string>
+    <string name="app_check_fail">Nie udało się sprawdzić.</string>
+
+    <!-- Visualizer -->
+    <string name="viz_head">Wizualizer (HDMI)</string>
+    <string name="viz_not_installed">Nie zainstalowany — odpal setup.sh z wizualizerem.</string>
+    <string name="viz_enable">Włączony</string>
+    <string name="viz_engine_cava">Słupki (cava)</string>
+    <string name="viz_engine_glsl">Shadery</string>
+    <string name="viz_preset">Preset</string>
+    <string name="viz_shader">Shader</string>
+    <string name="viz_scale">Skala</string>
+    <string name="viz_studio">Studio shaderów</string>
+
+    <!-- TIDAL -->
+    <string name="tidal_head">TIDAL</string>
+    <string name="tidal_install">Zainstaluj wtyczkę TIDAL</string>
+    <string name="tidal_installing">Instaluję… (może potrwać kilka minut)</string>
+    <string name="tidal_install_error">Instalacja nie wyszła.</string>
+    <string name="tidal_connect">Połącz konto</string>
+    <string name="tidal_connecting">Łączę…</string>
+    <string name="tidal_code">Kod: %1$s</string>
+    <string name="tidal_open_link">Otwórz link logowania</string>
+    <string name="tidal_await">Zaloguj się w przeglądarce, potem wróć — czekam…</string>
+    <string name="tidal_forget">Zapomnij</string>
+    <string name="tidal_no_accounts">Brak połączonych kont.</string>
+    <string name="tidal_show">Pokazuj TIDAL</string>
+
+    <!-- Radio -->
+    <string name="radio_title">Radio</string>
+    <string name="radio_browse">Przeglądaj</string>
+    <string name="radio_search">Szukaj</string>
+    <string name="radio_favorites">Ulubione</string>
+    <string name="radio_search_hint">Szukaj stacji…</string>
+    <string name="radio_empty">Nic tu nie ma.</string>
+    <string name="radio_play">Odtwórz</string>
+    <string name="radio_fav_add">Dodaj do ulubionych</string>
+    <string name="radio_fav_remove">Usuń z ulubionych</string>
 
     <string name="lang_name">Polski</string>
 </resources>

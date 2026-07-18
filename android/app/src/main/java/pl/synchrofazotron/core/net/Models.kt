@@ -13,9 +13,15 @@ data class StatusResponse(
     val lang: String = "en",
     @SerialName("wifi_ssid") val wifiSsid: String = "",
     @SerialName("pair_seconds_left") val pairSecondsLeft: Int = 0,
+    @SerialName("bt_powered") val btPowered: Boolean = false,
+    @SerialName("lms_playerid") val lmsPlayerId: String = "",
+    val connected: List<ConnectedDevice> = emptyList(),
     val sources: List<Source> = emptyList(),
     @SerialName("playing_count") val playingCount: Int = 0,
 )
+
+@Serializable
+data class ConnectedDevice(val mac: String = "", val name: String = "")
 
 @Serializable
 data class Source(
@@ -96,3 +102,140 @@ data class MacRequest(val mac: String)
 
 @Serializable
 data class PairResponse(val ok: Boolean = false, val seconds: Int = 0)
+
+// --- Audio ---------------------------------------------------------------
+@Serializable
+data class AudioState(
+    val output: String = "",
+    val running: String = "",
+    val overlay: String = "",
+    val cards: Map<String, Boolean> = emptyMap(),
+    @SerialName("hdmi_connected") val hdmiConnected: Boolean = false,
+    @SerialName("bridge_active") val bridgeActive: Boolean = false,
+    @SerialName("reboot_required") val rebootRequired: Boolean = false,
+)
+
+@Serializable
+data class OutputRequest(val output: String)
+
+// --- System / Tailscale / updates ---------------------------------------
+@Serializable
+data class TailscaleState(val installed: Boolean = false, val active: Boolean = false, val ip: String = "")
+
+@Serializable
+data class UpdateState(val running: Boolean = false, val failed: Boolean = false)
+
+@Serializable
+data class UpdateCheck(
+    val ok: Boolean = false,
+    @SerialName("update_available") val updateAvailable: Boolean = false,
+)
+
+@Serializable
+data class NameRequest(val name: String)
+
+@Serializable
+data class UpRequest(val up: Boolean)
+
+// --- Visualizer ----------------------------------------------------------
+@Serializable
+data class VizState(
+    val installed: Boolean = false,
+    val active: Boolean = false,
+    val enabled: Boolean = false,
+    @SerialName("hdmi_connected") val hdmiConnected: Boolean = false,
+    val preset: String = "",
+    val engine: String = "cava",
+    val shader: String = "",
+    val scale: String = "",
+    val scales: List<String> = emptyList(),
+    @SerialName("glsl_available") val glslAvailable: Boolean = false,
+    @SerialName("glsl_error") val glslError: String = "",
+    val presets: List<VizPreset> = emptyList(),
+    val shaders: List<VizShader> = emptyList(),
+)
+
+@Serializable
+data class VizPreset(val id: String = "", val label: String = "")
+
+@Serializable
+data class VizShader(val id: String = "", val label: String = "")
+
+@Serializable
+data class VizPresetRequest(val name: String)
+
+@Serializable
+data class VizEngineRequest(val engine: String, val shader: String = "")
+
+@Serializable
+data class VizScaleRequest(val scale: String)
+
+// --- LMS radio / favorites ----------------------------------------------
+@Serializable
+data class LmsList(
+    val title: String = "",
+    val items: List<LmsItem> = emptyList(),
+    val verb: String = "",
+    val error: String = "",
+)
+
+@Serializable
+data class LmsItem(
+    val title: String = "",
+    val icon: String = "",
+    val playable: Boolean = false,
+    val browsable: Boolean = false,
+    @SerialName("item_id") val itemId: String = "",
+    val verb: String = "",
+    val id: String = "",
+    val url: String = "",
+    val fav: LmsFav? = null,
+)
+
+@Serializable
+data class LmsFav(val url: String = "", val title: String = "", val icon: String = "")
+
+@Serializable
+data class OkResp(val ok: Boolean = false)
+
+@Serializable
+data class RadioPlayRequest(
+    val verb: String,
+    @SerialName("item_id") val itemId: String,
+    val add: Boolean = false,
+)
+
+@Serializable
+data class PlayUrlRequest(val url: String, val title: String = "")
+
+@Serializable
+data class FavPlayRequest(val id: String = "", val url: String = "", val title: String = "")
+
+@Serializable
+data class FavAddRequest(val url: String, val title: String = "", val icon: String = "")
+
+@Serializable
+data class IdRequest(val id: String)
+
+// --- TIDAL ---------------------------------------------------------------
+@Serializable
+data class TidalState(
+    val available: Boolean = false,
+    @SerialName("plugin_state") val pluginState: String = "",
+    val show: Boolean = false,
+    val accounts: List<TidalAccount> = emptyList(),
+    val installing: Boolean = false,
+    @SerialName("install_error") val installError: String = "",
+)
+
+@Serializable
+data class TidalAccount(val id: String = "", val name: String = "")
+
+@Serializable
+data class TidalAuthStart(val ok: Boolean = false, val link: String = "", val code: String = "")
+
+@Serializable
+data class TidalAuthStatus(val done: Boolean = false, val accounts: List<TidalAccount> = emptyList())
+
+@Serializable
+data class ShowRequest(val show: Boolean)

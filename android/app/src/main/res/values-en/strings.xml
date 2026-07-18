@@ -10,6 +10,43 @@
     <string name="connect_checking">Checking…</string>
     <string name="connect_unreachable">Could not reach the device.</string>
 
+    <!-- Panel tabs / player bar / settings sections -->
+    <string name="tab_now">Now playing</string>
+    <string name="tab_radio">Radio</string>
+    <string name="tab_viz">Visualizer</string>
+    <string name="sheet_sources">Sources</string>
+    <string name="glance_wifi_off">off</string>
+    <string name="glance_bt_ready">ready</string>
+    <string name="glance_bt_off">off</string>
+    <string name="glance_bt_pairing">pairing %1$ds</string>
+    <string name="nav_customize">Customize</string>
+    <string name="nav_connections">Connections</string>
+    <string name="nav_config">Config</string>
+    <string name="nav_about">About</string>
+
+    <!-- Appearance -->
+    <string name="appearance_head">Appearance &amp; language</string>
+    <string name="theme_label">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_mono_light">Light</string>
+    <string name="theme_mono_dark">Dark</string>
+    <string name="theme_neon">Neon</string>
+    <string name="language_label">Language</string>
+    <string name="lang_system">System</string>
+    <string name="lang_pl">Polski</string>
+    <string name="lang_en">English</string>
+
+    <!-- Card notes -->
+    <string name="note_wifi">Networks go into the DietPi database and reload on the fly — no reboot. Out-of-range networks can be added too.</string>
+    <string name="note_bt">Tap “Enable pairing”, then pick this device on your phone. Paired devices reconnect on their own after boot.</string>
+    <string name="note_audio">Where the sound comes out: the DAC or the monitor over HDMI. The change takes effect after a reboot.</string>
+    <string name="note_device">Name shown in the app, Bluetooth and AirPlay. Rebooting stops the music for about a minute.</string>
+    <string name="note_tailscale">Remote access to the device over your Tailscale network.</string>
+    <string name="note_update">Fetches the latest Synchrofazotron from GitHub (safe, settings are kept).</string>
+    <string name="note_tidal">TIDAL via the LMS plugin. Connect an account once — you sign in in the phone browser.</string>
+    <string name="note_app">Updates the app itself (sideload). Needs permission to install from this app.</string>
+    <string name="note_volume">Volume per controllable source.</string>
+
     <!-- Now playing -->
     <string name="now_title">Now playing</string>
     <string name="now_nothing">Silence — nothing is playing.</string>
@@ -35,7 +72,7 @@
     <string name="refresh">Refresh</string>
 
     <!-- Wi-Fi -->
-    <string name="wifi_head">📡 Wi-Fi</string>
+    <string name="wifi_head">Wi-Fi</string>
     <string name="wifi_current">Connected: %1$s</string>
     <string name="wifi_not_connected">Not connected to Wi-Fi</string>
     <string name="wifi_saved">Saved networks</string>
@@ -44,14 +81,14 @@
     <string name="wifi_ssid">Network name (SSID)</string>
     <string name="wifi_key">Password (empty = open)</string>
     <string name="wifi_save">Save network</string>
-    <string name="wifi_scan">🔍 Scan for networks</string>
+    <string name="wifi_scan">Scan for networks</string>
     <string name="wifi_scanning">Scanning…</string>
     <string name="wifi_remove">Remove</string>
     <string name="wifi_no_saved">No saved networks.</string>
 
     <!-- Bluetooth -->
-    <string name="bt_head">📶 Bluetooth</string>
-    <string name="bt_pair">🔵 Enable pairing</string>
+    <string name="bt_head">Bluetooth</string>
+    <string name="bt_pair">Enable pairing</string>
     <string name="bt_pairing_active">Pairing active — look for the device (%1$d s)</string>
     <string name="bt_none">Nothing paired yet — use “Enable pairing”.</string>
     <string name="bt_connect">Connect</string>
@@ -59,6 +96,86 @@
     <string name="bt_forget">Forget</string>
     <string name="bt_connected">connected</string>
     <string name="bt_connecting">Connecting…</string>
+
+    <!-- Audio output -->
+    <string name="audio_head">Audio output</string>
+    <string name="audio_dac">DAC</string>
+    <string name="audio_hdmi">HDMI</string>
+    <string name="audio_test">Test sound</string>
+    <string name="audio_reboot_required">The change needs a device reboot.</string>
+
+    <!-- Device / system -->
+    <string name="device_head">Device</string>
+    <string name="device_name_label">Device name</string>
+    <string name="device_rename">Rename</string>
+    <string name="device_reboot">Reboot the device</string>
+    <string name="device_reboot_title">Reboot?</string>
+    <string name="device_reboot_confirm">Music stops for about a minute.</string>
+
+    <!-- Tailscale -->
+    <string name="tailscale_head">Tailscale</string>
+    <string name="tailscale_ip">IP: %1$s</string>
+
+    <!-- Updates -->
+    <string name="update_head">Updates</string>
+    <string name="update_check">Check</string>
+    <string name="update_run">Update</string>
+    <string name="update_available">A new version is available.</string>
+    <string name="update_current">Up to date.</string>
+    <string name="update_checkfail">Check failed.</string>
+    <string name="update_running">Updating…</string>
+    <string name="update_title">Update now?</string>
+    <string name="update_confirm">Takes a minute or two; the panel briefly disconnects.</string>
+
+    <string name="common_cancel">Cancel</string>
+    <string name="common_confirm">Confirm</string>
+
+    <!-- App self-update -->
+    <string name="app_head">App</string>
+    <string name="app_version">Version: %1$s</string>
+    <string name="app_check">Check for update</string>
+    <string name="app_up_to_date">App is up to date.</string>
+    <string name="app_update_available">A new app version is available.</string>
+    <string name="app_download_install">Download &amp; install</string>
+    <string name="app_downloading">Downloading… %1$d%%</string>
+    <string name="app_allow_install">Allow installs from this app, then try again.</string>
+    <string name="app_check_fail">Check failed.</string>
+
+    <!-- Visualizer -->
+    <string name="viz_head">Visualizer (HDMI)</string>
+    <string name="viz_not_installed">Not installed — run setup.sh with the visualizer.</string>
+    <string name="viz_enable">Enabled</string>
+    <string name="viz_engine_cava">Bars (cava)</string>
+    <string name="viz_engine_glsl">Shaders</string>
+    <string name="viz_preset">Preset</string>
+    <string name="viz_shader">Shader</string>
+    <string name="viz_scale">Scale</string>
+    <string name="viz_studio">Shader studio</string>
+
+    <!-- TIDAL -->
+    <string name="tidal_head">TIDAL</string>
+    <string name="tidal_install">Install the TIDAL plugin</string>
+    <string name="tidal_installing">Installing… (can take a few minutes)</string>
+    <string name="tidal_install_error">Install failed.</string>
+    <string name="tidal_connect">Connect account</string>
+    <string name="tidal_connecting">Connecting…</string>
+    <string name="tidal_code">Code: %1$s</string>
+    <string name="tidal_open_link">Open sign-in link</string>
+    <string name="tidal_await">Sign in in the browser, then come back — waiting…</string>
+    <string name="tidal_forget">Forget</string>
+    <string name="tidal_no_accounts">No connected accounts.</string>
+    <string name="tidal_show">Show TIDAL</string>
+
+    <!-- Radio -->
+    <string name="radio_title">Radio</string>
+    <string name="radio_browse">Browse</string>
+    <string name="radio_search">Search</string>
+    <string name="radio_favorites">Favorites</string>
+    <string name="radio_search_hint">Search stations…</string>
+    <string name="radio_empty">Nothing here.</string>
+    <string name="radio_play">Play</string>
+    <string name="radio_fav_add">Add to favorites</string>
+    <string name="radio_fav_remove">Remove from favorites</string>
 
     <string name="lang_name">English</string>
 </resources>
