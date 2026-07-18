@@ -1,12 +1,14 @@
 package pl.synchrofazotron.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -28,10 +30,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,10 +52,17 @@ import pl.synchrofazotron.core.net.StatusResponse
 fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Modifier) {
     val status by session.status.collectAsStateWithLifecycle()
     val volumes by session.volumes.collectAsStateWithLifecycle()
-    var open by remember { mutableStateOf(false) }
 
     val p = primarySource(status)
     val ctrlOff = !(p?.controllable == true && p.id.isNotBlank())
+
+    // Drag-follow sheet: progress 0(closed)..1(open) tracks the finger, snaps on release.
+    val progress = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val maxSheet = 300.dp
+    val maxPx = with(LocalDensity.current) { maxSheet.toPx() }
+    fun settle() { scope.launch { progress.animateTo(if (progress.value > 0.4f) 1f else 0f) } }
+    val open = progress.value > 0.5f
 
     Surface(
         color = MaterialTheme.colorScheme.inverseSurface,
@@ -57,25 +70,34 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
         shape = MaterialTheme.shapes.large,
         tonalElevation = 6.dp,
         shadowElevation = 8.dp,
-        modifier = modifier
-            .fillMaxWidth()
-            .pointerInput(Unit) {
-                var acc = 0f
-                detectVerticalDragGestures(
-                    onDragStart = { acc = 0f },
-                    onDragEnd = { if (acc < -40) open = true else if (acc > 40) open = false },
-                ) { _, dy -> acc += dy }
-            },
+        modifier = modifier.fillMaxWidth(),
     ) {
         Column {
-            AnimatedVisibility(visible = open) {
-                SourcesSheet(status = status, volumes = volumes, session = session)
+            if (progress.value > 0.001f) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(maxSheet * progress.value).clipToBounds(),
+                ) {
+                    Box(Modifier.fillMaxWidth().align(Alignment.BottomCenter)) {
+                        SourcesSheet(status = status, volumes = volumes, session = session)
+                    }
+                }
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragEnd = { settle() },
+                            onDragCancel = { settle() },
+                        ) { change, dy ->
+                            change.consume()
+                            scope.launch { progress.snapTo((progress.value - dy / maxPx).coerceIn(0f, 1f)) }
+                        }
+                    }
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = { open = !open }) {
+                IconButton(onClick = { scope.launch { progress.animateTo(if (open) 0f else 1f) } }) {
                     Icon(
                         if (open) Icons.Filled.KeyboardArrowDown else Icons.Filled.KeyboardArrowUp,
                         contentDescription = stringResource(R.string.sheet_sources),

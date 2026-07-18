@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -87,41 +89,47 @@ fun SettingsScreen(session: PanelSession, onOpenStudio: () -> Unit, onChangeDevi
         "config" to stringResource(R.string.nav_config),
         "about" to stringResource(R.string.nav_about),
     )
-    var sec by remember { mutableStateOf("config") }
+    val pager = rememberPagerState(initialPage = 2, pageCount = { sections.size }) // default Config
+    val scope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize()) {
         SegTabs(
             items = sections,
-            active = sec,
-            onChange = { sec = it },
+            active = sections[pager.currentPage].first,
+            onChange = { id ->
+                val idx = sections.indexOfFirst { it.first == id }
+                if (idx >= 0) scope.launch { pager.animateScrollToPage(idx) }
+            },
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         )
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            when (sec) {
-                "customize" -> {
-                    VolumeCard(session)
-                    AudioCard(session)
+        HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                when (page) {
+                    0 -> {
+                        VolumeCard(session)
+                        AudioCard(session)
+                    }
+                    1 -> {
+                        WifiCard(session)
+                        BluetoothCard(session)
+                        TidalCard(session)
+                    }
+                    2 -> {
+                        DeviceCard(session, onChangeDevice)
+                        TailscaleCard(session)
+                        UpdateCard(session)
+                        AppUpdateCard()
+                    }
+                    else -> AboutCard(session)
                 }
-                "connections" -> {
-                    WifiCard(session)
-                    BluetoothCard(session)
-                    TidalCard(session)
-                }
-                "config" -> {
-                    DeviceCard(session, onChangeDevice)
-                    TailscaleCard(session)
-                    UpdateCard(session)
-                    AppUpdateCard()
-                }
-                else -> AboutCard(session)
+                Column(Modifier.padding(bottom = 24.dp)) {}
             }
-            Column(Modifier.padding(bottom = 24.dp)) {}
         }
     }
 }
