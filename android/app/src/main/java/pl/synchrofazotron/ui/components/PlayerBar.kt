@@ -11,13 +11,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -160,17 +167,23 @@ private fun SourcesSheet(status: StatusResponse?, volumes: Map<String, Int>, ses
             status?.btPowered == true -> stringResource(R.string.glance_bt_ready)
             else -> stringResource(R.string.glance_bt_off)
         }
+        val btDot = when {
+            secs > 0 -> StatusWarn
+            btConn.isNotEmpty() -> StatusGood
+            status?.btPowered == true -> StatusNeutral
+            else -> StatusDanger
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(
-                "Wi-Fi: ${ssid.ifBlank { stringResource(R.string.glance_wifi_off) }}",
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            GlanceItem(
+                icon = Icons.Filled.Wifi,
+                dot = if (ssid.isNotBlank()) StatusGood else StatusDanger,
+                text = ssid.ifBlank { stringResource(R.string.glance_wifi_off) },
                 modifier = Modifier.weight(1f),
             )
-            Text(
-                "BT: $btText",
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            GlanceItem(
+                icon = Icons.Filled.Bluetooth,
+                dot = btDot,
+                text = btText,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -223,5 +236,22 @@ private fun SheetRow(source: Source, onToggle: () -> Unit) {
                 Icon(if (source.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, contentDescription = null)
             }
         }
+    }
+}
+
+// Status colors — identical across themes, like the web app's dots.
+private val StatusGood = Color(0xFF34D399)
+private val StatusWarn = Color(0xFFFBBF24)
+private val StatusDanger = Color(0xFFF87171)
+private val StatusNeutral = Color(0xFF9AA1AB)
+
+@Composable
+private fun GlanceItem(icon: ImageVector, dot: Color, text: String, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+        Box(
+            Modifier.padding(horizontal = 5.dp).size(7.dp).clip(CircleShape).background(dot),
+        )
+        Text(text, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

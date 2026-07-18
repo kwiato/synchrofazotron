@@ -76,6 +76,7 @@ import androidx.core.os.LocaleListCompat
 import pl.synchrofazotron.core.PanelSession
 import pl.synchrofazotron.core.prefs.DeviceStore
 import pl.synchrofazotron.core.update.AppUpdater
+import pl.synchrofazotron.ui.components.RingMark
 import pl.synchrofazotron.ui.components.SegTabs
 import pl.synchrofazotron.core.net.AudioState
 import pl.synchrofazotron.core.net.BtDevice
@@ -585,6 +586,9 @@ private fun VolumeRow(label: String, value: Int, onSet: (Int) -> Unit) {
 @Composable
 private fun AboutCard(session: PanelSession) {
     SectionCard(Icons.Filled.Info, "Synchrofazotron") {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            RingMark(size = 72.dp, modifier = Modifier.padding(vertical = 8.dp))
+        }
         Text("app ${AppUpdater.currentSha}", style = MaterialTheme.typography.bodyMedium)
         Text(
             "github.com/kwiato/synchrofazotron",
