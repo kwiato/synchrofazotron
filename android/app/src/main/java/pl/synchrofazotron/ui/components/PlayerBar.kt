@@ -126,7 +126,14 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
                 IconButton(enabled = !ctrlOff, onClick = { p?.let { session.control(it.id, "prev") } }) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "prev")
                 }
-                FilledIconButton(enabled = !ctrlOff, onClick = { p?.let { session.control(it.id, "toggle") } }) {
+                FilledIconButton(
+                    enabled = !ctrlOff,
+                    onClick = { p?.let { session.control(it.id, "toggle") } },
+                    colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.inverseOnSurface,
+                        contentColor = MaterialTheme.colorScheme.inverseSurface,
+                    ),
+                ) {
                     Icon(
                         if (p?.playing == true) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = null,
