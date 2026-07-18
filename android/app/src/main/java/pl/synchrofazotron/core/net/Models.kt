@@ -13,9 +13,15 @@ data class StatusResponse(
     val lang: String = "en",
     @SerialName("wifi_ssid") val wifiSsid: String = "",
     @SerialName("pair_seconds_left") val pairSecondsLeft: Int = 0,
+    @SerialName("bt_powered") val btPowered: Boolean = false,
+    @SerialName("lms_playerid") val lmsPlayerId: String = "",
+    val connected: List<ConnectedDevice> = emptyList(),
     val sources: List<Source> = emptyList(),
     @SerialName("playing_count") val playingCount: Int = 0,
 )
+
+@Serializable
+data class ConnectedDevice(val mac: String = "", val name: String = "")
 
 @Serializable
 data class Source(

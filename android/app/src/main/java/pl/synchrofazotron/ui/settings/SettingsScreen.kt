@@ -65,8 +65,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import pl.synchrofazotron.R
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.VolumeUp
 import pl.synchrofazotron.core.PanelSession
 import pl.synchrofazotron.core.update.AppUpdater
+import pl.synchrofazotron.ui.components.SegTabs
 import pl.synchrofazotron.core.net.AudioState
 import pl.synchrofazotron.core.net.BtDevice
 import pl.synchrofazotron.core.net.BtInfo
@@ -76,38 +79,48 @@ import pl.synchrofazotron.core.net.VizState
 import pl.synchrofazotron.core.net.WifiInfo
 import pl.synchrofazotron.core.net.WifiNetwork
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(session: PanelSession, onBack: () -> Unit, onOpenStudio: () -> Unit) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
-                    }
-                },
-            )
-        },
-    ) { pad ->
+fun SettingsScreen(session: PanelSession, onOpenStudio: () -> Unit, onChangeDevice: () -> Unit) {
+    val sections = listOf(
+        "customize" to stringResource(R.string.nav_customize),
+        "connections" to stringResource(R.string.nav_connections),
+        "config" to stringResource(R.string.nav_config),
+        "about" to stringResource(R.string.nav_about),
+    )
+    var sec by remember { mutableStateOf("config") }
+
+    Column(Modifier.fillMaxSize()) {
+        SegTabs(
+            items = sections,
+            active = sec,
+            onChange = { sec = it },
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(pad)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            WifiCard(session)
-            BluetoothCard(session)
-            TidalCard(session)
-            AudioCard(session)
-            VizCard(session, onOpenStudio)
-            DeviceCard(session)
-            TailscaleCard(session)
-            UpdateCard(session)
-            AppUpdateCard()
+            when (sec) {
+                "customize" -> {
+                    VolumeCard(session)
+                    AudioCard(session)
+                }
+                "connections" -> {
+                    WifiCard(session)
+                    BluetoothCard(session)
+                    TidalCard(session)
+                }
+                "config" -> {
+                    DeviceCard(session, onChangeDevice)
+                    TailscaleCard(session)
+                    UpdateCard(session)
+                    AppUpdateCard()
+                }
+                else -> AboutCard(session)
+            }
             Column(Modifier.padding(bottom = 24.dp)) {}
         }
     }
@@ -468,7 +481,65 @@ private fun OutputButton(label: String, selected: Boolean, busy: Boolean, onClic
 }
 
 @Composable
-private fun DeviceCard(session: PanelSession) {
+private fun VolumeCard(session: PanelSession) {
+    val volumes by session.volumes.collectAsStateWithLifecycle()
+    SectionCard(Icons.Filled.VolumeUp, stringResource(R.string.volume_label)) {
+        val order = listOf("lms" to "LMS", "airplay" to "AirPlay", "bt" to "Bluetooth")
+        val shown = order.filter { volumes.containsKey(it.first) }
+        if (shown.isEmpty()) {
+            Text(stringResource(R.string.now_nothing), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            shown.forEach { (id, label) ->
+                VolumeRow(label, volumes[id] ?: 0) { session.setVolume(id, it) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VolumeRow(label: String, value: Int, onSet: (Int) -> Unit) {
+    var dragging by remember { mutableStateOf(false) }
+    var local by remember { mutableStateOf(value.toFloat()) }
+    LaunchedEffect(value, dragging) { if (!dragging) local = value.toFloat() }
+    Column(Modifier.padding(vertical = 4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.Slider(
+                value = local,
+                onValueChange = { dragging = true; local = it },
+                onValueChangeFinished = { dragging = false; onSet(local.toInt()) },
+                valueRange = 0f..100f,
+                modifier = Modifier.weight(1f),
+            )
+            Text("${local.toInt()}%", style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(start = 8.dp))
+        }
+    }
+}
+
+@Composable
+private fun AboutCard(session: PanelSession) {
+    SectionCard(Icons.Filled.Info, "Synchrofazotron") {
+        Text("app ${AppUpdater.currentSha}", style = MaterialTheme.typography.bodyMedium)
+        Text(
+            "github.com/kwiato/synchrofazotron",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        Text(
+            "cava · glslViewer · Lyrion Music Server · Material Skin · squeezelite · " +
+                "Shairport Sync · BlueALSA · DietPi · Tailscale",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 12.dp),
+        )
+    }
+}
+
+@Composable
+private fun DeviceCard(session: PanelSession, onChangeDevice: () -> Unit) {
     val scope = rememberCoroutineScope()
     val status by session.status.collectAsStateWithLifecycle()
     var name by remember { mutableStateOf("") }
@@ -494,6 +565,9 @@ private fun DeviceCard(session: PanelSession) {
                 Icon(Icons.Filled.RestartAlt, null, Modifier.padding(end = 8.dp).size(18.dp))
                 Text(stringResource(R.string.device_reboot))
             }
+        }
+        TextButton(onClick = onChangeDevice, modifier = Modifier.padding(top = 4.dp)) {
+            Text(stringResource(R.string.now_change_device))
         }
     }
 

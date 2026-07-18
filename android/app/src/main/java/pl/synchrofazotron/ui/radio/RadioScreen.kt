@@ -53,32 +53,19 @@ import pl.synchrofazotron.core.net.LmsList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RadioScreen(session: PanelSession, onBack: () -> Unit) {
+fun RadioTab(session: PanelSession) {
     var tab by remember { mutableIntStateOf(0) }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.radio_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
-                    }
-                },
-            )
-        },
-    ) { pad ->
-        Column(Modifier.fillMaxSize().padding(pad)) {
-            SecondaryTabRow(selectedTabIndex = tab) {
-                listOf(R.string.radio_browse, R.string.radio_search, R.string.radio_favorites)
-                    .forEachIndexed { i, res ->
-                        Tab(selected = tab == i, onClick = { tab = i }, text = { Text(stringResource(res)) })
-                    }
-            }
-            when (tab) {
-                0 -> BrowseTab(session)
-                1 -> SearchTab(session)
-                else -> FavoritesTab(session)
-            }
+    Column(Modifier.fillMaxSize()) {
+        SecondaryTabRow(selectedTabIndex = tab) {
+            listOf(R.string.radio_browse, R.string.radio_search, R.string.radio_favorites)
+                .forEachIndexed { i, res ->
+                    Tab(selected = tab == i, onClick = { tab = i }, text = { Text(stringResource(res)) })
+                }
+        }
+        when (tab) {
+            0 -> BrowseTab(session)
+            1 -> SearchTab(session)
+            else -> FavoritesTab(session)
         }
     }
 }

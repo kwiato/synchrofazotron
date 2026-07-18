@@ -13,6 +13,20 @@
     <string name="connect_checking">Sprawdzam…</string>
     <string name="connect_unreachable">Nie udało się połączyć z urządzeniem.</string>
 
+    <!-- Panel tabs / player bar / settings sections -->
+    <string name="tab_now">Teraz gra</string>
+    <string name="tab_radio">Radio</string>
+    <string name="tab_viz">Wizualizer</string>
+    <string name="sheet_sources">Źródła</string>
+    <string name="glance_wifi_off">brak</string>
+    <string name="glance_bt_ready">gotowy</string>
+    <string name="glance_bt_off">wyłączony</string>
+    <string name="glance_bt_pairing">parowanie %1$ds</string>
+    <string name="nav_customize">Wygląd</string>
+    <string name="nav_connections">Połączenia</string>
+    <string name="nav_config">Konfiguracja</string>
+    <string name="nav_about">O apce</string>
+
     <!-- Now playing -->
     <string name="now_title">Teraz gra</string>
     <string name="now_nothing">Cisza — nic nie gra.</string>

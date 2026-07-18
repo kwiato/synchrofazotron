@@ -10,6 +10,20 @@
     <string name="connect_checking">Checking…</string>
     <string name="connect_unreachable">Could not reach the device.</string>
 
+    <!-- Panel tabs / player bar / settings sections -->
+    <string name="tab_now">Now playing</string>
+    <string name="tab_radio">Radio</string>
+    <string name="tab_viz">Visualizer</string>
+    <string name="sheet_sources">Sources</string>
+    <string name="glance_wifi_off">off</string>
+    <string name="glance_bt_ready">ready</string>
+    <string name="glance_bt_off">off</string>
+    <string name="glance_bt_pairing">pairing %1$ds</string>
+    <string name="nav_customize">Customize</string>
+    <string name="nav_connections">Connections</string>
+    <string name="nav_config">Config</string>
+    <string name="nav_about">About</string>
+
     <!-- Now playing -->
     <string name="now_title">Now playing</string>
     <string name="now_nothing">Silence — nothing is playing.</string>
