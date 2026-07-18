@@ -24,6 +24,18 @@
     <string name="nav_config">Config</string>
     <string name="nav_about">About</string>
 
+    <!-- Appearance -->
+    <string name="appearance_head">Appearance &amp; language</string>
+    <string name="theme_label">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_mono_light">Light</string>
+    <string name="theme_mono_dark">Dark</string>
+    <string name="theme_neon">Neon</string>
+    <string name="language_label">Language</string>
+    <string name="lang_system">System</string>
+    <string name="lang_pl">Polski</string>
+    <string name="lang_en">English</string>
+
     <!-- Now playing -->
     <string name="now_title">Now playing</string>
     <string name="now_nothing">Silence — nothing is playing.</string>

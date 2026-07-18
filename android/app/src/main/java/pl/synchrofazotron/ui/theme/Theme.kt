@@ -81,13 +81,48 @@ private val MonoDark = darkColorScheme(
     error = Color(0xFFF87171),
 )
 
+// Legacy "neon" — dark cyberpunk with a cyan -> magenta accent. Opt-in only.
+private val NeonScheme = darkColorScheme(
+    primary = Color(0xFF2DD4EE),
+    onPrimary = Color(0xFF07090E),
+    primaryContainer = Color(0xFF163B45),
+    onPrimaryContainer = Color(0xFFC8F2FF),
+    secondary = Color(0xFFC26BF5),
+    onSecondary = Color(0xFF07090E),
+    secondaryContainer = Color(0xFF2A1F3A),
+    onSecondaryContainer = Color(0xFFE8D8FF),
+    tertiary = Color(0xFF7C8CF8),
+    background = Color(0xFF07090E),
+    onBackground = Color(0xFFE8EEF6),
+    surface = Color(0xFF10151D),
+    onSurface = Color(0xFFE8EEF6),
+    surfaceVariant = Color(0xFF161D28),
+    onSurfaceVariant = Color(0xFF8B98A9),
+    surfaceContainerLowest = Color(0xFF07090E),
+    surfaceContainerLow = Color(0xFF0F141C),
+    surfaceContainer = Color(0xFF141A24),
+    surfaceContainerHigh = Color(0xFF1A212C),
+    surfaceContainerHighest = Color(0xFF232C38),
+    outline = Color(0xFF2E3C50),
+    outlineVariant = Color(0xFF202A38),
+    inverseSurface = Color(0xFFE8EEF6),
+    inverseOnSurface = Color(0xFF10151D),
+    error = Color(0xFFF87171),
+)
+
 @Composable
 fun SynchrofazotronTheme(
-    dark: Boolean = isSystemInDarkTheme(),
+    pref: String = "system",
     content: @Composable () -> Unit,
 ) {
+    val scheme = when (pref) {
+        "mono-light" -> MonoLight
+        "mono-dark" -> MonoDark
+        "neon" -> NeonScheme
+        else -> if (isSystemInDarkTheme()) MonoDark else MonoLight
+    }
     MaterialTheme(
-        colorScheme = if (dark) MonoDark else MonoLight,
+        colorScheme = scheme,
         typography = Typography(),
         content = content,
     )

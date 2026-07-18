@@ -27,6 +27,18 @@
     <string name="nav_config">Konfiguracja</string>
     <string name="nav_about">O apce</string>
 
+    <!-- Appearance -->
+    <string name="appearance_head">Wygląd i język</string>
+    <string name="theme_label">Motyw</string>
+    <string name="theme_system">System</string>
+    <string name="theme_mono_light">Jasny</string>
+    <string name="theme_mono_dark">Ciemny</string>
+    <string name="theme_neon">Neon</string>
+    <string name="language_label">Język</string>
+    <string name="lang_system">System</string>
+    <string name="lang_pl">Polski</string>
+    <string name="lang_en">English</string>
+
     <!-- Now playing -->
     <string name="now_title">Teraz gra</string>
     <string name="now_nothing">Cisza — nic nie gra.</string>

@@ -5,8 +5,7 @@ import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import pl.synchrofazotron.ui.App
-import pl.synchrofazotron.ui.theme.SynchrofazotronTheme
+import pl.synchrofazotron.ui.AppRoot
 
 class MainActivity : ComponentActivity() {
 
@@ -24,9 +23,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SynchrofazotronTheme {
-                App()
-            }
+            AppRoot()
         }
     }
 

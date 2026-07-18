@@ -16,11 +16,19 @@ private val Context.dataStore by preferencesDataStore(name = "synchrofazotron")
 class DeviceStore(private val context: Context) {
 
     private val baseKey = stringPreferencesKey("base_url")
+    private val themeKey = stringPreferencesKey("theme")
 
     val baseUrl: Flow<String?> = context.dataStore.data.map { it[baseKey] }
 
+    /** "system" | "mono-light" | "mono-dark" | "neon". */
+    val theme: Flow<String> = context.dataStore.data.map { it[themeKey] ?: "system" }
+
     suspend fun setBaseUrl(url: String) {
         context.dataStore.edit { it[baseKey] = url }
+    }
+
+    suspend fun setTheme(value: String) {
+        context.dataStore.edit { it[themeKey] = value }
     }
 
     suspend fun clear() {

@@ -44,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -68,8 +69,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import pl.synchrofazotron.R
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import pl.synchrofazotron.core.PanelSession
+import pl.synchrofazotron.core.prefs.DeviceStore
 import pl.synchrofazotron.core.update.AppUpdater
 import pl.synchrofazotron.ui.components.SegTabs
 import pl.synchrofazotron.core.net.AudioState
@@ -112,6 +117,7 @@ fun SettingsScreen(session: PanelSession, onOpenStudio: () -> Unit, onChangeDevi
             ) {
                 when (page) {
                     0 -> {
+                        AppearanceCard()
                         VolumeCard(session)
                         AudioCard(session)
                     }
@@ -136,7 +142,7 @@ fun SettingsScreen(session: PanelSession, onOpenStudio: () -> Unit, onChangeDevi
 
 @Composable
 private fun SectionCard(icon: ImageVector, title: String, content: @Composable () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -485,6 +491,56 @@ private fun OutputButton(label: String, selected: Boolean, busy: Boolean, onClic
         Button(onClick = onClick, enabled = !busy) { Text(label) }
     } else {
         OutlinedButton(onClick = onClick, enabled = !busy) { Text(label) }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AppearanceCard() {
+    val context = LocalContext.current
+    val store = remember { DeviceStore(context) }
+    val scope = rememberCoroutineScope()
+    val theme by store.theme.collectAsStateWithLifecycle(initialValue = "system")
+
+    val themes = listOf(
+        "system" to stringResource(R.string.theme_system),
+        "mono-light" to stringResource(R.string.theme_mono_light),
+        "mono-dark" to stringResource(R.string.theme_mono_dark),
+        "neon" to stringResource(R.string.theme_neon),
+    )
+    val langs = listOf(
+        "system" to stringResource(R.string.lang_system),
+        "pl" to stringResource(R.string.lang_pl),
+        "en" to stringResource(R.string.lang_en),
+    )
+    var lang by remember {
+        mutableStateOf(AppCompatDelegate.getApplicationLocales().toLanguageTags().ifBlank { "system" }.take(2))
+    }
+
+    SectionCard(Icons.Filled.Palette, stringResource(R.string.appearance_head)) {
+        Text(stringResource(R.string.theme_label), style = MaterialTheme.typography.labelLarge)
+        FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            themes.forEach { (id, label) ->
+                FilterChip(selected = theme == id, onClick = { scope.launch { store.setTheme(id) } },
+                    label = { Text(label) })
+            }
+        }
+        Text(stringResource(R.string.language_label), style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(top = 12.dp))
+        FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            langs.forEach { (tag, label) ->
+                FilterChip(
+                    selected = lang == tag,
+                    onClick = {
+                        lang = tag
+                        AppCompatDelegate.setApplicationLocales(
+                            LocaleListCompat.forLanguageTags(if (tag == "system") "" else tag),
+                        )
+                    },
+                    label = { Text(label) },
+                )
+            }
+        }
     }
 }
 

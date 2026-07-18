@@ -29,8 +29,18 @@ import pl.synchrofazotron.ui.connect.ConnectScreen
 import pl.synchrofazotron.ui.panel.PanelScreen
 import pl.synchrofazotron.ui.settings.SettingsScreen
 import pl.synchrofazotron.ui.studio.StudioScreen
+import pl.synchrofazotron.ui.theme.SynchrofazotronTheme
 
 private const val LOADING = " loading"
+
+/** Root: applies the user's theme preference, then hosts the app. */
+@Composable
+fun AppRoot() {
+    val context = LocalContext.current
+    val store = remember { DeviceStore(context) }
+    val theme by store.theme.collectAsStateWithLifecycle(initialValue = "system")
+    SynchrofazotronTheme(pref = theme) { App() }
+}
 
 @Composable
 fun App() {
