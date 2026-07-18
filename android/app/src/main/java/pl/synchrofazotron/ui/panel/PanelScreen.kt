@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -86,8 +87,11 @@ private fun NowTab(session: PanelSession) {
     val p = primarySource(status)
     val playing = p?.playing == true
 
-    val artUrl = if (p?.id == "lms" && playing && status?.lmsPlayerId?.isNotBlank() == true) {
-        val inner = "/music/current/cover.jpg?player=${status!!.lmsPlayerId}&_t=${p.detail}"
+    // Cover shows whenever LMS has a current track — playing OR paused/idle,
+    // not only while playing (otherwise the square reads as an empty void).
+    val hasTrack = p?.id == "lms" && p.detail.isNotBlank() && status?.lmsPlayerId?.isNotBlank() == true
+    val artUrl = if (hasTrack) {
+        val inner = "/music/current/cover.jpg?player=${status!!.lmsPlayerId}&_t=${p!!.detail}"
         "${session.baseUrl}/api/lms/art?path=" + URLEncoder.encode(inner, "UTF-8")
     } else null
 
@@ -110,9 +114,11 @@ private fun NowTab(session: PanelSession) {
             modifier = Modifier
                 .fillMaxWidth(0.62f)
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(22.dp)),
+                .clip(RoundedCornerShape(22.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
+            // Placeholder underneath: animated EQ while playing, calm bars otherwise.
             Eq(on = playing, modifier = Modifier.fillMaxWidth(0.35f))
             if (artUrl != null) {
                 AsyncImage(
