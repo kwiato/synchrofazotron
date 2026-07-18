@@ -94,6 +94,20 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
     }
     val open = progress.value > 0.5f
 
+    // Same drag-to-follow gesture, reused on both the bottom handle and the
+    // expanded sheet body, so you can drag the sheet itself down to collapse it.
+    val dragHandle = Modifier.pointerInput(Unit) {
+        detectVerticalDragGestures(
+            onDragStart = { netDrag = 0f },
+            onDragEnd = { settle() },
+            onDragCancel = { settle() },
+        ) { change, dy ->
+            change.consume()
+            netDrag += dy
+            scope.launch { progress.snapTo((progress.value - dy / dragSpan()).coerceIn(0f, 1f)) }
+        }
+    }
+
     Surface(
         color = MaterialTheme.colorScheme.inverseSurface,
         contentColor = MaterialTheme.colorScheme.inverseOnSurface,
@@ -107,7 +121,8 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(with(density) { (contentH * progress.value).toDp() })
-                    .clipToBounds(),
+                    .clipToBounds()
+                    .then(dragHandle),
             ) {
                 Box(
                     modifier = Modifier
@@ -121,17 +136,7 @@ fun PlayerBar(session: PanelSession, onHome: () -> Unit, modifier: Modifier = Mo
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onDragStart = { netDrag = 0f },
-                            onDragEnd = { settle() },
-                            onDragCancel = { settle() },
-                        ) { change, dy ->
-                            change.consume()
-                            netDrag += dy
-                            scope.launch { progress.snapTo((progress.value - dy / dragSpan()).coerceIn(0f, 1f)) }
-                        }
-                    }
+                    .then(dragHandle)
                     .padding(horizontal = Spacing.xs, vertical = Spacing.xs2),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.xs3),
