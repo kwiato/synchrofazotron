@@ -241,7 +241,7 @@ private fun SourcesSheet(status: StatusResponse?, volumes: Map<String, Int>, ses
             }
             if (p != null) {
                 DacOwnerBox(state = p.state) {
-                    SheetRow(p) { if (p.controllable && p.id.isNotBlank()) session.control(p.id, "toggle") }
+                    SheetRow(p, emphasized = true) { if (p.controllable && p.id.isNotBlank()) session.control(p.id, "toggle") }
                     if (volumes.containsKey(p.id)) {
                         VolumeRow(sourceId = p.id, value = volumes[p.id] ?: 0, session = session)
                     }
@@ -302,18 +302,29 @@ private fun VolumeRow(sourceId: String, value: Int, session: PanelSession) {
 }
 
 @Composable
-private fun SheetRow(source: Source, onToggle: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun SheetRow(source: Source, emphasized: Boolean = false, onToggle: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = Spacing.xs3), verticalAlignment = Alignment.CenterVertically) {
         Eq(on = source.playing)
-        Column(Modifier.weight(1f).padding(start = 8.dp)) {
+        Column(Modifier.weight(1f).padding(start = Spacing.xs2)) {
             Text("${source.name} — ${source.state}", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (source.detail.isNotBlank()) {
                 Text(source.detail, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         if (source.controllable && source.id.isNotBlank()) {
-            IconButton(onClick = onToggle) {
-                Icon(if (source.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, contentDescription = null)
+            val icon = if (source.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow
+            if (emphasized) {
+                // The followed source gets a solid white square button, like the web app.
+                FilledIconButton(
+                    onClick = onToggle,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.inverseOnSurface,
+                        contentColor = MaterialTheme.colorScheme.inverseSurface,
+                    ),
+                ) { Icon(icon, contentDescription = null) }
+            } else {
+                IconButton(onClick = onToggle) { Icon(icon, contentDescription = null) }
             }
         }
     }

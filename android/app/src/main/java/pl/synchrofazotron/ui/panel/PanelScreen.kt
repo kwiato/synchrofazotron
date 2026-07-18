@@ -17,8 +17,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -119,8 +122,18 @@ private fun NowTab(session: PanelSession) {
                 .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(22.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            // Placeholder underneath: animated EQ while playing, calm bars otherwise.
-            Eq(on = playing, modifier = Modifier.fillMaxWidth(0.35f))
+            // Placeholder underneath: animated EQ while playing, a calm music
+            // note when idle. Real art (when present) paints over it.
+            if (playing) {
+                Eq(on = true, modifier = Modifier.fillMaxWidth(0.28f))
+            } else {
+                Icon(
+                    Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.fillMaxWidth(0.3f).aspectRatio(1f),
+                )
+            }
             if (artUrl != null) {
                 AsyncImage(
                     model = artUrl,

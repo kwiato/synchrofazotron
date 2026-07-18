@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,7 +66,9 @@ fun App() {
             }
 
             // Persistent shell: header + a single view slot + bottom player bar.
-            var screen by remember { mutableStateOf("panel") } // panel | settings | studio
+            // Saveable so a locale change (which recreates the activity) keeps you
+            // on the same screen instead of bouncing back to the panel.
+            var screen by rememberSaveable { mutableStateOf("panel") } // panel | settings | studio
 
             val notice by session.notice.collectAsStateWithLifecycle()
             Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { pad ->
