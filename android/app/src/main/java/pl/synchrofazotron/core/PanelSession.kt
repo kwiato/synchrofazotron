@@ -145,6 +145,12 @@ class PanelSession(
     suspend fun lmsFavPlay(id: String, url: String, title: String) = io { client.lmsFavPlay(id, url, title) }
     suspend fun lmsFavAdd(url: String, title: String, icon: String) = io { client.lmsFavAdd(url, title, icon) }
     suspend fun lmsFavRemove(id: String) = io { client.lmsFavRemove(id) }
+    suspend fun tidal() = io { client.tidal() }
+    suspend fun tidalInstall() = io { client.tidalInstall() }
+    suspend fun tidalAuthStart() = io { client.tidalAuthStart() }
+    suspend fun tidalAuthStatus(code: String) = io { client.tidalAuthStatus(code) }
+    suspend fun tidalShow(show: Boolean) = io { client.tidalShow(show) }
+    suspend fun tidalForget(id: String) = io { client.tidalForget(id) }
 
     private suspend fun <T> io(block: suspend () -> T): T? =
         withContext(Dispatchers.IO) { runCatching { block() }.getOrNull() }

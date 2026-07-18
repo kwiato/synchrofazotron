@@ -222,6 +222,28 @@ class PanelClient(private val baseUrl: String) {
             setBody(IdRequest(id))
         }.body()
 
+    // --- TIDAL -----------------------------------------------------------
+    suspend fun tidal(): TidalState = http.get("$baseUrl/api/tidal").body()
+
+    suspend fun tidalInstall(): OkResp = http.post("$baseUrl/api/tidal/install").body()
+
+    suspend fun tidalAuthStart(): TidalAuthStart = http.post("$baseUrl/api/tidal/auth/start").body()
+
+    suspend fun tidalAuthStatus(code: String): TidalAuthStatus =
+        http.get("$baseUrl/api/tidal/auth/status") { parameter("code", code) }.body()
+
+    suspend fun tidalShow(show: Boolean): OkResp =
+        http.post("$baseUrl/api/tidal/show") {
+            contentType(ContentType.Application.Json)
+            setBody(ShowRequest(show))
+        }.body()
+
+    suspend fun tidalForget(id: String): OkResp =
+        http.post("$baseUrl/api/tidal/forget") {
+            contentType(ContentType.Application.Json)
+            setBody(IdRequest(id))
+        }.body()
+
     fun close() = http.close()
 }
 

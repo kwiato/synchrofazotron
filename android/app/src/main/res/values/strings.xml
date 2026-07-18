@@ -118,6 +118,20 @@
     <string name="viz_scale">Skala</string>
     <string name="viz_studio">Studio shaderów</string>
 
+    <!-- TIDAL -->
+    <string name="tidal_head">TIDAL</string>
+    <string name="tidal_install">Zainstaluj wtyczkę TIDAL</string>
+    <string name="tidal_installing">Instaluję… (może potrwać kilka minut)</string>
+    <string name="tidal_install_error">Instalacja nie wyszła.</string>
+    <string name="tidal_connect">Połącz konto</string>
+    <string name="tidal_connecting">Łączę…</string>
+    <string name="tidal_code">Kod: %1$s</string>
+    <string name="tidal_open_link">Otwórz link logowania</string>
+    <string name="tidal_await">Zaloguj się w przeglądarce, potem wróć — czekam…</string>
+    <string name="tidal_forget">Zapomnij</string>
+    <string name="tidal_no_accounts">Brak połączonych kont.</string>
+    <string name="tidal_show">Pokazuj TIDAL</string>
+
     <!-- Radio -->
     <string name="radio_title">Radio</string>
     <string name="radio_browse">Przeglądaj</string>

@@ -210,3 +210,26 @@ data class FavAddRequest(val url: String, val title: String = "", val icon: Stri
 
 @Serializable
 data class IdRequest(val id: String)
+
+// --- TIDAL ---------------------------------------------------------------
+@Serializable
+data class TidalState(
+    val available: Boolean = false,
+    @SerialName("plugin_state") val pluginState: String = "",
+    val show: Boolean = false,
+    val accounts: List<TidalAccount> = emptyList(),
+    val installing: Boolean = false,
+    @SerialName("install_error") val installError: String = "",
+)
+
+@Serializable
+data class TidalAccount(val id: String = "", val name: String = "")
+
+@Serializable
+data class TidalAuthStart(val ok: Boolean = false, val link: String = "", val code: String = "")
+
+@Serializable
+data class TidalAuthStatus(val done: Boolean = false, val accounts: List<TidalAccount> = emptyList())
+
+@Serializable
+data class ShowRequest(val show: Boolean)

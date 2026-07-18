@@ -1,5 +1,8 @@
 package pl.synchrofazotron.ui.settings
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -17,6 +20,7 @@ import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.RestartAlt
@@ -58,6 +62,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import pl.synchrofazotron.R
 import pl.synchrofazotron.core.PanelSession
@@ -66,6 +71,7 @@ import pl.synchrofazotron.core.net.AudioState
 import pl.synchrofazotron.core.net.BtDevice
 import pl.synchrofazotron.core.net.BtInfo
 import pl.synchrofazotron.core.net.TailscaleState
+import pl.synchrofazotron.core.net.TidalState
 import pl.synchrofazotron.core.net.VizState
 import pl.synchrofazotron.core.net.WifiInfo
 import pl.synchrofazotron.core.net.WifiNetwork
@@ -95,6 +101,7 @@ fun SettingsScreen(session: PanelSession, onBack: () -> Unit, onOpenStudio: () -
         ) {
             WifiCard(session)
             BluetoothCard(session)
+            TidalCard(session)
             AudioCard(session)
             VizCard(session, onOpenStudio)
             DeviceCard(session)
@@ -298,6 +305,119 @@ private fun BtRow(
         } else {
             TextButton(onClick = onForget) { Text(stringResource(R.string.bt_forget)) }
             Button(onClick = onConnect) { Text(stringResource(R.string.bt_connect)) }
+        }
+    }
+}
+
+private fun openUrl(context: Context, url: String) {
+    runCatching {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }
+}
+
+@Composable
+private fun TidalCard(session: PanelSession) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var tidal by remember { mutableStateOf<TidalState?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var authCode by remember { mutableStateOf<String?>(null) }
+    var authLink by remember { mutableStateOf<String?>(null) }
+    var awaiting by remember { mutableStateOf(false) }
+
+    suspend fun reload() { tidal = session.tidal() }
+    LaunchedEffect(session) { reload() }
+
+    SectionCard(Icons.Filled.LibraryMusic, stringResource(R.string.tidal_head)) {
+        val t = tidal
+        if (t == null) {
+            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+            return@SectionCard
+        }
+        val enabled = t.pluginState == "enabled" || t.available
+
+        if (!enabled) {
+            if (t.installing) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp).padding(end = 8.dp))
+                    Text(stringResource(R.string.tidal_installing))
+                }
+                LaunchedEffect(Unit) {
+                    while (true) { delay(4_000); reload(); if (tidal?.pluginState == "enabled") break }
+                }
+            } else {
+                Button(
+                    enabled = !busy,
+                    onClick = { scope.launch { busy = true; session.tidalInstall(); reload(); busy = false } },
+                ) { Text(stringResource(R.string.tidal_install)) }
+            }
+            if (t.installError.isNotBlank()) {
+                Text(stringResource(R.string.tidal_install_error),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp))
+            }
+            return@SectionCard
+        }
+
+        if (t.accounts.isEmpty()) {
+            Text(stringResource(R.string.tidal_no_accounts),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            t.accounts.forEach { a ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(a.name.ifBlank { a.id }, Modifier.weight(1f))
+                    TextButton(onClick = { scope.launch { session.tidalForget(a.id); reload() } }) {
+                        Text(stringResource(R.string.tidal_forget))
+                    }
+                }
+            }
+        }
+
+        if (authCode != null) {
+            Text(stringResource(R.string.tidal_code, authCode!!),
+                style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+            OutlinedButton(onClick = { authLink?.let { openUrl(context, it) } }, modifier = Modifier.padding(top = 4.dp)) {
+                Text(stringResource(R.string.tidal_open_link))
+            }
+            if (awaiting) {
+                Text(stringResource(R.string.tidal_await),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp))
+            }
+        } else {
+            Button(
+                enabled = !busy,
+                modifier = Modifier.padding(top = 8.dp),
+                onClick = {
+                    scope.launch {
+                        busy = true
+                        val start = session.tidalAuthStart()
+                        busy = false
+                        if (start != null && start.ok && start.code.isNotBlank()) {
+                            authCode = start.code
+                            authLink = start.link
+                            if (start.link.isNotBlank()) openUrl(context, start.link)
+                            awaiting = true
+                            val code = start.code
+                            repeat(100) {
+                                delay(3_000)
+                                if (session.tidalAuthStatus(code)?.done == true) {
+                                    awaiting = false; authCode = null; authLink = null; reload()
+                                    return@launch
+                                }
+                            }
+                            awaiting = false
+                        }
+                    }
+                },
+            ) { Text(stringResource(R.string.tidal_connect)) }
+        }
+
+        Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.tidal_show), Modifier.weight(1f))
+            Switch(checked = t.show, onCheckedChange = { on -> scope.launch { session.tidalShow(on); reload() } })
         }
     }
 }
