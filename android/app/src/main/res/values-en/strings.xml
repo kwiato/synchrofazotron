@@ -34,8 +34,13 @@
     <string name="back">Back</string>
     <string name="refresh">Refresh</string>
 
+    <!-- Setup mode (device broadcasting its fallback AP) -->
+    <string name="setup_title">Device setup</string>
+    <string name="setup_body">Your phone is on the Synchrofazotron setup network. Pick the Wi-Fi network the device should join — once saved it switches over and returns to normal operation.</string>
+    <string name="setup_dismiss">Close</string>
+
     <!-- Wi-Fi -->
-    <string name="wifi_head">📡 Wi-Fi</string>
+    <string name="wifi_head">Wi-Fi</string>
     <string name="wifi_current">Connected: %1$s</string>
     <string name="wifi_not_connected">Not connected to Wi-Fi</string>
     <string name="wifi_saved">Saved networks</string>
@@ -44,14 +49,14 @@
     <string name="wifi_ssid">Network name (SSID)</string>
     <string name="wifi_key">Password (empty = open)</string>
     <string name="wifi_save">Save network</string>
-    <string name="wifi_scan">🔍 Scan for networks</string>
+    <string name="wifi_scan">Scan for networks</string>
     <string name="wifi_scanning">Scanning…</string>
     <string name="wifi_remove">Remove</string>
     <string name="wifi_no_saved">No saved networks.</string>
 
     <!-- Bluetooth -->
-    <string name="bt_head">📶 Bluetooth</string>
-    <string name="bt_pair">🔵 Enable pairing</string>
+    <string name="bt_head">Bluetooth</string>
+    <string name="bt_pair">Enable pairing</string>
     <string name="bt_pairing_active">Pairing active — look for the device (%1$d s)</string>
     <string name="bt_none">Nothing paired yet — use “Enable pairing”.</string>
     <string name="bt_connect">Connect</string>

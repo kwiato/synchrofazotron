@@ -11,6 +11,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -77,17 +79,26 @@ fun SettingsScreen(session: PanelSession, onBack: () -> Unit) {
 }
 
 @Composable
-private fun SectionCard(title: String, content: @Composable () -> Unit) {
+private fun SectionCard(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    content: @Composable () -> Unit,
+) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (icon != null) {
+                    Icon(icon, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                }
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
             Column(Modifier.padding(top = 12.dp)) { content() }
         }
     }
 }
 
 @Composable
-private fun WifiCard(session: PanelSession) {
+internal fun WifiCard(session: PanelSession) {
     val scope = rememberCoroutineScope()
     var info by remember { mutableStateOf<WifiInfo?>(null) }
     var ssid by remember { mutableStateOf("") }
@@ -99,7 +110,7 @@ private fun WifiCard(session: PanelSession) {
     suspend fun reload() { info = session.fetchWifi() }
     LaunchedEffect(session) { reload() }
 
-    SectionCard(stringResource(R.string.wifi_head)) {
+    SectionCard(stringResource(R.string.wifi_head), icon = Icons.Filled.Wifi) {
         val cur = info?.current
         Text(
             text = if (cur != null && cur.ssid.isNotBlank())
@@ -193,7 +204,7 @@ private fun BluetoothCard(session: PanelSession) {
     suspend fun reload() { bt = session.fetchBt() }
     LaunchedEffect(session) { reload() }
 
-    SectionCard(stringResource(R.string.bt_head)) {
+    SectionCard(stringResource(R.string.bt_head), icon = Icons.Filled.Bluetooth) {
         val secs = status?.pairSecondsLeft ?: 0
         Button(
             onClick = { scope.launch { session.pair() } },
