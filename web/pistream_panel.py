@@ -1198,6 +1198,20 @@ def _tailscale_set(up):
 # neighborhood right before raising the AP and we serve that snapshot instead.
 AP_MARKER = "/run/pistream-ap.active"
 AP_SCAN_CACHE = "/run/pistream-ap-scan.json"
+AP_IP = "192.168.4.1"
+
+# Connectivity-probe paths the OSes hit right after joining a network. In AP
+# mode every DNS name resolves to us and port 80 is iptables-redirected here,
+# so these arrive at the panel; answering with a redirect (instead of the
+# expected 204/"Success") makes the phone pop its "sign in to this network"
+# sheet — the hotel-Wi-Fi flow — pointed at the settings page.
+CAPTIVE_PROBES = {
+    "/generate_204", "/gen_204",                   # Android
+    "/hotspot-detect.html",                        # iOS / macOS
+    "/library/test/success.html",                  # older Apple
+    "/connecttest.txt", "/ncsi.txt", "/redirect",  # Windows
+    "/success.txt", "/canonical.html",             # NetworkManager / Firefox
+}
 
 
 def _wifi_scan_networks():
@@ -3326,6 +3340,9 @@ class Handler(BaseHTTPRequestHandler):
                        no_cache=True)
         elif self.path == "/healthz":
             self._send(200, "ok", "text/plain")
+        elif (self.path.split("?", 1)[0] in CAPTIVE_PROBES
+              and os.path.exists(AP_MARKER)):
+            self._redirect(f"http://{AP_IP}/#/settings")
         else:
             self._send(404, "not found", "text/plain")
 

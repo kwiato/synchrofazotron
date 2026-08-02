@@ -14,7 +14,7 @@ set -euo pipefail
 REPO="${PISTREAM_REPO:-kwiato/synchrofazotron}"
 BRANCH="${PISTREAM_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/$REPO/$BRANCH/ap-fallback"
-FILES=(net-watch.sh hostapd.conf dnsmasq.conf pistream-net-watch.service)
+FILES=(net-watch.sh setup-screen.sh hostapd.conf dnsmasq.conf pistream-net-watch.service)
 DEST=/opt/pistream-ap
 
 SRC_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo .)"
@@ -27,10 +27,15 @@ if [[ "$(basename -- "$0")" != "install.sh" || ! -f "$SRC_DIR/net-watch.sh" ]]; 
   done
 fi
 
-echo "==> Installing hostapd + dnsmasq"
+echo "==> Installing hostapd + dnsmasq + qrencode"
 for pkg in hostapd dnsmasq; do
   dpkg -s "$pkg" >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"
 done
+# qrencode draws the join-this-network QR on the HDMI setup screen; the screen
+# degrades to text-only without it, so a failed install is not fatal.
+dpkg -s qrencode >/dev/null 2>&1 \
+  || DEBIAN_FRONTEND=noninteractive apt-get install -y qrencode \
+  || echo "    qrencode install failed — setup screen will be text-only"
 # The Debian packages ship global services (dnsmasq even auto-starts as a
 # system-wide DNS). We run the binaries ourselves — keep the services off.
 systemctl disable --now dnsmasq 2>/dev/null || true
@@ -39,6 +44,7 @@ systemctl disable --now hostapd 2>/dev/null || true
 echo "==> Installing net-watch to $DEST"
 install -d "$DEST"
 install -m 0755 "$SRC_DIR/net-watch.sh" "$DEST/net-watch.sh"
+install -m 0755 "$SRC_DIR/setup-screen.sh" "$DEST/setup-screen.sh"
 # keep a locally edited hostapd.conf (custom SSID/password) on update
 if [[ -f "$DEST/hostapd.conf" ]] && ! cmp -s "$SRC_DIR/hostapd.conf" "$DEST/hostapd.conf"; then
   echo "    keeping existing (edited) hostapd.conf — new default saved as hostapd.conf.new"

@@ -60,6 +60,9 @@ ap_up() {
     iptables -t nat -A PREROUTING -i "$IFACE" -p tcp --dport 80 \
         -j REDIRECT --to-port "$PANEL_PORT" 2>/dev/null || true
     touch "$MARKER"
+    # HDMI screen: instructions + Wi-Fi QR. hdmi-watch keeps the visualizer
+    # off while the marker exists, so the screen stays up.
+    "$DIR/setup-screen.sh" show 2>/dev/null || true
     echo "Setup AP up: connect to it and open http://$AP_IP (portal should pop up on its own)"
 }
 
@@ -67,6 +70,7 @@ ap_down() {
     [[ -e $MARKER ]] || return 0
     echo "Tearing the setup AP down — back to normal Wi-Fi"
     rm -f "$MARKER"
+    "$DIR/setup-screen.sh" clear 2>/dev/null || true
     iptables -t nat -D PREROUTING -i "$IFACE" -p tcp --dport 80 \
         -j REDIRECT --to-port "$PANEL_PORT" 2>/dev/null || true
     [[ -f $DNSMASQ_PID ]] && kill "$(cat "$DNSMASQ_PID")" 2>/dev/null
