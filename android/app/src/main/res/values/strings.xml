@@ -12,6 +12,12 @@
     <string name="connect_button">Połącz</string>
     <string name="connect_checking">Sprawdzam…</string>
     <string name="connect_unreachable">Nie udało się połączyć z urządzeniem.</string>
+    <string name="connect_saved">Zapamiętane urządzenia</string>
+    <string name="connect_remove">Usuń z listy</string>
+    <string name="connect_searching">Szukam urządzeń w sieci…</string>
+    <string name="connect_none">Na razie nic nie znaleziono. Upewnij się, że telefon jest w tym samym Wi-Fi co urządzenie.</string>
+    <string name="connect_manual">albo podaj adres</string>
+    <string name="connect_cancel">Anuluj</string>
 
     <!-- Now playing -->
     <string name="now_title">Teraz gra</string>

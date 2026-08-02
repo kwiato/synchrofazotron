@@ -9,6 +9,12 @@
     <string name="connect_button">Connect</string>
     <string name="connect_checking">Checking…</string>
     <string name="connect_unreachable">Could not reach the device.</string>
+    <string name="connect_saved">Saved devices</string>
+    <string name="connect_remove">Remove from the list</string>
+    <string name="connect_searching">Looking for devices on the network…</string>
+    <string name="connect_none">None found yet. Make sure the phone is on the same Wi-Fi as the device.</string>
+    <string name="connect_manual">or enter an address</string>
+    <string name="connect_cancel">Cancel</string>
 
     <!-- Now playing -->
     <string name="now_title">Now playing</string>

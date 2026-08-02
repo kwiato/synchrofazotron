@@ -43,6 +43,11 @@ class PanelClient(private val baseUrl: String) {
         http.get("$baseUrl/healthz").bodyAsText().trim() == "ok"
     }.getOrDefault(false)
 
+    /** The device's display name (from /api/i18n), or null when unreachable. */
+    suspend fun deviceName(): String? = runCatching {
+        http.get("$baseUrl/api/i18n").body<I18nInfo>().device.ifBlank { null }
+    }.getOrNull()
+
     /** GET /api/status — the main poll. */
     suspend fun status(): StatusResponse = http.get("$baseUrl/api/status").body()
 

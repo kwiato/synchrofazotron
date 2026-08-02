@@ -65,10 +65,23 @@ fun App() {
         return
     }
 
+    // "Change device" opens the picker over the current device instead of
+    // clearing it, so cancel can drop right back — mirrors the SPA's
+    // switchDevice/prevBase flow.
+    var picking by remember { mutableStateOf(false) }
+
     when (val url = baseUrl) {
         LOADING -> Unit // brief blank frame while DataStore loads
-        null -> ConnectScreen(onConnected = { scope.launch { store.setBaseUrl(it) } })
+        null -> ConnectScreen(store = store, onConnected = { scope.launch { store.setBaseUrl(it) } })
         else -> {
+            if (picking) {
+                ConnectScreen(
+                    store = store,
+                    onConnected = { scope.launch { store.setBaseUrl(it) }; picking = false },
+                    onCancel = { picking = false },
+                )
+                return
+            }
             val session = remember(url) { PanelSession(url) }
             DisposableEffect(session) { onDispose { session.close() } }
 
@@ -84,7 +97,7 @@ fun App() {
                 composable("now") {
                     NowScreen(
                         session = session,
-                        onChangeDevice = { scope.launch { store.clear() } },
+                        onChangeDevice = { picking = true },
                         onOpenSettings = { nav.navigate("settings") },
                     )
                 }
