@@ -9,10 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import android.os.SystemClock
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -71,6 +75,7 @@ fun SettingsScreen(session: PanelSession, onBack: () -> Unit) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            DeviceCard(session)
             WifiCard(session)
             BluetoothCard(session)
             Column(Modifier.padding(bottom = 24.dp)) {}
@@ -94,6 +99,116 @@ private fun SectionCard(
             }
             Column(Modifier.padding(top = 12.dp)) { content() }
         }
+    }
+}
+
+// Device: broadcast name with a pencil that opens the rename dialog, plus a
+// ping button — the simplest possible "is it alive" probe (health + latency).
+@Composable
+private fun DeviceCard(session: PanelSession) {
+    val scope = rememberCoroutineScope()
+    val status by session.status.collectAsStateWithLifecycle()
+    var renaming by remember { mutableStateOf(false) }
+    var renameMsg by remember { mutableStateOf<String?>(null) }
+    var pinging by remember { mutableStateOf(false) }
+    var ping by remember { mutableStateOf<Pair<Boolean, Long>?>(null) }
+
+    SectionCard(stringResource(R.string.device_head), icon = Icons.Filled.Speaker) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = status?.deviceName.orEmpty().ifBlank { "…" },
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = { renaming = true }) {
+                Icon(Icons.Filled.Edit, stringResource(R.string.name_edit))
+            }
+        }
+        OutlinedButton(
+            enabled = !pinging,
+            onClick = {
+                scope.launch {
+                    pinging = true
+                    val t0 = SystemClock.elapsedRealtime()
+                    val ok = session.ping() == true
+                    ping = ok to (SystemClock.elapsedRealtime() - t0)
+                    pinging = false
+                }
+            },
+            modifier = Modifier.padding(top = 8.dp),
+        ) {
+            if (pinging) {
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.padding(end = 8.dp).size(16.dp),
+                )
+            }
+            Text(stringResource(R.string.ping))
+        }
+        ping?.let { (ok, ms) ->
+            Text(
+                text = if (ok) stringResource(R.string.ping_ok, ms)
+                       else stringResource(R.string.ping_fail),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (ok) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        renameMsg?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+    }
+
+    if (renaming) {
+        var newName by remember { mutableStateOf(status?.deviceName.orEmpty()) }
+        var busy by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { if (!busy) renaming = false },
+            title = { Text(stringResource(R.string.name_edit)) },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.name_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it.take(32) },
+                        singleLine = true,
+                        enabled = !busy,
+                        label = { Text(stringResource(R.string.name_label)) },
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !busy && newName.isNotBlank(),
+                    onClick = {
+                        scope.launch {
+                            busy = true
+                            val res = session.rename(newName.trim())
+                            renameMsg = res?.message
+                            busy = false
+                            renaming = false
+                        }
+                    },
+                ) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = {
+                TextButton(enabled = !busy, onClick = { renaming = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 

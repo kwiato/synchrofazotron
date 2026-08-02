@@ -70,6 +70,13 @@ class PanelClient(private val baseUrl: String) {
         }
     }
 
+    /** POST /api/name — rename the device (hostname may follow, see panel). */
+    suspend fun setName(name: String): OkMessage =
+        http.post("$baseUrl/api/name") {
+            contentType(ContentType.Application.Json)
+            setBody(NameRequest(name))
+        }.body()
+
     // --- Wi-Fi -----------------------------------------------------------
     suspend fun wifi(): WifiInfo = http.get("$baseUrl/api/wifi").body()
 

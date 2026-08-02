@@ -104,6 +104,9 @@ class PanelSession(
     }
 
     // On-demand data (not part of the fast poll) — one shared client, IO-bound.
+    /** Simplest liveness check; true = the panel answered. */
+    suspend fun ping() = io { client.health() }
+    suspend fun rename(name: String) = io { client.setName(name) }
     suspend fun fetchWifi() = io { client.wifi() }
     suspend fun scanWifi() = io { client.wifiScan() }
     suspend fun addWifi(ssid: String, key: String) = io { client.wifiAdd(ssid, key) }

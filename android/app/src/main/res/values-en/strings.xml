@@ -39,6 +39,17 @@
     <string name="settings_title">Settings</string>
     <string name="back">Back</string>
     <string name="refresh">Refresh</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Device card -->
+    <string name="device_head">Device</string>
+    <string name="name_edit">Rename</string>
+    <string name="name_label">Device name</string>
+    <string name="name_note">The name seen while pairing Bluetooth and used for AirPlay / LMS. The hostname follows a simplified version (spaces become dashes).</string>
+    <string name="ping">Ping</string>
+    <string name="ping_ok">Device responds — %1$d ms</string>
+    <string name="ping_fail">No response from the device.</string>
 
     <!-- Setup mode (device broadcasting its fallback AP) -->
     <string name="setup_title">Device setup</string>

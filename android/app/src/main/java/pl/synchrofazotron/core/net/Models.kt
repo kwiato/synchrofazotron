@@ -81,6 +81,9 @@ data class WifiNetwork(val ssid: String = "", val signal: Int = 0)
 data class WifiAddRequest(val ssid: String, val key: String)
 
 @Serializable
+data class NameRequest(val name: String)
+
+@Serializable
 data class SlotRequest(val slot: Int)
 
 // --- Bluetooth -----------------------------------------------------------
