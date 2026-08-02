@@ -16,11 +16,13 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import android.os.SystemClock
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Link
@@ -171,7 +173,7 @@ private fun CardNote(text: String) {
 }
 
 @Composable
-private fun WifiCard(session: PanelSession) {
+internal fun WifiCard(session: PanelSession) {
     val scope = rememberCoroutineScope()
     var info by remember { mutableStateOf<WifiInfo?>(null) }
     var ssid by remember { mutableStateOf("") }
@@ -622,38 +624,106 @@ private fun AboutCard(session: PanelSession) {
     }
 }
 
+// Device: broadcast name with a pencil opening the rename dialog, then ping
+// (simplest liveness probe, /healthz + latency) next to reboot.
 @Composable
 private fun DeviceCard(session: PanelSession, onChangeDevice: () -> Unit) {
     val scope = rememberCoroutineScope()
     val status by session.status.collectAsStateWithLifecycle()
-    var name by remember { mutableStateOf("") }
-    var prefilled by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
     var confirmReboot by remember { mutableStateOf(false) }
-    LaunchedEffect(status?.deviceName) {
-        val dn = status?.deviceName.orEmpty()
-        if (!prefilled && dn.isNotBlank()) { name = dn; prefilled = true }
-    }
+    var pinging by remember { mutableStateOf(false) }
+    var ping by remember { mutableStateOf<Pair<Boolean, Long>?>(null) }
 
     SectionCard(Icons.Filled.Tune, stringResource(R.string.device_head)) {
         CardNote(stringResource(R.string.note_device))
-        OutlinedTextField(
-            value = name, onValueChange = { name = it }, singleLine = true,
-            label = { Text(stringResource(R.string.device_name_label)) },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = status?.deviceName.orEmpty().ifBlank { "…" },
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = { renaming = true }) {
+                Icon(Icons.Filled.Edit, stringResource(R.string.device_rename))
+            }
+        }
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                enabled = name.isNotBlank(),
-                onClick = { scope.launch { session.setName(name.trim()) } },
-            ) { Text(stringResource(R.string.device_rename)) }
+            OutlinedButton(
+                enabled = !pinging,
+                onClick = {
+                    scope.launch {
+                        pinging = true
+                        val t0 = SystemClock.elapsedRealtime()
+                        val ok = session.ping() == true
+                        ping = ok to (SystemClock.elapsedRealtime() - t0)
+                        pinging = false
+                    }
+                },
+            ) {
+                if (pinging) {
+                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.padding(end = 8.dp).size(16.dp))
+                }
+                Text(stringResource(R.string.ping))
+            }
             OutlinedButton(onClick = { confirmReboot = true }) {
                 Icon(Icons.Filled.RestartAlt, null, Modifier.padding(end = 8.dp).size(18.dp))
                 Text(stringResource(R.string.device_reboot))
             }
         }
+        ping?.let { (ok, ms) ->
+            Text(
+                text = if (ok) stringResource(R.string.ping_ok, ms)
+                       else stringResource(R.string.ping_fail),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (ok) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
         TextButton(onClick = onChangeDevice, modifier = Modifier.padding(top = 4.dp)) {
             Text(stringResource(R.string.now_change_device))
         }
+    }
+
+    if (renaming) {
+        var newName by remember { mutableStateOf(status?.deviceName.orEmpty()) }
+        var busy by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { if (!busy) renaming = false },
+            title = { Text(stringResource(R.string.device_rename)) },
+            text = {
+                Column {
+                    CardNote(stringResource(R.string.note_device))
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it.take(32) },
+                        singleLine = true,
+                        enabled = !busy,
+                        label = { Text(stringResource(R.string.device_name_label)) },
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !busy && newName.isNotBlank(),
+                    onClick = {
+                        scope.launch {
+                            busy = true
+                            session.setName(newName.trim())   // result lands in the Droplet
+                            busy = false
+                            renaming = false
+                        }
+                    },
+                ) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = {
+                TextButton(enabled = !busy, onClick = { renaming = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 
     if (confirmReboot) {

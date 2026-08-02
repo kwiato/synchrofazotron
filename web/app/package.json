@@ -6,9 +6,10 @@
   "description": "Preact control panel for the Synchrofazotron audio player. Built on the laptop; the Pi only serves the static bundle.",
   "scripts": {
     "dev": "vite",
+    "gen:i18n": "node scripts/gen-i18n-fallback.mjs",
     "build:css": "sass ../ui/style.scss ../ui/style.css --no-source-map --style=expanded",
-    "build": "npm run build:css && vite build",
-    "build:cap": "npm run build:css && vite build --mode capacitor",
+    "build": "npm run gen:i18n && npm run build:css && vite build",
+    "build:cap": "npm run gen:i18n && npm run build:css && vite build --mode capacitor",
     "cap:sync": "npm run build:cap && cap sync android",
     "preview": "vite preview"
   },

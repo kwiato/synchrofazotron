@@ -8,6 +8,9 @@ INTERVAL=5
 # Manual off-switch written by the panel toggle. When present the visualizer
 # stays off regardless of HDMI — the user's intent wins over the hotplug logic.
 DISABLED_FLAG=/opt/pistream-visualizer/disabled
+# While the setup AP is up (ap-fallback/net-watch.sh) tty1 shows the setup
+# instructions + QR — keep the visualizer off so it does not repaint them.
+AP_MARKER=/run/pistream-ap.active
 
 hdmi_connected() {
     local f
@@ -28,13 +31,13 @@ ensure_on()  { systemctl is-active -q "$VIZ" || systemctl start "$VIZ"; return 0
 if ! compgen -G "/sys/class/drm/card*-HDMI-A-*/status" >/dev/null; then
     echo "No /sys/class/drm/*-HDMI-*/status (kernel without KMS?) — visualizer runs whenever enabled."
     while :; do
-        if [[ -e $DISABLED_FLAG ]]; then ensure_off; else ensure_on; fi
+        if [[ -e $DISABLED_FLAG || -e $AP_MARKER ]]; then ensure_off; else ensure_on; fi
         sleep "$INTERVAL"
     done
 fi
 
 while :; do
-    if [[ -e $DISABLED_FLAG ]]; then
+    if [[ -e $DISABLED_FLAG || -e $AP_MARKER ]]; then
         ensure_off
     elif hdmi_connected; then
         ensure_on

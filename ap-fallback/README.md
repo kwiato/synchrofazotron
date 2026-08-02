@@ -9,8 +9,12 @@ Wi-Fi credentials. No app, no SSH, no monitor needed.
 
 1. The device sits with no Wi-Fi for ~2 min → the network
    **`Synchrofazotron-Setup`** appears (password: **`synchrofazotron`**).
+   If a screen is attached over HDMI, it shows these instructions plus a QR
+   code that joins the phone to the network straight from the camera.
 2. Connect a phone to it. The phone's "sign in to network" captive portal
    opens the control panel (if it does not, go to `http://192.168.4.1`).
+   The Android app detects the setup network on its own and jumps straight
+   to the Wi-Fi form.
 3. Open ⚙️ `/settings` → add the local network — pick it from the scan
    (a snapshot taken just before the AP went up) or type it in manually.
 4. On save the AP tears itself down and the device joins the new network.
@@ -24,9 +28,13 @@ pistream-net-watch.service  ->  net-watch.sh (permanent loop, every 10 s)
     1. curl the panel /api/wifi/scan  -> /run/pistream-ap-scan.json (cache)
     2. ifdown wlan0, static 192.168.4.1, hostapd + dnsmasq (our configs)
     3. dnsmasq answers every DNS query with 192.168.4.1 and iptables
-       redirects :80 to the panel port -> captive portal
+       redirects :80 to the panel port; the panel answers the OS
+       connectivity probes (generate_204 etc.) with a redirect to
+       /#/settings -> the phone pops its "sign in to network" sheet
     4. marker /run/pistream-ap.active tells the panel to serve the cached
-       scan (the shared radio cannot scan while being an AP)
+       scan (the shared radio cannot scan while being an AP) and keeps
+       hdmi-watch from repainting tty1, where setup-screen.sh has drawn
+       the instructions + Wi-Fi QR (qrencode)
   the DietPi Wi-Fi db changes (panel saved a network) OR 10 min pass:
     5. AP down, ifup wlan0, retry normal Wi-Fi for 2 min; repeat if needed
 ```
@@ -80,6 +88,7 @@ sudo systemctl restart pistream-net-watch   # cleanup + back to normal
 | File | Goes to | Role |
 |---|---|---|
 | `net-watch.sh` | `/opt/pistream-ap/` | watchdog + AP state machine |
+| `setup-screen.sh` | `/opt/pistream-ap/` | HDMI instructions + Wi-Fi QR on tty1 |
 | `hostapd.conf` | `/opt/pistream-ap/` | the setup AP (SSID/password) |
 | `dnsmasq.conf` | `/opt/pistream-ap/` | DHCP + catch-all DNS for the portal |
 | `pistream-net-watch.service` | `/etc/systemd/system/` | runs the watchdog (enabled) |

@@ -12,6 +12,12 @@
     <string name="connect_button">Połącz</string>
     <string name="connect_checking">Sprawdzam…</string>
     <string name="connect_unreachable">Nie udało się połączyć z urządzeniem.</string>
+    <string name="connect_saved">Zapamiętane urządzenia</string>
+    <string name="connect_remove">Usuń z listy</string>
+    <string name="connect_searching">Szukam urządzeń w sieci…</string>
+    <string name="connect_none">Na razie nic nie znaleziono. Upewnij się, że telefon jest w tym samym Wi-Fi co urządzenie.</string>
+    <string name="connect_manual">albo podaj adres</string>
+    <string name="connect_cancel">Anuluj</string>
 
     <!-- Panel tabs / player bar / settings sections -->
     <string name="tab_now">Teraz gra</string>
@@ -73,6 +79,18 @@
     <string name="settings_title">Ustawienia</string>
     <string name="back">Wstecz</string>
     <string name="refresh">Odśwież</string>
+    <string name="save">Zapisz</string>
+    <string name="cancel">Anuluj</string>
+
+    <!-- Ping (device card) -->
+    <string name="ping">Ping</string>
+    <string name="ping_ok">Urządzenie odpowiada — %1$d ms</string>
+    <string name="ping_fail">Brak odpowiedzi od urządzenia.</string>
+
+    <!-- Setup mode (device broadcasting its fallback AP) -->
+    <string name="setup_title">Konfiguracja urządzenia</string>
+    <string name="setup_body">Telefon jest połączony z siecią konfiguracyjną Synchrofazotronu. Wskaż sieć Wi-Fi, z którą urządzenie ma się łączyć — po zapisaniu przełączy się na nią i wróci do normalnej pracy.</string>
+    <string name="setup_dismiss">Zamknij</string>
 
     <!-- Wi-Fi -->
     <string name="wifi_head">Wi-Fi</string>

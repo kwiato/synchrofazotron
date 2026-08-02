@@ -40,6 +40,11 @@ data class VolumeState(
     val volumes: Map<String, Int> = emptyMap(),
 )
 
+/** Sliver of GET /api/i18n — only the display name; the picker labels a
+ *  freshly connected device with it, like the SPA's saved-devices list. */
+@Serializable
+data class I18nInfo(val device: String = "")
+
 @Serializable
 data class ControlRequest(val source: String, val action: String)
 

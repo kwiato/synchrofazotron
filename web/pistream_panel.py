@@ -33,7 +33,7 @@ PORT = int(os.environ.get("PISTREAM_PANEL_PORT", "8787"))
 BIND = os.environ.get("PISTREAM_PANEL_BIND", "0.0.0.0")
 REPO = os.environ.get("PISTREAM_REPO", "kwiato/synchrofazotron")
 BRANCH = os.environ.get("PISTREAM_BRANCH", "main")
-VERSION = "0.70.23"                 # About version; CI auto-bumps the patch part
+VERSION = "0.70.27"                 # About version; CI auto-bumps the patch part
                                    # (build-panel.yml) — bump minor/major by hand
 
 _HOSTNAME = socket.gethostname() or "Synchrofazotron"
@@ -345,6 +345,10 @@ STR = {
         "name_save": "Save name",
         "name_bad": "The name must be 1-32 characters (no quotes or backslashes).",
         "name_set": "Renamed to {name}. The hostname and network address may change; some names refresh after a reboot.",
+        "name_edit": "Rename",
+        "ping_btn": "Ping",
+        "js_ping_ok": "Device responds — {ms} ms.",
+        "js_ping_fail": "No response from the device.",
         "appearance_head": "Appearance & language",
         "lang_head": "Language",
         "lang_note": "Panel language. The choice is saved on the device.",
@@ -652,6 +656,10 @@ STR = {
         "name_save": "Zapisz nazwę",
         "name_bad": "Nazwa musi mieć 1-32 znaki (bez cudzysłowów i backslashy).",
         "name_set": "Zmieniono nazwę na {name}. Hostname i adres w sieci mogą się zmienić; część nazw odświeży się po restarcie.",
+        "name_edit": "Zmień nazwę",
+        "ping_btn": "Ping",
+        "js_ping_ok": "Urządzenie odpowiada — {ms} ms.",
+        "js_ping_fail": "Brak odpowiedzi od urządzenia.",
         "appearance_head": "Wygląd i język",
         "lang_head": "Język",
         "lang_note": "Język panelu. Wybór zapisuje się na urządzeniu.",
@@ -1198,6 +1206,20 @@ def _tailscale_set(up):
 # neighborhood right before raising the AP and we serve that snapshot instead.
 AP_MARKER = "/run/pistream-ap.active"
 AP_SCAN_CACHE = "/run/pistream-ap-scan.json"
+AP_IP = "192.168.4.1"
+
+# Connectivity-probe paths the OSes hit right after joining a network. In AP
+# mode every DNS name resolves to us and port 80 is iptables-redirected here,
+# so these arrive at the panel; answering with a redirect (instead of the
+# expected 204/"Success") makes the phone pop its "sign in to this network"
+# sheet — the hotel-Wi-Fi flow — pointed at the settings page.
+CAPTIVE_PROBES = {
+    "/generate_204", "/gen_204",                   # Android
+    "/hotspot-detect.html",                        # iOS / macOS
+    "/library/test/success.html",                  # older Apple
+    "/connecttest.txt", "/ncsi.txt", "/redirect",  # Windows
+    "/success.txt", "/canonical.html",             # NetworkManager / Firefox
+}
 
 
 def _wifi_scan_networks():
@@ -3326,6 +3348,9 @@ class Handler(BaseHTTPRequestHandler):
                        no_cache=True)
         elif self.path == "/healthz":
             self._send(200, "ok", "text/plain")
+        elif (self.path.split("?", 1)[0] in CAPTIVE_PROBES
+              and os.path.exists(AP_MARKER)):
+            self._redirect(f"http://{AP_IP}/#/settings")
         else:
             self._send(404, "not found", "text/plain")
 

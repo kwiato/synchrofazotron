@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { useI18n } from '../../i18n.jsx';
 import { apiGet, apiPost } from '../../api.js';
 import { useApi, doReboot } from '../../hooks.js';
@@ -6,7 +6,7 @@ import { Droplet } from '../../components/Droplet.jsx';
 import { WifiModal } from '../../components/WifiModal.jsx';
 import { Collapsible } from '../../components/Collapsible.jsx';
 import { Tabs } from '../../components/Tabs.jsx';
-import { IS_APP, apiBase, switchDevice } from '../../host.js';
+import { IS_APP, apiBase, apiUrl, switchDevice } from '../../host.js';
 import { APP_SHA_SHORT } from '../../appversion.js';
 import { appUpdateAvailable, installAppUpdate } from '../../appupdate.js';
 import { useUpdate, updPollStart, updError } from '../../update.js';
@@ -125,44 +125,98 @@ function ExperimentalCard() {
   );
 }
 
-// One card for everything device: which device the app is pointed at (app-only,
-// with the switch button) and the device's broadcast name — merged from the old
-// separate Device / Name cards.
+// One card for everything device: the device's broadcast name up top with a
+// pencil that opens the rename modal, the app-only pointed-at/switch controls,
+// and a ping button — the simplest possible "is it alive" check.
 function DeviceCard() {
   const { t, device } = useI18n();
-  const [name, setName] = useState(device);
+  const [editing, setEditing] = useState(false);
   const [msg, setMsg] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [pinging, setPinging] = useState(false);
 
-  const save = async () => {
-    const v = name.trim();
-    if (!v || !confirm(t('js_name_confirm'))) return;
-    setBusy(true);
-    setMsg(t('js_saving'));
+  const ping = async () => {
+    setPinging(true);
+    const t0 = performance.now();
     try {
-      const j = await apiPost('/api/name', { name: v });
-      setMsg(j.message || '');
-      // hostname/URL may have changed — reload so the panel shows the new name
-      if (j.ok) setTimeout(() => location.reload(), 2500);
-    } catch { setMsg(t('js_conn_error')); }
-    setBusy(false);
+      const r = await fetch(apiUrl('/healthz'), { cache: 'no-store' });
+      const ok = r.ok && (await r.text()).trim() === 'ok';
+      const ms = Math.round(performance.now() - t0);
+      setMsg(ok ? t('js_ping_ok').replace('{ms}', ms) : t('js_ping_fail'));
+    } catch { setMsg(t('js_ping_fail')); }
+    setPinging(false);
   };
 
   return (
     <div class="card">
       <h2><i class="ico ico-link"></i> {t('device_head')}</h2>
+      <div class="row">
+        <div class="info"><b>{device}</b></div>
+        <button class="ebtn" title={t('name_edit')} onClick={() => setEditing(true)}>✎</button>
+      </div>
       {IS_APP && (
         <>
           <p class="muted">{t('device_connected')}: <code>{apiBase()}</code></p>
           <button class="btn sec" onClick={switchDevice}>{t('switch_device')}</button>
-          <div class="subhead muted">{t('name_head')}</div>
         </>
       )}
-      <p class="muted">{t('name_note')}</p>
-      <input value={name} maxLength={32} placeholder={t('name_ph')} autocomplete="off"
-             onInput={(e) => setName(e.currentTarget.value)} />
-      <button class="btn sec" disabled={busy} onClick={save}>{t('name_save')}</button>
+      <button class="btn sec" disabled={pinging} onClick={ping}>{t('ping_btn')}</button>
       {msg && <p class="muted">{msg}</p>}
+      <RenameModal open={editing} current={device} onClose={() => setEditing(false)}
+                   onMsg={setMsg} />
+    </div>
+  );
+}
+
+// Rename modal — opened by the pencil in DeviceCard. Save posts /api/name;
+// on success the panel reloads shortly (hostname/URL may have changed).
+function RenameModal({ open, current, onClose, onMsg }) {
+  const { t } = useI18n();
+  const [name, setName] = useState(current);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const inRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setName(current);
+    setMsg('');
+    const id = setTimeout(() => inRef.current && inRef.current.focus(), 0);
+    return () => clearTimeout(id);
+  }, [open]);
+
+  if (!open) return null;
+
+  const save = async () => {
+    const v = name.trim();
+    if (!v) return;
+    setBusy(true);
+    setMsg(t('js_saving'));
+    try {
+      const j = await apiPost('/api/name', { name: v });
+      if (j.ok) {
+        onMsg(j.message || '');
+        onClose();
+        // hostname/URL may have changed — reload so the panel shows the new name
+        setTimeout(() => location.reload(), 2500);
+      } else {
+        setMsg(j.message || t('js_error'));
+      }
+    } catch { setMsg(t('js_conn_error')); }
+    setBusy(false);
+  };
+
+  return (
+    <div class="overlay open" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div class="modal">
+        <h2>✎ {t('name_head')}</h2>
+        <p class="muted">{t('name_note')}</p>
+        <input ref={inRef} value={name} maxLength={32} placeholder={t('name_ph')}
+               autocomplete="off" onInput={(e) => setName(e.currentTarget.value)}
+               onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
+        <button class="btn" disabled={busy || !name.trim()} onClick={save}>{t('name_save')}</button>
+        {msg && <p class="muted">{msg}</p>}
+        <button class="btn sec" onClick={onClose}>{t('modal_cancel')}</button>
+      </div>
     </div>
   );
 }

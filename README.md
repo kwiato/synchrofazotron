@@ -58,6 +58,21 @@ DietPi. One box that plays everything the household throws at it:
 
 The script is idempotent — re-running it is safe and doubles as an update.
 
+## Mobile apps (Android)
+
+Two companion apps, both published as rolling debug builds on every push to
+`main` — the links below always point at the latest APK (sideload;
+uninstall first when signatures mismatch):
+
+- **[app-debug.apk](https://github.com/kwiato/synchrofazotron/releases/download/android-latest/app-debug.apk)**
+  — the WebView app (Capacitor shell around the panel UI): everything the
+  panel can do, plus mDNS device discovery. Also distributed via Play
+  internal testing; the same UI works in any browser at `http://<pi>:8787`.
+- **[native-debug.apk](https://github.com/kwiato/synchrofazotron/releases/download/android-native-latest/native-debug.apk)**
+  — the native Kotlin/Compose app (work in progress): now-playing +
+  play/pause, hardware volume keys, Wi-Fi/Bluetooth settings, setup-AP
+  auto-detection.
+
 ## Moving the device to a new location
 
 The device only needs to get onto *some* network once — after that it is
