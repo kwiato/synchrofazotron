@@ -2,7 +2,7 @@
 <resources>
     <!-- Compose owns the real theming; this is just the window/splash shell.
          Kept action-bar-less and edge-to-edge friendly. -->
-    <style name="Theme.SynchrofazotronNative" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.SynchrofazotronNative" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:windowBackground">@android:color/white</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>

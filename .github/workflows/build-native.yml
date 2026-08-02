@@ -55,11 +55,11 @@ jobs:
 
       # On main: publish to a stable rolling prerelease for sideloading.
       - name: Publish rolling prerelease
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/android-native'
         working-directory: android
         run: printf '{"sha":"%s","built":"%s"}\n' "$GITHUB_SHA" "$(date -u +%FT%TZ)" > version.json
       - name: Release
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/android-native'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-native-latest
