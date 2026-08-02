@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -89,6 +90,7 @@ import pl.synchrofazotron.core.net.TidalState
 import pl.synchrofazotron.core.net.VizState
 import pl.synchrofazotron.core.net.WifiInfo
 import pl.synchrofazotron.core.net.WifiNetwork
+import pl.synchrofazotron.core.net.WifiSaved
 
 @Composable
 fun SettingsScreen(session: PanelSession, onOpenStudio: () -> Unit, onChangeDevice: () -> Unit) {
@@ -181,6 +183,9 @@ internal fun WifiCard(session: PanelSession) {
     var busy by remember { mutableStateOf(false) }
     var scanning by remember { mutableStateOf(false) }
     var scanned by remember { mutableStateOf<List<WifiNetwork>>(emptyList()) }
+    var confirmNet by remember { mutableStateOf<WifiSaved?>(null) }
+    var switching by remember { mutableStateOf(false) }
+    var lost by remember { mutableStateOf(false) }
 
     suspend fun reload() { info = session.fetchWifi() }
     LaunchedEffect(session) { reload() }
@@ -207,11 +212,23 @@ internal fun WifiCard(session: PanelSession) {
         } else {
             saved.forEach { net ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(net.ssid, modifier = Modifier.weight(1f))
                     val isCurrent = cur?.ssid == net.ssid
+                    // Tapping a non-current network asks "connect to X?" — the
+                    // primary tint marks the name as tappable.
+                    Text(
+                        text = net.ssid,
+                        color = if (isCurrent) MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .weight(1f)
+                            .let {
+                                if (isCurrent || switching) it
+                                else it.clickable { confirmNet = net }
+                            },
+                    )
                     if (!isCurrent) {
                         TextButton(
-                            enabled = !busy,
+                            enabled = !busy && !switching,
                             onClick = {
                                 scope.launch { busy = true; session.removeWifi(net.slot); reload(); busy = false }
                             },
@@ -219,6 +236,20 @@ internal fun WifiCard(session: PanelSession) {
                     }
                 }
             }
+        }
+        if (switching) {
+            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.padding(end = 8.dp).size(16.dp))
+                Text(stringResource(R.string.wifi_switching), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        if (lost) {
+            Text(
+                text = stringResource(R.string.wifi_switch_lost),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
 
         Text(
@@ -270,6 +301,34 @@ internal fun WifiCard(session: PanelSession) {
                 }
             }
         }
+    }
+
+    confirmNet?.let { net ->
+        AlertDialog(
+            onDismissRequest = { confirmNet = null },
+            title = { Text(stringResource(R.string.wifi_switch_title)) },
+            text = { Text(stringResource(R.string.wifi_switch_body, net.ssid)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val slot = net.slot
+                    confirmNet = null
+                    scope.launch {
+                        switching = true
+                        lost = false
+                        // null = no answer: the device most likely switched
+                        // networks and left ours — say so instead of erroring
+                        lost = session.switchWifi(slot) == null
+                        reload()
+                        switching = false
+                    }
+                }) { Text(stringResource(R.string.wifi_switch_btn)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmNet = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 

@@ -132,6 +132,8 @@ class PanelSession(
     suspend fun scanWifi() = io { client.wifiScan() }
     suspend fun addWifi(ssid: String, key: String) = notify { client.wifiAdd(ssid, key) }
     suspend fun removeWifi(slot: Int) = notify { client.wifiRemove(slot) }
+    /** Null result = no answer — the device most likely left our network. */
+    suspend fun switchWifi(slot: Int) = notify { client.wifiConnect(slot) }
     suspend fun fetchBt() = io { client.bt() }
     suspend fun pair() = io { client.pair() }
     suspend fun btConnect(mac: String) = notify { client.btConnect(mac) }

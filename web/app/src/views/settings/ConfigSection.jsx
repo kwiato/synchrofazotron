@@ -228,8 +228,34 @@ export function WifiCard() {
   const [w, reload] = useApi('/api/wifi', 8000);
   const [modal, setModal] = useState(false);
   const [msg, setMsg] = useState('');
+  const [sw, setSw] = useState(null);          // network pending "connect to X?"
+  const [switching, setSwitching] = useState(false);
   const cur = w && w.current;
   const saved = (w && w.saved) || [];
+
+  // Force-switch to a saved network. The panel blocks up to ~40 s and rolls
+  // back on its own when the target does not pan out; a dead fetch usually
+  // means the switch SUCCEEDED and this phone lost the device — say so.
+  const doSwitch = async () => {
+    const net = sw;
+    setSw(null);
+    setSwitching(true);
+    setMsg(t('js_wifi_sw_busy'));
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 60000);
+      const r = await fetch(apiUrl('/api/wifi/connect'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slot: net.slot }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      setMsg((await r.json()).message || '');
+    } catch { setMsg(t('js_wifi_sw_lost')); }
+    setSwitching(false);
+    reload();
+  };
 
   const parts = [];
   if (cur && cur.ip) parts.push(<span>{t('js_lan_ip')}<code>{cur.ip}</code></span>);
@@ -258,16 +284,24 @@ export function WifiCard() {
       <div class="subhead muted">{t('wifi_saved_head')}</div>
       <div>
         {saved.length
-          ? saved.map((s) => (
-              <div class="row" key={s.slot}>
-                <div class="info">
-                  {cur && cur.ssid === s.ssid && <i class="dot on"></i>}{' '}
-                  <b>{s.ssid}</b> <span class="muted">{t('js_slot')}{s.slot}</span>
+          ? saved.map((s) => {
+              const isCur = cur && cur.ssid === s.ssid;
+              return (
+                <div class="row" key={s.slot}>
+                  <div class="info">
+                    {isCur && <i class="dot on"></i>}{' '}
+                    {isCur
+                      ? <b>{s.ssid}</b>
+                      : <button class="linkbtn" disabled={switching} title={t('wifi_sw_head')}
+                                onClick={() => setSw(s)}><b>{s.ssid}</b></button>}
+                    {' '}<span class="muted">{t('js_slot')}{s.slot}</span>
+                  </div>
+                  <button class="xbtn" title={t('js_remove')} onClick={() => remove(s.slot, s.ssid)}>
+                    <i class="ico ico-trash"></i>
+                  </button>
                 </div>
-                <button class="xbtn" title={t('js_remove')} onClick={() => remove(s.slot, s.ssid)}>
-                  <i class="ico ico-trash"></i>
-                </button>
-              </div>))
+              );
+            })
           : <p class="muted">{t('js_no_saved')}</p>}
       </div>
       <button class="btn sec" onClick={() => setModal(true)}>{t('wifi_add_btn')}</button>
@@ -278,6 +312,16 @@ export function WifiCard() {
       </details>
       <WifiModal open={modal} onClose={() => setModal(false)}
                  onAdded={(m) => { setMsg(m); reload(); }} />
+      {sw && (
+        <div class="overlay open" onClick={(e) => e.target === e.currentTarget && setSw(null)}>
+          <div class="modal">
+            <h2><i class="ico ico-wifi"></i> {t('wifi_sw_head')}</h2>
+            <p class="muted">{t('wifi_sw_note').replace('{ssid}', sw.ssid)}</p>
+            <button class="btn" onClick={doSwitch}>{t('wifi_sw_btn')}</button>
+            <button class="btn sec" onClick={() => setSw(null)}>{t('modal_cancel')}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

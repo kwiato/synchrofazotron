@@ -103,6 +103,11 @@
     <string name="wifi_scanning">Scanning…</string>
     <string name="wifi_remove">Remove</string>
     <string name="wifi_no_saved">No saved networks.</string>
+    <string name="wifi_switch_title">Change network</string>
+    <string name="wifi_switch_body">Connect to %1$s? If it fails, the device returns to the previous network on its own. If your phone is on the same network, the device may disappear from here and show up on the new one.</string>
+    <string name="wifi_switch_btn">Connect</string>
+    <string name="wifi_switching">Switching networks — up to a minute…</string>
+    <string name="wifi_switch_lost">No answer — the device has probably switched networks. Look for it there.</string>
 
     <!-- Bluetooth -->
     <string name="bt_head">Bluetooth</string>

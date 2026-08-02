@@ -349,6 +349,16 @@ STR = {
         "ping_btn": "Ping",
         "js_ping_ok": "Device responds — {ms} ms.",
         "js_ping_fail": "No response from the device.",
+        "wifi_sw_head": "Change network",
+        "wifi_sw_note": "Connect to {ssid}? The device switches over; if that fails, it returns to the previous network on its own. If your phone is on the same network, the panel may stop answering here and appear on the new one.",
+        "wifi_sw_btn": "Connect",
+        "wifi_sw_already": "Already connected to {ssid}.",
+        "wifi_sw_ap": "The setup AP is active — network switching is unavailable.",
+        "wifi_sw_unknown": "{ssid} is not in the radio config yet — re-save the network or reboot.",
+        "wifi_sw_ok": "Connected to {ssid}.",
+        "wifi_sw_fail": "Could not connect to {ssid} — returning to the previous network.",
+        "js_wifi_sw_busy": "Switching networks — up to a minute…",
+        "js_wifi_sw_lost": "No answer — the device has probably switched networks. Look for it there.",
         "appearance_head": "Appearance & language",
         "lang_head": "Language",
         "lang_note": "Panel language. The choice is saved on the device.",
@@ -660,6 +670,16 @@ STR = {
         "ping_btn": "Ping",
         "js_ping_ok": "Urządzenie odpowiada — {ms} ms.",
         "js_ping_fail": "Brak odpowiedzi od urządzenia.",
+        "wifi_sw_head": "Zmiana sieci",
+        "wifi_sw_note": "Połączyć z {ssid}? Urządzenie przełączy się na tę sieć; jeśli się nie uda, samo wróci do poprzedniej. Jeśli telefon jest w tej samej sieci, panel może przestać odpowiadać tutaj i pojawić się w nowej.",
+        "wifi_sw_btn": "Połącz",
+        "wifi_sw_already": "Już połączono z {ssid}.",
+        "wifi_sw_ap": "Trwa tryb konfiguracji (AP) — przełączanie sieci niedostępne.",
+        "wifi_sw_unknown": "Sieci {ssid} nie ma jeszcze w konfiguracji radia — zapisz ją ponownie albo zrestartuj.",
+        "wifi_sw_ok": "Połączono z {ssid}.",
+        "wifi_sw_fail": "Nie udało się połączyć z {ssid} — wracam do poprzedniej sieci.",
+        "js_wifi_sw_busy": "Przełączam sieć — do minuty…",
+        "js_wifi_sw_lost": "Brak odpowiedzi — urządzenie pewnie zmieniło sieć. Poszukaj go tam.",
         "appearance_head": "Wygląd i język",
         "lang_head": "Język",
         "lang_note": "Język panelu. Wybór zapisuje się na urządzeniu.",
@@ -1270,6 +1290,55 @@ def _wifi_add(ssid, key):
     if not res["reloaded"]:
         msg += T("wifi_reload_warn")
     return True, msg
+
+
+def _wifi_connect(slot):
+    """Forces the connection over to a saved network. Blocks up to ~40 s.
+
+    wpa_cli select_network disables every other network, so nothing races us
+    back onto the old one while we wait for association + a DHCP lease. Both
+    outcomes end with `reconfigure`, which re-enables all saved networks from
+    the config — on failure wpa_supplicant then reassociates with the
+    previous network on its own (that is the promised rollback)."""
+    with _wifi_lock:
+        s = _wifi_db_read().get(slot)
+        if not s or not s.get("SSID"):
+            return False, T("wifi_empty_slot")
+        ssid = s["SSID"]
+        cur = _wifi_current()
+        if cur and cur["ssid"] == ssid:
+            return False, T("wifi_sw_already").format(ssid=ssid)
+        if os.path.exists(AP_MARKER):
+            return False, T("wifi_sw_ap")
+        # wpa network id by SSID (list_networks: id \t ssid \t bssid \t flags)
+        nid = None
+        for line in _run(["wpa_cli", "-i", WIFI_IFACE, "list_networks"],
+                         timeout=10).splitlines()[1:]:
+            parts = line.split("\t")
+            if len(parts) >= 2 and parts[1] == ssid:
+                nid = parts[0]
+                break
+        if nid is None:
+            return False, T("wifi_sw_unknown").format(ssid=ssid)
+        _run(["wpa_cli", "-i", WIFI_IFACE, "select_network", nid], timeout=10)
+        t0 = time.time()
+        ok = False
+        nudged = False
+        while time.time() - t0 < 30:
+            now = _wifi_current()
+            if now and now["ssid"] == ssid:
+                if now["ip"]:
+                    ok = True
+                    break
+                # associated but no lease yet — nudge the DHCP client once
+                if not nudged and time.time() - t0 > 8:
+                    nudged = True
+                    _run(["dhclient", "-nw", WIFI_IFACE], timeout=10)
+            time.sleep(2)
+        _run(["wpa_cli", "-i", WIFI_IFACE, "reconfigure"], timeout=10)
+        if ok:
+            return True, T("wifi_sw_ok").format(ssid=ssid)
+        return False, T("wifi_sw_fail").format(ssid=ssid)
 
 
 def _wifi_remove(slot):
@@ -3450,6 +3519,15 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError):
                 slot = -1
             ok, message = _wifi_remove(slot)
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path == "/api/wifi/connect":
+            body = self._json_body()
+            try:
+                slot = int(body.get("slot", -1))
+            except (TypeError, ValueError):
+                slot = -1
+            ok, message = _wifi_connect(slot)
             self._send(200, json.dumps({"ok": ok, "message": message}),
                        "application/json")
         elif self.path == "/api/viz/preset":

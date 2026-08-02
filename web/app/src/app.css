@@ -264,3 +264,14 @@
 .empty .empty-ico { width: 58px; height: 58px; opacity: .6; }
 .empty-title { margin: 0; font-size: 1.2rem; font-weight: 300; letter-spacing: .01em; color: var(--text); }
 .empty-sub { margin: 0; max-width: 34ch; font-size: .9rem; }
+
+/* Bare text button: an inline tappable name (e.g. a saved Wi-Fi network —
+   tapping opens the "connect to X?" modal). Dotted underline marks it as
+   actionable without pretending to be a real button. */
+.linkbtn {
+  background: none; border: 0; padding: 0; margin: 0; font: inherit;
+  color: var(--text); cursor: pointer;
+  text-decoration: underline dotted var(--muted);
+  text-underline-offset: 3px;
+}
+.linkbtn:disabled { opacity: .5; cursor: default; }

@@ -91,6 +91,17 @@ class PanelClient(private val baseUrl: String) {
             setBody(SlotRequest(slot))
         }.body()
 
+    /** POST /api/wifi/connect — force-switch to a saved network. The panel
+     *  blocks up to ~40 s and rolls back to the previous network on failure;
+     *  no answer at all usually means the switch SUCCEEDED and this client
+     *  lost the device (it left our network). */
+    suspend fun wifiConnect(slot: Int): OkMessage =
+        http.post("$baseUrl/api/wifi/connect") {
+            contentType(ContentType.Application.Json)
+            setBody(SlotRequest(slot))
+            timeout { requestTimeoutMillis = 60_000; socketTimeoutMillis = 60_000 }
+        }.body()
+
     // --- Bluetooth -------------------------------------------------------
     suspend fun bt(): BtInfo = http.get("$baseUrl/api/bt").body()
 
