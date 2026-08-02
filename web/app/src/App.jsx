@@ -1,10 +1,11 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { I18nProvider } from './i18n.jsx';
 import { StatusProvider } from './status.jsx';
 import { ToastProvider } from './components/Toast.jsx';
 import { Shell } from './Shell.jsx';
 import { Connect } from './views/Connect.jsx';
 import { IS_APP, apiBase } from './host.js';
+import { startSetupWatch } from './setupmode.js';
 
 export function App() {
   // In the app build, nothing can talk to a device until one is chosen, so the
@@ -16,6 +17,9 @@ export function App() {
   // last cached strings, and Settings > Device gets back to the picker.
   const [base, setBase] = useState(apiBase());
   const [skipped, setSkipped] = useState(false);
+  // Setup-AP watch (app build only): if the phone is on Synchrofazotron-Setup,
+  // take the whole app to the setup device's Wi-Fi settings — see setupmode.js.
+  useEffect(() => startSetupWatch(), []);
   if (IS_APP && !base && !skipped) {
     return <Connect onConnect={() => setBase(apiBase())} onSkip={() => setSkipped(true)} />;
   }
