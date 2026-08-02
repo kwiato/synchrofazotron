@@ -4,10 +4,14 @@ name: Build native app (Android APK)
 # Capacitor app in web/app/android). Debug/unsigned APK as an artifact, plus a
 # rolling prerelease on main for sideloading.
 
+# Native work happens on main (android-native was merged in PR #3 and is
+# retired) — main is the only branch that builds on push and the only source
+# of the android-native-latest rolling release, so two branches can never
+# overwrite each other's APK again.
 on:
   workflow_dispatch: {}
   push:
-    branches: [ main, android-native ]
+    branches: [ main ]
     paths:
       - 'android/**'
       - '.github/workflows/build-native.yml'
@@ -55,11 +59,11 @@ jobs:
 
       # On main: publish to a stable rolling prerelease for sideloading.
       - name: Publish rolling prerelease
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/android-native'
+        if: github.ref == 'refs/heads/main'
         working-directory: android
         run: printf '{"sha":"%s","built":"%s"}\n' "$GITHUB_SHA" "$(date -u +%FT%TZ)" > version.json
       - name: Release
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/android-native'
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-native-latest
