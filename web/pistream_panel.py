@@ -952,10 +952,16 @@ def _start_pairing(window=PAIR_WINDOW_SEC):
 
 
 def _auto_trust_loop():
-    """Background: marks connected devices as trusted so they reconnect on their own."""
+    """Background: marks PAIRED devices as trusted so they can (re)connect on
+    their own. Trusting must not wait for a connection: bt-agent runs headless
+    and cannot answer AuthorizeService prompts, so an untrusted device's very
+    first A2DP connect gets refused — sources that pair first and connect later
+    (projectors, TVs) would deadlock: never connected -> never trusted -> never
+    able to connect. Pairing itself stays gated behind the panel button, so
+    every paired device is one the user let in."""
     while True:
         try:
-            for mac, _name in _connected_devices():
+            for mac, _name in _paired_devices():
                 if mac not in _trusted:
                     _run(["bluetoothctl", "trust", mac])
                     _trusted.add(mac)
