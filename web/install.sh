@@ -37,6 +37,27 @@ if ! command -v bt-agent >/dev/null 2>&1; then
 fi
 install -m 0644 "$SRC_DIR/bt-agent.service" /etc/systemd/system/bt-agent.service
 
+echo "==> Bluetooth device class: Audio/Loudspeaker (0x240414)"
+# Source UIs (projectors, TVs, phones) filter by the Class of Device: with the
+# default "computer" class they skip us as an audio output — tapping the entry
+# does nothing while a JBL right next to it connects fine. 0x240414 = service
+# Audio+Rendering, major A/V, minor Loudspeaker — i.e. a proper BT speaker.
+# Devices paired BEFORE the change cache the old class: unpair + pair again.
+BT_MAIN=/etc/bluetooth/main.conf
+if [[ ! -f $BT_MAIN ]]; then
+  printf '[General]\nClass = 0x240414\n' > "$BT_MAIN"
+  systemctl restart bluetooth 2>/dev/null || true
+elif ! grep -qE '^Class *= *0x240414' "$BT_MAIN"; then
+  if grep -qE '^#? *Class *=' "$BT_MAIN"; then
+    sed -i -E 's|^#? *Class *=.*|Class = 0x240414|' "$BT_MAIN"
+  else
+    sed -i -E 's|^\[General\]|[General]\nClass = 0x240414|' "$BT_MAIN"
+  fi
+  # bt-agent (Requires=bluetooth) stops with this restart — it is restarted
+  # further down once the services are all in place.
+  systemctl restart bluetooth 2>/dev/null || true
+fi
+
 echo "==> Copying the panel to $DEST"
 install -d "$DEST" "$DEST/ui" "$DEST/app/dist/assets"
 install -m 0755 "$SRC_DIR/pistream_panel.py" "$DEST/pistream_panel.py"
