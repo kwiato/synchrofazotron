@@ -2674,9 +2674,15 @@ def _tidal_accounts():
         m = re.match(r"^\s+(\w+):\s*(.*)$", line)
         if m and cur:
             accounts[cur][m.group(1)] = m.group(2).strip("'\"")
-    return [{"id": uid,
-             "name": (a.get("nickname") or a.get("firstName")
-                      or a.get("fullName") or a.get("username") or uid)}
+    def profile_name(a):
+        # TIDAL leaves unset profile fields as YAML null (~) — skip those, or
+        # the account renders as a literal "~" in the apps
+        for key in ("nickname", "firstName", "fullName", "username", "email"):
+            v = a.get(key, "")
+            if v and v not in ("~", "null"):
+                return v
+        return ""
+    return [{"id": uid, "name": profile_name(a) or uid}
             for uid, a in accounts.items()]
 
 
