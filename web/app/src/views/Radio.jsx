@@ -57,7 +57,7 @@ function SkeletonList() {
   );
 }
 
-export function List({ data, loading, direct, fx, onOpen, onPlay, onStar, onRemove }) {
+export function List({ data, loading, direct, fx, onOpen, onPlay, onPlayAll, onStar, onRemove }) {
   const { t } = useI18n();
   if (loading && fx) return <SkeletonList />;
   if (loading && !data) return <p class="muted lms-note">{t('radio_loading')}</p>;
@@ -81,6 +81,12 @@ export function List({ data, loading, direct, fx, onOpen, onPlay, onStar, onRemo
               ? <img class="lms-ico" src={icon} loading="lazy" alt="" />
               : <span class="lms-ico lms-ico-ph">{it.browsable ? '▸' : '♪'}</span>}
             <span class="lms-title">{it.title}</span>
+            {onPlayAll && it.playall && (
+              <button class="lms-act" title={t('play_all')} aria-label={t('play_all')}
+                      onClick={(e) => { e.stopPropagation(); onPlayAll(it); }}>
+                <i class="ico ico-play" aria-hidden="true"></i>
+              </button>
+            )}
             {onStar && it.fav && (
               <button class="lms-act" title={t('radio_fav')}
                       onClick={(e) => { e.stopPropagation(); onStar(it); }}>☆</button>

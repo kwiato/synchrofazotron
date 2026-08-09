@@ -110,6 +110,7 @@ STR = {
         "tab_radio": "Radio",
         "tab_tidal": "TIDAL",
         "tidal_search_ph": "Search TIDAL…",
+        "play_all": "Play all",
         "radio_browse": "Browse",
         "radio_search": "Search",
         "radio_fav": "Favorites",
@@ -437,6 +438,7 @@ STR = {
         "tab_radio": "Radio",
         "tab_tidal": "TIDAL",
         "tidal_search_ph": "Szukaj w TIDAL…",
+        "play_all": "Odtwórz całość",
         "radio_browse": "Przeglądaj",
         "radio_search": "Szukaj",
         "radio_fav": "Ulubione",
@@ -2364,12 +2366,22 @@ def _lms_state():
                 _lms_playerid = loop[0]["playerid"]
         if not _lms_playerid:
             return None
-        res = _lms_request([_lms_playerid, ["status", "-", 1, "tags:aN"]])
+        res = _lms_request([_lms_playerid, ["status", "-", 1, "tags:adN"]])
         rm = res.get("remoteMeta") or {}
         loop = res.get("playlist_loop") or []
         title = rm.get("title") or (loop[0].get("title", "") if loop else "")
         artist = rm.get("artist") or (loop[0].get("artist", "") if loop else "")
-        return {"mode": res.get("mode", "stop"), "title": title, "artist": artist}
+
+        def num(v):
+            try:
+                return float(v or 0)
+            except (TypeError, ValueError):
+                return 0.0
+        # duration 0 = live stream (radio): the UI shows no seek slider then
+        duration = num(res.get("duration")) or num(loop[0].get("duration") if loop else 0)
+        return {"mode": res.get("mode", "stop"), "title": title, "artist": artist,
+                "position": num(res.get("time")), "duration": duration,
+                "can_seek": bool(res.get("can_seek"))}
     except Exception:  # noqa: BLE001
         return None
 
@@ -2430,6 +2442,11 @@ def _lms_norm_items(result):
             # search nodes need a term before they return anything — the UI
             # renders an input when drilling into one
             "searchable": it.get("type") == "search",
+            # playlist-typed containers (albums, playlists, mixes) — and
+            # anything with its own play action — can be played as a whole
+            "playall": not is_audio and (
+                it.get("type") == "playlist"
+                or bool((it.get("actions") or {}).get("play"))),
             "item_id": _lms_item_id(it),
             "fav": fav,
         })
@@ -2934,7 +2951,10 @@ def _active_sources(connected):
         name = "LMS (radio/TIDAL)" if _tidal_show() else "LMS (radio)"
         sources.append({"name": name, "playing": lms["mode"] == "play",
                         "state": state, "detail": lms.get("title", ""),
-                        "artist": lms.get("artist", "")})
+                        "artist": lms.get("artist", ""),
+                        "position": lms.get("position", 0),
+                        "duration": lms.get("duration", 0),
+                        "can_seek": lms.get("can_seek", False)})
 
     conn = dict(connected)
     bt_playing, bt_detail = False, ""
@@ -3651,6 +3671,10 @@ class Handler(BaseHTTPRequestHandler):
                                        bool(b.get("add")))
             if path == "/api/lms/tidal/play":
                 return _lms_tidal_play(str(b.get("item_id", "")), bool(b.get("add")))
+            if path == "/api/lms/seek":
+                secs = max(0.0, float(b.get("seconds", 0) or 0))
+                _lms_request([_lms_pid(), ["time", "%.1f" % secs]])
+                return {"ok": True}
             if path == "/api/lms/playurl":
                 return _lms_play_url(str(b.get("url", "")), str(b.get("title", "")))
             if path == "/api/lms/favorites/play":

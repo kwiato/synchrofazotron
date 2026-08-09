@@ -561,7 +561,8 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
   color: var(--text);
 
   .inner {
-    display: flex; align-items: center; gap: var(--spacer-xs);
+    // wrap lets the optional .pb-seek row drop to its own full-width line
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacer-xs);
     cursor: pointer;   // the bar itself is the "go to Now Playing" surface
     background: var(--pb-bg);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
@@ -601,6 +602,17 @@ code { background: var(--input-bg); padding: 1px var(--spacer-2xs); border-radiu
   animation: pb-rot .9s linear infinite;
 }
 @keyframes pb-rot { to { transform: rotate(360deg); } }
+// Track progress row: full-width second line inside the bar island (the
+// .inner is flex — the seek row wraps below the buttons via flex-basis 100%).
+.pb-seek {
+  flex: 1 1 100%; display: flex; align-items: center; gap: var(--spacer-2xs);
+  min-width: 0; margin-top: calc(-1 * var(--spacer-3xs));
+  input[type=range] { flex: 1 1 auto; min-width: 0; margin: 0; }
+  .pb-time {
+    flex: none; font-size: .72rem; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+}
 .pbskip {
   flex: none; width: 40px; height: 40px; border: 0; border-radius: 50%;
   background: transparent; color: var(--muted); cursor: pointer;

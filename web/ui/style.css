@@ -819,6 +819,7 @@ code {
 }
 .pbwrap .inner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--spacer-xs);
   cursor: pointer;
@@ -895,6 +896,26 @@ code {
     transform: rotate(360deg);
   }
 }
+.pb-seek {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--spacer-2xs);
+  min-width: 0;
+  margin-top: calc(-1 * var(--spacer-3xs));
+}
+.pb-seek input[type=range] {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+.pb-seek .pb-time {
+  flex: none;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .pbskip {
   flex: none;
   width: 40px;

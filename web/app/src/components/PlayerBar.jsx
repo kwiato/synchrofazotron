@@ -12,6 +12,11 @@ import { VolumeSlider } from './VolumeSlider.jsx';
 // Bottom player bar + the expandable sources sheet. Ported from common.js;
 // the sheet open/closed state is now local component state instead of a class
 // toggle on a DOM node.
+const fmtTime = (s) => {
+  s = Math.max(0, Math.round(s));
+  return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+};
+
 export function PlayerBar() {
   const { status, refresh } = useStatus();
   const { t } = useI18n();
@@ -44,6 +49,30 @@ export function PlayerBar() {
     if (base.current == null) base.current = sig;         // snapshot at start
     else if (sig !== base.current) pendingClear();        // the device moved
   }, [pending, sig]);
+
+  // Track progress: LMS reports position/duration with every status poll
+  // (duration 0 = live radio stream, no slider then). The position ticks
+  // locally between polls; a drag in progress is never stomped by a poll.
+  const dur = (p && p.id === 'lms' && p.duration) || 0;
+  const seekable = dur > 0 && !!(p && p.can_seek);
+  const [pos, setPos] = useState(0);
+  const drag = useRef(false);
+  useEffect(() => {
+    if (!drag.current) setPos((p && p.position) || 0);
+  }, [status]);
+  useEffect(() => {
+    if (!seekable || !(p && p.playing)) return undefined;
+    const id = setInterval(() => {
+      if (!drag.current) setPos((v) => Math.min(v + 1, dur));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [seekable, p && p.playing, dur]);
+  const seek = async (v) => {
+    drag.current = false;
+    setPos(v);
+    try { await apiPost('/api/lms/seek', { seconds: v }); } catch { /* ignore */ }
+    setTimeout(refresh, 500);
+  };
 
   const ctrl = async (id, action) => {
     pendingStart();
@@ -122,8 +151,8 @@ export function PlayerBar() {
             : <p class="muted small">{t('js_dac_free')}</p>}
         </div>
 
-        {/* homepage gesture: a tap on the bar itself (not its buttons) shows Now Playing */}
-        <div class="inner" onClick={(e) => { if (!e.target.closest('button')) goHome(); }}>
+        {/* homepage gesture: a tap on the bar itself (not its buttons/slider) shows Now Playing */}
+        <div class="inner" onClick={(e) => { if (!e.target.closest('button,input')) goHome(); }}>
           <button class="iconbtn arrow" onClick={() => setOpen((o) => !o)}
                   title={t('sheet_sources')} aria-label={t('sheet_sources')}>
             <i class="ico ico-chev" aria-hidden="true"></i>
@@ -146,6 +175,17 @@ export function PlayerBar() {
                   onClick={() => ctrlPrimary('next')}>
             <i class="ico ico-next" aria-hidden="true"></i>
           </button>
+          {seekable && (
+            <div class="pb-seek">
+              <span class="pb-time">{fmtTime(pos)}</span>
+              <input type="range" min="0" max={Math.round(dur)} value={Math.round(pos)}
+                     aria-label="seek"
+                     onPointerDown={() => { drag.current = true; }}
+                     onInput={(e) => { drag.current = true; setPos(+e.currentTarget.value); }}
+                     onChange={(e) => seek(+e.currentTarget.value)} />
+              <span class="pb-time">{fmtTime(dur)}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
