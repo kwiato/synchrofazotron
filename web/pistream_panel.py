@@ -108,6 +108,8 @@ STR = {
         "tab_now": "Now playing",
         "tab_viz": "Visualizer",
         "tab_radio": "Radio",
+        "tab_tidal": "TIDAL",
+        "tidal_search_ph": "Search TIDAL…",
         "radio_browse": "Browse",
         "radio_search": "Search",
         "radio_fav": "Favorites",
@@ -433,6 +435,8 @@ STR = {
         "tab_now": "Teraz gra",
         "tab_viz": "Wizualizer",
         "tab_radio": "Radio",
+        "tab_tidal": "TIDAL",
+        "tidal_search_ph": "Szukaj w TIDAL…",
         "radio_browse": "Przeglądaj",
         "radio_search": "Szukaj",
         "radio_fav": "Ulubione",
@@ -2423,6 +2427,9 @@ def _lms_norm_items(result):
             "icon": _lms_icon(it),
             "playable": bool(is_audio),
             "browsable": not is_audio,
+            # search nodes need a term before they return anything — the UI
+            # renders an input when drilling into one
+            "searchable": it.get("type") == "search",
             "item_id": _lms_item_id(it),
             "fav": fav,
         })
@@ -2467,6 +2474,28 @@ def _lms_radio_play(verb, item_id, add=False):
     action = "add" if add else "play"
     _lms_request([_lms_pid(), [verb, "playlist", action,
                                "menu:" + verb, "item_id:" + item_id]])
+    return {"ok": True}
+
+
+# --- LMS TIDAL browsing ------------------------------------------------------
+# The TIDAL plugin exposes one SlimBrowse tree under the `tidal` command:
+# folders browse deeper by item_id, search nodes additionally take a
+# search:<term> param, tracks are type:audio and play by item_id.
+def _lms_tidal_browse(item_id="", search="", start=0, count=300):
+    params = ["tidal", "items", str(start), str(count), "menu:tidal"]
+    if item_id:
+        params.append("item_id:" + item_id)
+    if search:
+        params.append("search:" + search)
+    return _lms_norm_items(_lms_request([_lms_pid(), params]))
+
+
+def _lms_tidal_play(item_id, add=False):
+    if not item_id:
+        return {"ok": False}
+    action = "add" if add else "play"
+    _lms_request([_lms_pid(), ["tidal", "playlist", action,
+                               "menu:tidal", "item_id:" + item_id]])
     return {"ok": True}
 
 
@@ -3176,6 +3205,10 @@ def status_payload():
         "sources": sources,
         "dac_owners": _dac_owners(),
         "playing_count": sum(1 for s in sources if s.get("playing")),
+        # main-page tab visibility: TIDAL only with a connected account (and
+        # not hidden via the switch), visualizer only while installed + enabled
+        "tidal_tab": bool(_tidal_show() and _tidal_accounts()),
+        "viz_tab": os.path.isfile(VIZ_CONF) and _viz_enabled(),
         "services": {
             s: _service_active(s) for s in (
                 ("bluetooth", "bluealsa", "bluealsa-aplay", "squeezelite",
@@ -3449,6 +3482,8 @@ class Handler(BaseHTTPRequestHandler):
                 return _lms_radio_browse(g("verb"), g("item_id"))
             if u.path == "/api/lms/radio/search":
                 return _lms_radio_search(g("q"))
+            if u.path == "/api/lms/tidal/browse":
+                return _lms_tidal_browse(g("item_id"), g("search"))
             if u.path == "/api/lms/favorites":
                 return _lms_favorites(g("item_id"))
         except Exception:  # noqa: BLE001 — LMS down / unexpected shape
@@ -3614,6 +3649,8 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/lms/radio/play":
                 return _lms_radio_play(str(b.get("verb", "")), str(b.get("item_id", "")),
                                        bool(b.get("add")))
+            if path == "/api/lms/tidal/play":
+                return _lms_tidal_play(str(b.get("item_id", "")), bool(b.get("add")))
             if path == "/api/lms/playurl":
                 return _lms_play_url(str(b.get("url", "")), str(b.get("title", "")))
             if path == "/api/lms/favorites/play":

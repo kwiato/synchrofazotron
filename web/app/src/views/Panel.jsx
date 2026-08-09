@@ -10,21 +10,34 @@ import { Collapsible } from '../components/Collapsible.jsx';
 import { Tabs } from '../components/Tabs.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
 import { RadioTab } from './Radio.jsx';
+import { TidalTab } from './Tidal.jsx';
 
-// Main view: the Now / Radio / Visualizer tabs. Ported from panel.js.
-const ORDER = ['now', 'radio', 'viz'];
-const TABS = new Set(ORDER);
+// Main view: the Now / Radio / TIDAL / Visualizer tabs. TIDAL and the
+// visualizer are dynamic (tidal_tab/viz_tab in /api/status): TIDAL appears
+// once an account is connected, the visualizer hides while it is off (its
+// switch stays available in settings → customize).
+const TABS = new Set(['now', 'radio', 'tidal', 'viz']);
+const LABELS = { now: 'tab_now', radio: 'tab_radio', tidal: 'tab_tidal', viz: 'tab_viz' };
 
 export function Panel() {
   const { t } = useI18n();
+  const { status } = useStatus();
   const [tab, setTab] = useState(() => {
     try { const s = localStorage.getItem('paneltab'); return TABS.has(s) ? s : 'now'; }
     catch { return 'now'; }
   });
+  const order = ['now', 'radio',
+                 ...(status && status.tidal_tab ? ['tidal'] : []),
+                 ...(!status || status.viz_tab !== false ? ['viz'] : [])];
   const pick = (name) => {
     setTab(name);
     try { localStorage.setItem('paneltab', name); } catch { /* ignore */ }
   };
+  // the active tab can vanish under us (viz switched off, TIDAL disconnected)
+  // — but only judge that once the status actually arrived
+  useEffect(() => {
+    if (status && !order.includes(tab)) setTab('now');
+  }, [status, order.join(','), tab]);
   // the homepage gesture (logo / player bar) — goHome() already persisted it
   useEffect(() => {
     const on = () => setTab('now');
@@ -33,19 +46,18 @@ export function Panel() {
   }, []);
   // swipe left → next tab, right → previous; clamped at the ends
   const step = (d) => {
-    const j = ORDER.indexOf(tab) + d;
-    if (j >= 0 && j < ORDER.length) pick(ORDER[j]);
+    const j = order.indexOf(tab) + d;
+    if (j >= 0 && j < order.length) pick(order[j]);
   };
   const swipe = useSwipe({ onLeft: () => step(1), onRight: () => step(-1) });
 
   return (
     <div class="swipe-col" {...swipe}>
       <Tabs active={tab} onChange={pick}
-            items={[{ id: 'now', label: t('tab_now') },
-                    { id: 'radio', label: t('tab_radio') },
-                    { id: 'viz', label: t('tab_viz') }]} />
+            items={order.map((id) => ({ id, label: t(LABELS[id]) }))} />
       {tab === 'now' && <NowTab />}
       {tab === 'radio' && <RadioTab />}
+      {tab === 'tidal' && <TidalTab />}
       {tab === 'viz' && <VizTab />}
     </div>
   );

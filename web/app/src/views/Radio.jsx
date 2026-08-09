@@ -57,7 +57,7 @@ function SkeletonList() {
   );
 }
 
-function List({ data, loading, direct, fx, onOpen, onPlay, onStar, onRemove }) {
+export function List({ data, loading, direct, fx, onOpen, onPlay, onStar, onRemove }) {
   const { t } = useI18n();
   if (loading && fx) return <SkeletonList />;
   if (loading && !data) return <p class="muted lms-note">{t('radio_loading')}</p>;
@@ -184,7 +184,7 @@ function Browser({ kind }) {
 
 // The back row keeps its slot even at the root so the list does not jump when
 // drilling in/out; the button itself slides in whenever the level changes.
-function BackSlot({ stack, fx, onBack, rootLabel }) {
+export function BackSlot({ stack, fx, onBack, rootLabel }) {
   return (
     <div class="lms-backslot">
       {stack.length > 0 && (
@@ -198,7 +198,7 @@ function BackSlot({ stack, fx, onBack, rootLabel }) {
 
 // Remounts the animated list wrapper on every navigation step and again when
 // the real content replaces the skeleton, so the slide-in plays for both.
-const navKey = (stack, loading) =>
+export const navKey = (stack, loading) =>
   stack.length + ':' + (loading ? 'skel' : 'data');
 
 function Search() {
