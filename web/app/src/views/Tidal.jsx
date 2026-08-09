@@ -29,9 +29,16 @@ export function TidalTab() {
   const top = stack[stack.length - 1];
 
   const load = useCallback(async () => {
-    if (inSearch && !searchId.current) { setData({ items: [] }); return; }
     setLoading(true);
     try {
+      // typing can outrun the initial root fetch — lift the search node's
+      // item_id from the root menu on demand
+      if (inSearch && !searchId.current) {
+        const root = await apiGet('/api/lms/tidal/browse?item_id=');
+        const s = (root.items || []).find((i) => i.searchable);
+        if (s) searchId.current = s.item_id;
+        if (!searchId.current) { setData({ items: [] }); setLoading(false); return; }
+      }
       let url;
       if (inSearch && !top) {
         // fresh query hits the search node; deeper levels reuse the LMS-cached
