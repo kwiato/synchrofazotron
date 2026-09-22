@@ -4,6 +4,7 @@ import { useI18n } from '../i18n.jsx';
 import { CustomizeSection } from './settings/CustomizeSection.jsx';
 import { ConnectionsSection } from './settings/ConnectionsSection.jsx';
 import { ConfigSection } from './settings/ConfigSection.jsx';
+import { PluginsSection } from './settings/PluginsSection.jsx';
 import { AboutSection } from './settings/AboutSection.jsx';
 
 // The left nav is now a client-side section switch (no hash-scroll, no reload).
@@ -13,6 +14,7 @@ const SECTIONS = [
   ['customize', 'nav_customize', CustomizeSection],
   ['connections', 'nav_connections', ConnectionsSection],
   ['config', 'nav_config', ConfigSection],
+  ['plugins', 'nav_plugins', PluginsSection],
   ['about', 'nav_about', AboutSection],
 ];
 

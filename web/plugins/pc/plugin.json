@@ -1,0 +1,52 @@
+{
+  "id": "pc",
+  "name": "PC",
+  "version": "0.1.0",
+  "description": {
+    "en": "Wake a PC on the LAN (Wake-on-LAN magic packet) and see whether it is up.",
+    "pl": "Budzi komputer w sieci lokalnej (magic packet Wake-on-LAN) i pokazuje, czy już wstał."
+  },
+  "ui": { "settings": true },
+  "i18n": {
+    "en": {
+      "head": "PC",
+      "note": "Sends a Wake-on-LAN magic packet to the PC's wired network card. The PC must be on the same LAN as this device, with WoL enabled in BIOS and Windows (Fast startup off).",
+      "wake": "Wake PC",
+      "waking": "Sending…",
+      "sent": "Magic packet sent.",
+      "online": "up",
+      "offline": "down",
+      "unknown": "unknown",
+      "no_mac": "Set the PC's MAC address below first.",
+      "mac": "PC MAC address (Ethernet)",
+      "mac_hint": "Windows: ipconfig /all → Physical Address. Dashes or colons, either is fine.",
+      "host": "PC address for the status check (optional)",
+      "host_hint": "IP or hostname pinged every few seconds while this page is open. Leave empty to skip.",
+      "save": "Save",
+      "saved": "Saved.",
+      "bad_mac": "That does not look like a MAC address.",
+      "last_wake": "Last wake",
+      "sandbox": "Sandbox mode: no packet was sent."
+    },
+    "pl": {
+      "head": "PC",
+      "note": "Wysyła magic packet Wake-on-LAN do karty sieciowej komputera. Komputer musi być w tej samej sieci co to urządzenie, z włączonym WoL w BIOS-ie i Windowsie (szybki rozruch wyłączony).",
+      "wake": "Obudź PC",
+      "waking": "Wysyłam…",
+      "sent": "Magic packet wysłany.",
+      "online": "działa",
+      "offline": "wyłączony",
+      "unknown": "nieznany",
+      "no_mac": "Najpierw wpisz poniżej adres MAC komputera.",
+      "mac": "Adres MAC komputera (Ethernet)",
+      "mac_hint": "Windows: ipconfig /all → Adres fizyczny. Myślniki albo dwukropki, obojętnie.",
+      "host": "Adres komputera do sprawdzania stanu (opcjonalnie)",
+      "host_hint": "IP albo nazwa hosta pingowana co kilka sekund, gdy ta strona jest otwarta. Zostaw puste, żeby pominąć.",
+      "save": "Zapisz",
+      "saved": "Zapisano.",
+      "bad_mac": "To nie wygląda na adres MAC.",
+      "last_wake": "Ostatnie budzenie",
+      "sandbox": "Tryb sandbox: pakiet nie został wysłany."
+    }
+  }
+}

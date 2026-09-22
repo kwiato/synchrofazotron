@@ -19,6 +19,7 @@
     "@capacitor/browser": "^7.0.5",
     "@capacitor/core": "^7.6.7",
     "capacitor-zeroconf": "^4.0.0",
+    "htm": "^3.1.1",
     "preact": "^10.24.3"
   },
   "devDependencies": {

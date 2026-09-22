@@ -1,0 +1,11 @@
+[
+  {
+    "id": "pc",
+    "name": "PC",
+    "version": "0.1.0",
+    "description": {
+      "en": "Wake a PC on the LAN (Wake-on-LAN magic packet) and see whether it is up.",
+      "pl": "Budzi komputer w sieci lokalnej (magic packet Wake-on-LAN) i pokazuje, czy już wstał."
+    }
+  }
+]

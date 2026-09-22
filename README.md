@@ -132,6 +132,7 @@ Install with `PISTREAM_VISUALIZER=1` during setup, or later with
 |---|---|
 | `setup.sh` | full provisioning of a clean DietPi (everything below included) |
 | `web/` | control panel (Python stdlib microservice) + bt-agent, own `install.sh`; UI preview on any machine: `python web/pistream_panel.py` → `http://127.0.0.1:8787` (details in `web/README.md`) |
+| `web/plugins/` | optional plugins, one folder each with its own `install.sh` — installable from Settings → Plugins or with one `curl \| sudo bash`; first one: `pc` (Wake-on-LAN for a PC). Contract in `web/plugins/README.md` |
 | `ap-fallback/` | setup AP + captive portal when Wi-Fi is down, own `install.sh` / `uninstall.sh` |
 | `visualizer/` | cava HDMI visualizer + audio tee, own `install.sh` / `uninstall.sh` |
 | `plan.md` | original configuration plan / design notes |

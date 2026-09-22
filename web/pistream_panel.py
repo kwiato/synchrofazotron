@@ -334,6 +334,31 @@ STR = {
         "upd_started": "Update started.",
         "upd_already": "An update is already running.",
         "upd_fail": "Could not start the update.",
+        # plugins
+        "nav_plugins": "Plugins",
+        "plugins_head": "Plugins",
+        "plugins_note": "Optional extras from the repo. Install one and its card "
+                        "appears above; remove it and it is gone. Each plugin is "
+                        "a folder in web/plugins on GitHub.",
+        "plugins_installed": "installed",
+        "plugins_available": "available",
+        "plugins_install_btn": "Install",
+        "plugins_remove_btn": "Remove",
+        "plugins_remove_confirm": "Remove this plugin? Its settings stay on the "
+                                  "device in case you install it again.",
+        "plugins_none": "No plugins in the catalog yet.",
+        "plugins_catalog_err": "Could not fetch the plugin catalog (offline?).",
+        "plugins_job_started": "Started. The panel restarts when it is done.",
+        "plugins_job_fail": "Could not start the plugin job.",
+        "plugins_busy": "Another plugin job is still running.",
+        "plugins_bad_id": "Bad plugin id.",
+        "plugins_dev": "Sandbox mode: plugins are not installed from here. "
+                       "Copy the folder into web/plugins and restart the panel.",
+        "plugins_working": "Working…",
+        "plugins_failed": "The last plugin job failed (journalctl -u "
+                          "synchrofazotron-plugin).",
+        "plugins_broken": "This plugin failed to load:",
+        "plugins_ui_err": "The plugin's UI module could not be loaded.",
         "js_upd_checking": "Checking…",
         "js_upd_available": "A new version is available.",
         "js_upd_current": "Up to date.",
@@ -658,6 +683,31 @@ STR = {
         "upd_started": "Aktualizacja wystartowała.",
         "upd_already": "Aktualizacja już trwa.",
         "upd_fail": "Nie udało się wystartować aktualizacji.",
+        # wtyczki
+        "nav_plugins": "Wtyczki",
+        "plugins_head": "Wtyczki",
+        "plugins_note": "Opcjonalne dodatki z repozytorium. Zainstaluj, a karta "
+                        "wtyczki pojawi się powyżej; usuń i znika. Każda wtyczka "
+                        "to katalog w web/plugins na GitHubie.",
+        "plugins_installed": "zainstalowana",
+        "plugins_available": "dostępna",
+        "plugins_install_btn": "Zainstaluj",
+        "plugins_remove_btn": "Usuń",
+        "plugins_remove_confirm": "Usunąć tę wtyczkę? Jej ustawienia zostaną na "
+                                  "urządzeniu na wypadek ponownej instalacji.",
+        "plugins_none": "Katalog wtyczek jest na razie pusty.",
+        "plugins_catalog_err": "Nie udało się pobrać katalogu wtyczek (brak sieci?).",
+        "plugins_job_started": "Wystartowało. Panel zrestartuje się po zakończeniu.",
+        "plugins_job_fail": "Nie udało się uruchomić zadania wtyczki.",
+        "plugins_busy": "Inne zadanie wtyczki jeszcze trwa.",
+        "plugins_bad_id": "Zły identyfikator wtyczki.",
+        "plugins_dev": "Tryb sandbox: wtyczek nie instaluje się stąd. Skopiuj "
+                       "katalog do web/plugins i zrestartuj panel.",
+        "plugins_working": "Pracuję…",
+        "plugins_failed": "Ostatnie zadanie wtyczki nie powiodło się (journalctl "
+                          "-u synchrofazotron-plugin).",
+        "plugins_broken": "Ta wtyczka nie załadowała się:",
+        "plugins_ui_err": "Nie udało się załadować modułu UI wtyczki.",
         "js_upd_checking": "Sprawdzam…",
         "js_upd_available": "Jest nowsza wersja.",
         "js_upd_current": "Wersja aktualna.",
@@ -3354,6 +3404,187 @@ def app_file(path):
 
 
 # ---------------------------------------------------------------------------
+# Plugins — optional features that live in plugins/<id>/ next to this script
+# (on the Pi: /opt/pistream-panel/plugins/<id>, put there by the plugin's own
+# install.sh; in a repo checkout: web/plugins/<id>, so they show up in the
+# sandbox preview too). A plugin is a folder with:
+#
+#   plugin.json  manifest: id, name, version, description{en,pl}, i18n{en,pl}
+#                and "ui": {"settings": true} for a card in Settings > Plugins
+#   plugin.py    setup(ctx) once at boot, then handle(method, path, body, query)
+#                for every /api/p/<id>/<path> call -> dict (200) or (code, dict)
+#   ui.js        ES module the SPA imports at runtime; exports SettingsCard.
+#                It gets the SDK from window.sfz (html, hooks, apiGet, ...)
+#
+# The panel never restarts for a plugin: the loader runs once at boot, the
+# plugin's install.sh restarts pistream-panel itself (via a transient unit,
+# exactly like the system update — a child of the panel would die mid-way).
+# Plugin state goes to plugins-data/<id>/ so a reinstall does not wipe it.
+# Contract in full: web/plugins/README.md.
+# ---------------------------------------------------------------------------
+PLUGINS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
+PLUGINS_DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins-data")
+PLUGIN_UNIT = "synchrofazotron-plugin"
+_PLUGIN_ID_RE = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
+_PLUGIN_FILE_MIME = {".js": "application/javascript; charset=utf-8",
+                     ".css": "text/css; charset=utf-8",
+                     ".json": "application/json; charset=utf-8",
+                     ".svg": "image/svg+xml"}
+_plugins = {}            # id -> {"manifest": dict, "module": module|None, "error": str}
+
+
+def _plugin_ctx(pid, pdir):
+    """What a plugin gets in setup(): where it is, where to keep state, and
+    the panel's helpers so it honours the sandbox and the UI language."""
+    data_dir = os.path.join(PLUGINS_DATA, pid)
+    return {"id": pid, "dir": pdir, "data_dir": data_dir, "dev": DEV_MODE,
+            "run": _run, "lang": lambda: _lang,
+            "log": lambda msg: print(f"[plugin {pid}] {msg}", flush=True)}
+
+
+def _plugins_load():
+    """Import every plugins/<id>/ at boot. A broken plugin never takes the
+    panel down: it is listed with its error so the UI can say what is wrong."""
+    _plugins.clear()
+    if not os.path.isdir(PLUGINS_DIR):
+        return
+    import importlib.util
+    for pid in sorted(os.listdir(PLUGINS_DIR)):
+        pdir = os.path.join(PLUGINS_DIR, pid)
+        mpath = os.path.join(pdir, "plugin.json")
+        if not os.path.isfile(mpath):
+            continue
+        entry = {"manifest": {"id": pid, "name": pid}, "module": None, "error": ""}
+        _plugins[pid] = entry
+        try:
+            if not _PLUGIN_ID_RE.match(pid):
+                raise ValueError("bad plugin id (a-z, 0-9, '-')")
+            with open(mpath, encoding="utf-8") as fh:
+                manifest = json.load(fh)
+            if manifest.get("id") != pid:
+                raise ValueError(f"manifest id {manifest.get('id')!r} != folder {pid!r}")
+            manifest.setdefault("name", pid)
+            manifest.setdefault("version", "")
+            manifest.setdefault("ui", {})
+            manifest.setdefault("i18n", {})
+            manifest["has_ui"] = os.path.isfile(os.path.join(pdir, "ui.js"))
+            entry["manifest"] = manifest
+            ppath = os.path.join(pdir, "plugin.py")
+            if os.path.isfile(ppath):
+                spec = importlib.util.spec_from_file_location(f"sfz_plugin_{pid}", ppath)
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                if hasattr(mod, "setup"):
+                    mod.setup(_plugin_ctx(pid, pdir))
+                entry["module"] = mod
+        except Exception as e:  # noqa: BLE001 — a plugin must not kill the panel
+            entry["error"] = f"{type(e).__name__}: {e}"
+            print(f"[plugin {pid}] failed to load: {entry['error']}", flush=True)
+
+
+def _plugins_payload():
+    out = []
+    for pid, p in _plugins.items():
+        m = dict(p["manifest"])
+        m["error"] = p["error"]
+        out.append(m)
+    return {"plugins": out, "dev": DEV_MODE}
+
+
+def _plugin_call(pid, method, sub, body, query):
+    """Route /api/p/<id>/<sub> into the plugin. Returns (status, json-able)."""
+    p = _plugins.get(pid)
+    if not p:
+        return 404, {"ok": False, "error": "no such plugin"}
+    if p["error"] or p["module"] is None or not hasattr(p["module"], "handle"):
+        return 500, {"ok": False, "error": p["error"] or "plugin has no handle()"}
+    try:
+        res = p["module"].handle(method, sub, body, query)
+    except Exception as e:  # noqa: BLE001 — surface it, keep the panel alive
+        print(f"[plugin {pid}] {method} {sub}: {type(e).__name__}: {e}", flush=True)
+        return 500, {"ok": False, "error": f"{type(e).__name__}: {e}"}
+    if isinstance(res, tuple) and len(res) == 2:
+        return int(res[0]), res[1]
+    if res is None:
+        return 404, {"ok": False, "error": "unknown plugin path"}
+    return 200, res
+
+
+def plugin_file(path):
+    """(body, content_type) for /plugins/<id>/<file> — the plugin's UI module
+    and any css/json/svg next to it. One level deep only, no traversal."""
+    parts = path.split("?", 1)[0].strip("/").split("/")
+    if len(parts) != 3 or parts[0] != "plugins" or parts[1] not in _plugins:
+        return None
+    name = os.path.basename(parts[2])
+    ext = os.path.splitext(name)[1].lower()
+    if ext not in _PLUGIN_FILE_MIME:
+        return None
+    full = os.path.join(PLUGINS_DIR, parts[1], name)
+    if not os.path.isfile(full):
+        return None
+    try:
+        with open(full, "rb") as fh:
+            return fh.read(), _PLUGIN_FILE_MIME[ext]
+    except OSError:
+        return None
+
+
+_catalog_cache = {"at": 0.0, "data": None}
+
+
+def _plugins_catalog():
+    """Plugins available in the repo (web/plugins/index.json on GitHub),
+    cached for 10 minutes; a checkout serves its local copy."""
+    if time.time() - _catalog_cache["at"] < 600 and _catalog_cache["data"] is not None:
+        return _catalog_cache["data"]
+    data = None
+    local = os.path.join(PLUGINS_DIR, "index.json")
+    if DEV_MODE and os.path.isfile(local):
+        try:
+            with open(local, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (OSError, ValueError):
+            data = None
+    if data is None:
+        try:
+            with urllib.request.urlopen(f"{_RAW_BASE}/web/plugins/index.json", timeout=10) as r:
+                data = json.loads(r.read().decode())
+        except Exception:  # noqa: BLE001 — offline / not published yet
+            return {"ok": False, "plugins": []}
+    if not isinstance(data, list):
+        data = []
+    result = {"ok": True, "plugins": data}
+    _catalog_cache.update(at=time.time(), data=result)
+    return result
+
+
+def _plugin_job_status():
+    state = _run(["systemctl", "is-active", f"{PLUGIN_UNIT}.service"])
+    return {"running": state in ("active", "activating"), "failed": state == "failed"}
+
+
+def _plugin_script(pid, script):
+    """Run plugins/<id>/<install|uninstall>.sh from GitHub as a transient unit
+    (it restarts the panel at the end, so it must outlive this process)."""
+    if not _PLUGIN_ID_RE.match(pid or ""):
+        return False, T("plugins_bad_id")
+    if DEV_MODE:
+        return False, T("plugins_dev")
+    if _plugin_job_status()["running"]:
+        return False, T("plugins_busy")
+    _run(["systemctl", "reset-failed", f"{PLUGIN_UNIT}.service"])
+    _run(["systemd-run", "--unit", PLUGIN_UNIT, "bash", "-c",
+          f"curl -fsSL --retry 5 --retry-delay 2 {_RAW_BASE}/web/plugins/{pid}/{script} | bash"],
+         timeout=15)
+    time.sleep(0.7)
+    st = _plugin_job_status()
+    if not st["running"] and not st["failed"]:
+        return False, T("plugins_job_fail")
+    return True, T("plugins_job_started")
+
+
+# ---------------------------------------------------------------------------
 # HTTP handler
 # ---------------------------------------------------------------------------
 class Handler(BaseHTTPRequestHandler):
@@ -3428,6 +3659,23 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, studio)
             else:
                 self._send(404, "studio not installed", "text/plain")
+        elif self.path.startswith("/plugins/"):
+            hit = plugin_file(self.path)
+            if hit:
+                self._send(200, hit[0], hit[1], no_cache=True)
+            else:
+                self._send(404, "not found", "text/plain")
+        elif self.path == "/api/plugins":
+            self._send(200, json.dumps(_plugins_payload()), "application/json",
+                       no_cache=True)
+        elif self.path == "/api/plugins/catalog":
+            self._send(200, json.dumps(_plugins_catalog()), "application/json",
+                       no_cache=True)
+        elif self.path == "/api/plugins/job":
+            self._send(200, json.dumps(_plugin_job_status()), "application/json",
+                       no_cache=True)
+        elif self.path.startswith("/api/p/"):
+            self._plugin_dispatch("GET")
         elif self.path == "/api/tailscale":
             self._send(200, json.dumps(_tailscale_state()), "application/json")
         elif self.path == "/api/sources":
@@ -3487,6 +3735,18 @@ class Handler(BaseHTTPRequestHandler):
             self._redirect(f"http://{AP_IP}/#/settings")
         else:
             self._send(404, "not found", "text/plain")
+
+    def _plugin_dispatch(self, method):
+        """/api/p/<id>/<sub>[?query] -> the plugin's handle(); the plugin only
+        sees its own sub-path (leading slash kept: '/state', '/wake')."""
+        u = urllib.parse.urlparse(self.path)
+        parts = u.path.split("/", 4)          # ['', 'api', 'p', id, sub]
+        pid = parts[3] if len(parts) > 3 else ""
+        sub = "/" + (parts[4] if len(parts) > 4 else "")
+        query = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
+        body = self._json_body() if method == "POST" else {}
+        code, payload = _plugin_call(pid, method, sub, body, query)
+        self._send(code, json.dumps(payload), "application/json", no_cache=True)
 
     def _lms_get(self):
         u = urllib.parse.urlparse(self.path)
@@ -3661,6 +3921,13 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path.startswith("/api/lms/"):
             self._send(200, json.dumps(self._lms_post(self.path, self._json_body())),
                        "application/json")
+        elif self.path in ("/api/plugins/install", "/api/plugins/uninstall"):
+            script = "install.sh" if self.path.endswith("/install") else "uninstall.sh"
+            ok, message = _plugin_script(str(self._json_body().get("id", "")), script)
+            self._send(200, json.dumps({"ok": ok, "message": message}),
+                       "application/json")
+        elif self.path.startswith("/api/p/"):
+            self._plugin_dispatch("POST")
         else:
             self._send(404, "not found", "text/plain")
 
@@ -3700,6 +3967,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
+    _plugins_load()         # plugins/<id>/ — sandbox and device alike
     if not DEV_MODE:   # the background loops only poke real system services
         _viz_restore()      # restore visualizer if we came back from an update
         _aout_reconcile()   # point the audio-out bridge at a present card

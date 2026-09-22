@@ -131,6 +131,14 @@ with sensible defaults:
 | POST | `/api/wifi/add` | `{"ssid":"...","key":"..."}` — writes to the DietPi db + reload |
 | POST | `/api/wifi/remove` | `{"slot":n}` — removal (the current network is blocked) |
 | POST | `/api/lang` | `{"lang":"en"\|"pl"}` — switches the UI language |
+| GET | `/api/plugins` | installed plugins (manifests + load errors) |
+| GET | `/api/plugins/catalog` | plugins available in the repo (`web/plugins/index.json`) |
+| POST | `/api/plugins/install` / `uninstall` | `{"id":"…"}` — runs the plugin's script as a transient unit, panel restarts after |
+| GET/POST | `/api/p/<id>/…` | forwarded to that plugin's `handle()` |
+| GET | `/plugins/<id>/ui.js` | the plugin's UI module, imported by the SPA at runtime |
+
+Plugins (`plugins/<id>/` next to the script, `web/plugins/` in the repo) are
+described in [plugins/README.md](plugins/README.md).
 
 ## Wi-Fi settings — how it works
 
