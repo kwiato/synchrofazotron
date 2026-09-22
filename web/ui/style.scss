@@ -772,7 +772,10 @@ pre {
 
 .cardgrid {
   display: grid; grid-template-columns: 1fr; gap: var(--spacer-xs); align-items: start;
-  .card { margin: 0; }
+  // min-width: 0 — a grid item's automatic minimum is its min-content, so one
+  // unbreakable line (a nowrap .det, a long <code>) would widen the 1fr track
+  // and every card in the section with it. Cards clip/ellipsize instead.
+  .card { margin: 0; min-width: 0; }
 }
 
 .card-head {

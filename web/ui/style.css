@@ -1232,6 +1232,7 @@ pre {
 }
 .cardgrid .card {
   margin: 0;
+  min-width: 0;
 }
 
 .card-head {

@@ -107,7 +107,7 @@ function ManageCard({ installed, dev, onChange }) {
         <div class="srow" key={p.id}>
           <div class="info">
             <b>{p.name || p.id}</b>{p.version && <span class="muted small"> v{p.version}</span>}
-            {desc(p) && <div class="det">{desc(p)}</div>}
+            {desc(p) && <div class="muted small">{desc(p)}</div>}
           </div>
           <button class="ebtn" disabled={!!job || dev} title={t('plugins_remove_btn')}
                   aria-label={t('plugins_remove_btn')} onClick={() => run(p, 'uninstall')}>✕</button>
