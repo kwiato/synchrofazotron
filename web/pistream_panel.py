@@ -340,9 +340,12 @@ STR = {
         "plugins_note": "Optional extras from the repo. Install one and its card "
                         "appears above; remove it and it is gone. Each plugin is "
                         "a folder in web/plugins on GitHub.",
-        "plugins_installed": "installed",
-        "plugins_available": "available",
-        "plugins_install_btn": "Install",
+        "plugins_none_installed": "No plugins installed yet.",
+        "plugins_add_btn": "Install a plugin…",
+        "plugins_pick_head": "Install a plugin",
+        "plugins_pick_note": "Tap one to install it. Takes a few seconds; the "
+                             "panel restarts at the end.",
+        "plugins_all_installed": "Everything in the catalog is already installed.",
         "plugins_remove_btn": "Remove",
         "plugins_remove_confirm": "Remove this plugin? Its settings stay on the "
                                   "device in case you install it again.",
@@ -354,8 +357,11 @@ STR = {
         "plugins_bad_id": "Bad plugin id.",
         "plugins_dev": "Sandbox mode: plugins are not installed from here. "
                        "Copy the folder into web/plugins and restart the panel.",
-        "plugins_working": "Working…",
-        "plugins_failed": "The last plugin job failed (journalctl -u "
+        "plugins_installing": "Installing %s…",
+        "plugins_removing": "Removing %s…",
+        "plugins_installed_ok": "Installed: %s",
+        "plugins_removed_ok": "Removed: %s",
+        "plugins_failed": "The plugin job failed (journalctl -u "
                           "synchrofazotron-plugin).",
         "plugins_broken": "This plugin failed to load:",
         "plugins_ui_err": "The plugin's UI module could not be loaded.",
@@ -689,9 +695,12 @@ STR = {
         "plugins_note": "Opcjonalne dodatki z repozytorium. Zainstaluj, a karta "
                         "wtyczki pojawi się powyżej; usuń i znika. Każda wtyczka "
                         "to katalog w web/plugins na GitHubie.",
-        "plugins_installed": "zainstalowana",
-        "plugins_available": "dostępna",
-        "plugins_install_btn": "Zainstaluj",
+        "plugins_none_installed": "Nie ma jeszcze żadnych wtyczek.",
+        "plugins_add_btn": "Zainstaluj wtyczkę…",
+        "plugins_pick_head": "Zainstaluj wtyczkę",
+        "plugins_pick_note": "Stuknij, żeby zainstalować. Trwa kilka sekund, na "
+                             "koniec panel się restartuje.",
+        "plugins_all_installed": "Wszystko z katalogu jest już zainstalowane.",
         "plugins_remove_btn": "Usuń",
         "plugins_remove_confirm": "Usunąć tę wtyczkę? Jej ustawienia zostaną na "
                                   "urządzeniu na wypadek ponownej instalacji.",
@@ -703,9 +712,12 @@ STR = {
         "plugins_bad_id": "Zły identyfikator wtyczki.",
         "plugins_dev": "Tryb sandbox: wtyczek nie instaluje się stąd. Skopiuj "
                        "katalog do web/plugins i zrestartuj panel.",
-        "plugins_working": "Pracuję…",
-        "plugins_failed": "Ostatnie zadanie wtyczki nie powiodło się (journalctl "
-                          "-u synchrofazotron-plugin).",
+        "plugins_installing": "Instaluję %s…",
+        "plugins_removing": "Usuwam %s…",
+        "plugins_installed_ok": "Zainstalowano: %s",
+        "plugins_removed_ok": "Usunięto: %s",
+        "plugins_failed": "Zadanie wtyczki nie powiodło się (journalctl -u "
+                          "synchrofazotron-plugin).",
         "plugins_broken": "Ta wtyczka nie załadowała się:",
         "plugins_ui_err": "Nie udało się załadować modułu UI wtyczki.",
         "js_upd_checking": "Sprawdzam…",

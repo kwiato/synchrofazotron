@@ -2,14 +2,15 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { useI18n } from '../../i18n.jsx';
 import { apiGet, apiPost } from '../../api.js';
 import { useApi } from '../../hooks.js';
-import { useToast } from '../../components/Toast.jsx';
+import { Droplet } from '../../components/Droplet.jsx';
 import { usePlugins, pluginApi, pluginT } from '../../plugins.js';
 
 // Settings > Plugins: one card per installed plugin (rendered by the plugin's
-// own ui.js → SettingsCard) followed by the management card — the repo
-// catalog with install / remove buttons. Install and remove run on the device
-// as a transient unit that restarts the panel at the end, so the section just
-// polls until the job is over and the plugin list changes.
+// own ui.js → SettingsCard) followed by the management card — installed list
+// with remove buttons and an "Install a plugin…" picker fed by the repo
+// catalog. Install and remove run on the device as a transient unit that
+// restarts the panel at the end, so the card shows a spinner droplet and
+// polls until the job is over and the plugin list has changed.
 export function PluginsSection() {
   const { t, lang } = useI18n();
   const [data, reload] = usePlugins();
@@ -41,19 +42,23 @@ function PluginCard({ plugin, lang }) {
   );
 }
 
+const fmt = (s, name) => s.replace('%s', name);
+
 function ManageCard({ installed, dev, onChange }) {
   const { t, lang } = useI18n();
-  const toast = useToast();
   const [catalog] = useApi('/api/plugins/catalog', 0);
-  const [job, setJob] = useState(null);            // id of the plugin being worked on
-  const [failed, setFailed] = useState(false);
+  const [picker, setPicker] = useState(false);
+  const [job, setJob] = useState(null);            // {id, name, action} while a job runs
+  const [drop, setDrop] = useState(null);          // droplet state: {text, tone, spinner, icon}
   const timer = useRef(null);
+  const desc = (r) => (r.description && (r.description[lang] || r.description.en)) || '';
 
   // Poll the transient unit until it ends; the panel restart in the middle
-  // shows up as fetch errors — keep polling through them.
-  const watch = (id, before) => {
-    setJob(id);
-    setFailed(false);
+  // shows up as fetch errors — keep polling through them. Done = the unit is
+  // no longer running AND the installed set differs from before (the panel
+  // has come back with the new list), or it failed, or 3 minutes passed.
+  const watch = (j, before) => {
+    setJob(j);
     const started = Date.now();
     clearInterval(timer.current);
     timer.current = setInterval(async () => {
@@ -61,61 +66,78 @@ function ManageCard({ installed, dev, onChange }) {
       try { st = await apiGet('/api/plugins/job'); } catch { /* panel restarting */ }
       const timeout = Date.now() - started > 180000;
       if (st && st.running && !timeout) return;
-      if (st && st.failed) setFailed(true);
       let now = before;
       try { now = ((await apiGet('/api/plugins')).plugins || []).map((p) => p.id).join(','); } catch { /* keep */ }
-      if (now === before && !timeout && !(st && st.failed)) return;   // not restarted yet
+      const failed = !!(st && st.failed);
+      if (now === before && !timeout && !failed) return;   // not restarted yet
       clearInterval(timer.current);
       setJob(null);
+      const ok = !failed && now !== before;
+      const doneKey = j.action === 'install' ? 'plugins_installed_ok' : 'plugins_removed_ok';
+      setDrop({ text: ok ? fmt(t(doneKey), j.name) : t('plugins_failed'),
+                tone: ok ? 'good' : 'danger', icon: ok ? 'check' : 'x', spinner: false });
       onChange();
     }, 2000);
   };
   useEffect(() => () => clearInterval(timer.current), []);
 
-  const run = async (id, action) => {
+  const run = async (r, action) => {
     if (action === 'uninstall' && !confirm(t('plugins_remove_confirm'))) return;
+    setPicker(false);
     const before = (installed || []).map((p) => p.id).join(',');
+    const name = r.name || r.id;
     try {
-      const j = await apiPost(`/api/plugins/${action}`, { id });
-      toast(j.message || (j.ok ? '' : t('js_error')));
-      if (j.ok) watch(id, before);
-    } catch { toast(t('js_conn_error')); }
+      const j = await apiPost(`/api/plugins/${action}`, { id: r.id });
+      if (!j.ok) { setDrop({ text: j.message || t('js_error'), tone: 'danger', icon: 'x', spinner: false }); return; }
+      const key = action === 'install' ? 'plugins_installing' : 'plugins_removing';
+      setDrop({ text: fmt(t(key), name), tone: '', spinner: true });
+      watch({ id: r.id, name, action }, before);
+    } catch { setDrop({ text: t('js_conn_error'), tone: 'danger', icon: 'x', spinner: false }); }
   };
 
-  const have = new Map((installed || []).map((p) => [p.id, p]));
-  // Catalog first (it carries descriptions), then anything installed that the
-  // catalog does not list (a local / hand-copied plugin).
-  const rows = [];
-  if (catalog && catalog.ok) for (const c of catalog.plugins) rows.push({ ...c, ...(have.get(c.id) || {}), listed: true });
-  for (const p of have.values()) if (!rows.some((r) => r.id === p.id)) rows.push({ ...p, listed: false });
-  const desc = (r) => (r.description && (r.description[lang] || r.description.en)) || '';
+  const have = new Set((installed || []).map((p) => p.id));
+  const available = catalog && catalog.ok ? catalog.plugins.filter((c) => !have.has(c.id)) : [];
 
   return (
     <div class="card">
       <h2><i class="ico ico-puzzle"></i> {t('plugins_head')}</h2>
       <p class="muted">{t('plugins_note')}</p>
-      {catalog && !catalog.ok && <p class="muted">{t('plugins_catalog_err')}</p>}
-      {catalog && catalog.ok && rows.length === 0 && <p class="muted">{t('plugins_none')}</p>}
-      {rows.map((r) => {
-        const on = have.has(r.id);
-        const busy = job === r.id;
-        return (
-          <div class="row" key={r.id}>
-            <div class="info">
-              <b>{r.name || r.id}</b>{r.version && <span class="muted small"> v{r.version}</span>}
-              {desc(r) && <div class="muted small">{desc(r)}</div>}
-            </div>
-            <span class={'pill ' + (on ? 'on' : 'off')}>{t(on ? 'plugins_installed' : 'plugins_available')}</span>
-            {(r.listed || on) && (
-              <button class="ebtn" disabled={!!job || dev} title={t(on ? 'plugins_remove_btn' : 'plugins_install_btn')}
-                      onClick={() => run(r.id, on ? 'uninstall' : 'install')}>
-                {busy ? '…' : on ? '✕' : '+'}
-              </button>)}
-          </div>);
-      })}
-      {job && <p class="muted">{t('plugins_working')}</p>}
-      {failed && <p class="muted">{t('plugins_failed')}</p>}
+      {installed && installed.length === 0 && <p class="muted">{t('plugins_none_installed')}</p>}
+      {(installed || []).map((p) => (
+        <div class="srow" key={p.id}>
+          <div class="info">
+            <b>{p.name || p.id}</b>{p.version && <span class="muted small"> v{p.version}</span>}
+            {desc(p) && <div class="det">{desc(p)}</div>}
+          </div>
+          <button class="ebtn" disabled={!!job || dev} title={t('plugins_remove_btn')}
+                  aria-label={t('plugins_remove_btn')} onClick={() => run(p, 'uninstall')}>✕</button>
+        </div>))}
+      <button class="btn" disabled={!!job || dev || !catalog} onClick={() => setPicker(true)}>
+        {t('plugins_add_btn')}
+      </button>
+      {drop && (
+        <Droplet inline open text={drop.text} tone={drop.tone} icon={drop.icon}
+                 spinner={drop.spinner} timeout={drop.spinner ? 0 : 6000} />
+      )}
       {dev && <p class="muted small">{t('plugins_dev')}</p>}
+
+      {picker && (
+        <div class="overlay open" onClick={(e) => e.target === e.currentTarget && setPicker(false)}>
+          <div class="modal">
+            <h2><i class="ico ico-plus"></i> {t('plugins_pick_head')}</h2>
+            <p class="muted">{t('plugins_pick_note')}</p>
+            {catalog && !catalog.ok && <p class="muted">{t('plugins_catalog_err')}</p>}
+            {catalog && catalog.ok && available.length === 0 && (
+              <p class="muted">{t(catalog.plugins.length ? 'plugins_all_installed' : 'plugins_none')}</p>)}
+            {available.map((c) => (
+              <button class="btn sec netbtn" key={c.id} onClick={() => run(c, 'install')}>
+                <b>{c.name || c.id}</b>{c.version && <span class="muted small"> v{c.version}</span>}
+                {desc(c) && <div class="muted small">{desc(c)}</div>}
+              </button>))}
+            <button class="btn sec" onClick={() => setPicker(false)}>{t('modal_cancel')}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
