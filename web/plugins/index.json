@@ -7,5 +7,14 @@
       "en": "Wake a PC on the LAN (Wake-on-LAN magic packet) and see whether it is up.",
       "pl": "Budzi komputer w sieci lokalnej (magic packet Wake-on-LAN) i pokazuje, czy już wstał."
     }
+  },
+  {
+    "id": "remote-keyboard",
+    "name": "Remote Keyboard",
+    "version": "0.1.0",
+    "description": {
+      "en": "Type on the PC from the panel: the device becomes a USB keyboard (HID gadget) plugged into the computer.",
+      "pl": "Pisanie na komputerze z panelu: urządzenie udaje klawiaturę USB (HID gadget) wpiętą do komputera."
+    }
   }
 ]

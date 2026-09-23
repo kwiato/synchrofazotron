@@ -152,3 +152,4 @@ section: `web/app/src/views/settings/PluginsSection.jsx`.
 | id | What |
 |---|---|
 | [`pc`](pc/) | Wake-on-LAN for a PC on the LAN + up/down check (from [pimote](https://github.com/kwiato/pimote)) |
+| [`remote-keyboard`](remote-keyboard/) | USB HID keyboard for the PC: type text, Backspace/Enter, arrows/Esc/Del (from pimote's keyboard half) |

@@ -1,0 +1,13 @@
+[Unit]
+Description=Synchrofazotron USB HID keyboard gadget (remote-keyboard plugin)
+After=sys-kernel-config.mount
+Requires=sys-kernel-config.mount
+Before=pistream-panel.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/synchrofazotron-hid-gadget.sh
+
+[Install]
+WantedBy=multi-user.target
