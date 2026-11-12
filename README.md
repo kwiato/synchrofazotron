@@ -73,6 +73,12 @@ uninstall first when signatures mismatch):
   play/pause, hardware volume keys, Wi-Fi/Bluetooth settings, setup-AP
   auto-detection.
 
+**Obtainium:** add `https://github.com/kwiato/synchrofazotron` as a GitHub
+source with the default settings — it tracks the native app. Each build on
+`main` is also published as a versioned release (`native-v0.1.N`, marked
+*Latest*), because the rolling tags above never change and so can't signal
+an update.
+
 ## Moving the device to a new location
 
 The device only needs to get onto *some* network once — after that it is
