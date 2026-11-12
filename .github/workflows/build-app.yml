@@ -82,6 +82,9 @@ jobs:
           # Monotonic versionCode so the .dev sideload app updates in place. Kept in
           # its own band, well clear of the release track's (100 + run_number).
           export ANDROID_VERSION_CODE=$(( 1000 + GITHUB_RUN_NUMBER ))
+          # Per-build versionName (gets the "-dev" suffix) — matches the
+          # panel-v1.0.N release tag below.
+          export ANDROID_VERSION_NAME="1.0.${GITHUB_RUN_NUMBER}"
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
@@ -109,3 +112,39 @@ jobs:
           files: |
             web/app/android/app/build/outputs/apk/debug/app-debug.apk
             version.json
+
+      # Obtainium (and any other tag-based updater) can't see updates in the
+      # rolling release above: its tag never changes. So every main build also
+      # gets its own versioned, non-prerelease release. Not marked "Latest" —
+      # that badge stays with the native app (build-native.yml); Obtainium
+      # tells the two apart by an APK-name filter (see README).
+      - name: Name the versioned APK
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cp web/app/android/app/build/outputs/apk/debug/app-debug.apk \
+            "synchrofazotron-panel-1.0.${GITHUB_RUN_NUMBER}.apk"
+      - name: Versioned release (Obtainium)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: panel-v1.0.${{ github.run_number }}
+          name: WebView app 1.0.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          prerelease: false
+          make_latest: false
+          body: |
+            WebView (Capacitor) app, debug build 1.0.${{ github.run_number }}-dev
+            (commit ${{ github.sha }}).
+          files: synchrofazotron-panel-1.0.${{ github.run_number }}.apk
+
+      # Keep only the newest few versioned releases (and their tags).
+      - name: Prune old versioned releases
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --limit 200 --json tagName,createdAt \
+            -q '[.[] | select(.tagName | startswith("panel-v"))] | sort_by(.createdAt) | reverse | .[5:] | .[].tagName' \
+          | while read -r tag; do
+              [ -n "$tag" ] && gh release delete "$tag" --yes --cleanup-tag
+            done

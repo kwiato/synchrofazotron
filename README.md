@@ -74,10 +74,14 @@ uninstall first when signatures mismatch):
   auto-detection.
 
 **Obtainium:** add `https://github.com/kwiato/synchrofazotron` as a GitHub
-source with the default settings — it tracks the native app. Each build on
-`main` is also published as a versioned release (`native-v0.1.N`, marked
-*Latest*), because the rolling tags above never change and so can't signal
-an update.
+source — once per app, each with its own *Filter APKs by regular
+expression* (and *Fallback to older releases* left on):
+
+- `synchrofazotron-panel` — the WebView app (releases `panel-v1.0.N`)
+- `synchrofazotron-native` — the native app (releases `native-v0.1.N`)
+
+Each build on `main` is also published as such a versioned release, because
+the rolling tags above never change and so can't signal an update.
 
 ## Moving the device to a new location
 
